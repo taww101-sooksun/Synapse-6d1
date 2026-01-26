@@ -99,3 +99,5 @@ with col_right:
         if st.form_submit_button("ส่ง"):
             st.session_state.messages.append({"name": my_name, "id": my_id, "text": msg})
             st.rerun()
+[connections.gsheets]
+spreadsheet = "https://docs.google.com/spreadsheets/d/1zjKmVhshtYGoM3OQS5V3D_DaB1u-_TkFQCzn9jmlQaU/edit?usp=sharing"
