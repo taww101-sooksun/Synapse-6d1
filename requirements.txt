@@ -1,3 +1,5 @@
 streamlit
 google-generativeai
 numpy
+st-gsheets-connection
+pandas
