@@ -1,99 +1,80 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
 
-# --- 1. ตั้งค่าพื้นฐาน ---
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1zjKmVhshtYGoM3OQS5V3D_DaB1u-_TkFQCzn9jmlQaU/edit?usp=sharing"
+# --- 1. ตั้งค่าหน้าตาแอป (UI Customization) ---
+st.set_page_config(page_title="BigBoss Healing Station", layout="centered")
 
-st.set_page_config(page_title="BigBoss Healing Station", layout="wide")
-
-# ปรับหน้าตาให้หล่อๆ แบบช่างใหญ่
+# แต่ง CSS ให้หล่อเท่แบบช่างใหญ่
 st.markdown("""
     <style>
-    .stApp { background-color: #050505; color: white; border: 4px solid #8B00FF; border-radius: 20px; }
-    h1, h2, h3, p, label { color: white !important; }
-    .stButton>button { background-color: #8B00FF; color: white; border-radius: 10px; width: 100%; }
+    /* พื้นหลังและกรอบแอป */
+    .stApp {
+        background: linear-gradient(180deg, #0f0f0f 0%, #1a0033 100%);
+        color: #e0e0e0;
+    }
+    
+    /* กรอบหัวข้อ */
+    .main-header {
+        background: rgba(139, 0, 255, 0.1);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #8B00FF;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(139, 0, 255, 0.3);
+    }
+
+    /* ตัววิ่งสโลแกน */
+    .marquee {
+        color: #8B00FF;
+        font-weight: bold;
+        font-size: 1.2rem;
+        border-top: 1px solid #333;
+        border-bottom: 1px solid #333;
+        padding: 5px 0;
+    }
+
+    /* ตกแต่งปุ่มและ Selectbox */
+    .stSelectbox label { color: #BB86FC !important; font-size: 1.1rem; }
+    
+    /* ปรับแต่ง Audio Player */
+    audio { width: 100%; filter: invert(100%) hue-rotate(275deg) brightness(1.5); }
     </style>
     """, unsafe_allow_html=True)
 
-# เชื่อมต่อ Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+# --- 2. ส่วนหัวของแอป ---
+st.markdown("""
+    <div class="main-header">
+        <h1 style='margin:0; color:#BB86FC;'>🎵 สถานีบำบัดใจ 🎵</h1>
+        <p style='margin:5px 0 0 0; color:#888;'>ศูนย์รวมร่องเพลง... บรรเทาทุกข์</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-def get_permanent_id(name):
-    try:
-        # พยายามอ่านข้อมูลจาก Google Sheets
-        df = conn.read(spreadsheet=SHEET_URL, ttl=0) # ttl=0 คือให้อ่านสดๆ ตลอด
-        df = df.dropna(how='all')
-    except:
-        # ถ้าอ่านไม่ได้ ให้สร้างตารางเปล่าขึ้นมา
-        df = pd.DataFrame(columns=['name', 'user_number'])
-    
-    # ตรวจสอบว่าชื่อนี้มีหรือยัง
-    existing_user = df[df['name'].astype(str) == str(name)]
-    
-    if not existing_user.empty:
-        return int(existing_user.iloc[0]['user_number'])
-    else:
-        # ถ้ายังไม่มี ให้รันเลขใหม่
-        if len(df) == 0:
-            new_id = 1
-        else:
-            new_id = int(pd.to_numeric(df['user_number']).max()) + 1
-        
-        # เพิ่มชื่อใหม่
-        new_row = pd.DataFrame([{"name": name, "user_number": new_id}])
-        updated_df = pd.concat([df, new_row], ignore_index=True)
-        
-        # ส่งกลับไปบันทึกที่ Google Sheets
-        conn.update(spreadsheet=SHEET_URL, data=updated_df)
-        return new_id
+# ตัววิ่งสโลแกนประจำตัว
+st.markdown('<marquee class="marquee">อยู่นิ่งๆ ไม่เจ็บตัว... ยินดีต้อนรับทุกท่านสู่สถานีบำบัดใจโดย ช่างใหญ่ ...</marquee>', unsafe_allow_html=True)
 
-# --- 2. ระบบลงชื่อเข้าใช้ ---
-if "my_id" not in st.session_state:
-    st.markdown("<h2 style='text-align:center;'>🔐 เข้าสู่สถานีบำบัดใจ</h2>", unsafe_allow_html=True)
-    st.write("---")
-    name_input = st.text_input("ระบุชื่อของคุณ (เพื่อรับหมายเลขประจำตัว):")
-    
-    if st.button("เข้าสู่สถานี 🚀"):
-        if name_input:
-            try:
-                with st.spinner('กำลังจดทะเบียนหมายเลขของคุณ...'):
-                    user_id = get_permanent_id(name_input)
-                    st.session_state.my_id = user_id
-                    st.session_state.my_name = name_input
-                    st.rerun()
-            except Exception as e:
-                st.error(f"ใจเย็นๆ ครับช่างใหญ่ เหมือน Google Sheets จะยังไม่เปิดสิทธิ์ Editor ให้แอปครับ")
-                st.info("วิธีแก้: กดปุ่ม 'แชร์' ใน Sheets -> เปลี่ยนเป็น 'ทุกคนที่มีลิงก์' -> เลือก 'เอดีเตอร์'")
-        else:
-            st.warning("กรุณาใส่ชื่อก่อนครับ")
-    st.stop()
+st.write("")
 
-# --- 3. หน้าสถานีเมื่อเข้าสำเร็จ ---
-my_id = st.session_state.my_id
-my_name = st.session_state.my_name
-
-st.sidebar.success(f"คุณคือสมาชิกหมายเลข: {my_id}")
-st.sidebar.markdown(f"**ชื่อ:** {my_name}")
-
-st.markdown(f"<h2 style='text-align:center;'>🎵 สถานีหมายเลข {my_id} ยินดีต้อนรับ</h2>", unsafe_allow_html=True)
-st.write("---")
-
-# คลังเพลง (ช่างใหญ่เพิ่มลิงก์ต่อได้เลยครับ)
+# --- 3. คลังเพลง (ใส่เพิ่มตรงนี้ได้เลยครับ) ---
 SONGS = {
-    "01. การเดินทางของฉัน": "https://github.com/leehunna789-boop/blank-app/raw/refs/heads/main/%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B9%80%E0%B8%94%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%82%E0%B8%AD%E0%B8%87%E0%B8%89%E0%B8%B1%E0%B8%99.mp3",
+    "🎧 01. การเดินทางของฉัน": "https://github.com/leehunna789-boop/blank-app/raw/refs/heads/main/%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B9%80%E0%B8%94%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%82%E0%B8%AD%E0%B8%87%E0%B8%89%E0%B8%B1%E0%B8%99.mp3",
+    # "🎧 02. ชื่อเพลงต่อไป": "ลิงก์เพลง",
 }
 
-col1, col2 = st.columns([1.5, 1])
+# --- 4. ส่วนเครื่องเล่นเพลง ---
+st.subheader("📻 เลือกฟังร่องเพลงที่ท่านชอบ")
+selected_song = st.selectbox("", list(SONGS.keys()), label_visibility="collapsed")
 
-with col1:
-    st.subheader("📻 เพลงบำบัดใจ")
-    selected = st.selectbox("เลือกเพลง:", list(SONGS.keys()))
-    st.audio(SONGS[selected])
-    st.divider()
-    st.write("📢 *อยู่นิ่งๆ ไม่เจ็บตัว โดย ช่างใหญ่*")
+st.info(f"📍 กำลังเล่น: {selected_song}")
+st.audio(SONGS[selected_song])
 
-with col2:
-    st.subheader("💬 สนทนาธรรม")
-    st.write("ยินดีต้อนรับสมาชิกใหม่ทุกท่าน!")
-    # ส่วนนี้สามารถพัฒนาต่อเป็นแชทจริงได้ในอนาคตครับ
+st.write("")
+st.write("---")
+
+# --- 5. ส่วนพูดคุย (แบบง่าย ไม่ต้องเก็บลงฐานข้อมูล) ---
+with st.expander("💬 ฝากข้อความถึงช่างใหญ่"):
+    user_msg = st.text_input("พิมพ์ข้อความ:")
+    if st.button("ส่งความรู้สึก"):
+        st.success("ข้อความของท่านถูกส่งถึงใจช่างใหญ่แล้ว! (ระบบจำลอง)")
+
+# ส่วนท้าย
+st.markdown("<p style='text-align:center; color:#555;'>Created by BigBoss Station © 2026</p>", unsafe_allow_html=True)
