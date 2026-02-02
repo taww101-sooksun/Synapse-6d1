@@ -53,7 +53,24 @@ st.dataframe(st.session_state.logs, use_container_width=True)
 
 # --- 7. YouTube Playlist ของคุณพ่อ ---
 st.write("---")
-st.subheader("🎬 เพลย์ลิสต์โปรดของคุณพ่อ")
+st.subheader("🎬 เพลย์ลิสต์โปรดของอยู่นิ้งๆไม่เจ็บตัว")
 st.video("https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=-xYvhNW1cDlT4yiu")
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#0E1117" />
+    
+    <stroke
+        android:width="2dp"
+        android:color="#00FFCC" />
+    
+    <corners android:radius="25dp" />
+    
+    <padding
+        android:left="10dp"
+        android:top="10dp"
+        android:right="10dp"
+        android:bottom="10dp" />
+</shape>
+
 
 st.markdown("<br><center><p style='color: #444;'>Smart Finance v1.0</p></center>", unsafe_allow_html=True)
