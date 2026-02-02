@@ -3,3 +3,4 @@ google-generativeai
 numpy
 st-gsheets-connection
 pandas
+streamlit-server-state
