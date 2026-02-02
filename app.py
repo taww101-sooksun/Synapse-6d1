@@ -1,59 +1,59 @@
 import streamlit as st
-import google.generativeai as genai
-import numpy as np
+import pandas as pd
+from datetime import datetime
 
-# --- 1. ตั้งค่าดีไซน์ตามโลโก้ SYNAPSE ---
-st.set_page_config(page_title="SYNAPSE 6D Pro", layout="wide")
-
+# --- 1. ดีไซน์สไตล์นาฬิกาในเครื่อง (ดำ-น้ำเงิน-ไม่เหลี่ยม) ---
+st.set_page_config(page_title="Money Maverick", layout="centered")
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; color: #E0E0E0; }
-    .lyrics-board {
-        background-color: #1E1E1E; padding: 20px; border-radius: 15px; 
-        border: 1px solid #00CC99; color: #00FFCC; min-height: 150px;
-        font-family: 'monospace';
-    }
+    .stApp { background-color: #000000; color: white; }
+    .stNumberInput, .stTextInput, .stDateInput { border-radius: 20px !important; background: #121212 !important; color: white !important; }
+    .stButton>button { border-radius: 30px !important; width: 100%; background: #0044cc !important; color: white !important; border: none; height: 50px; }
+    .status-card { padding: 30px; border-radius: 30px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- 2. ตั้งค่า AI (อย่าลืมใส่ Key ของคุณพ่อนะครับ) ---
-genai.configure(api_key="YOUR_API_KEY")
-model = genai.GenerativeModel('gemini-1.5-flash')
+# --- 2. ระบบฐานข้อมูล (เก็บในเครื่องชั่วคราว) ---
+if 'logs' not in st.session_state:
+    st.session_state.logs = pd.DataFrame(columns=['วันที่', 'รายการ', 'จำนวน'])
 
-# --- 3. หน้าจอหลัก ---
-st.title("💎 SYNAPSE : STAY STILL & HEAL")
-st.write("สโลแกน: **'อยู่นิ่งๆ ไม่เจ็บตัว'**") [cite: 2025-12-20]
+# --- 3. ส่วนหัวและกำหนดงบ (Default 300) ---
+st.markdown("<h1 style='text-align: center; font-weight: 200;'>💰 ออมเงินฉบับคุณพ่อ</h1>", unsafe_allow_html=True)
+budget = st.sidebar.number_input("📌 กำหนดงบวันนี้ (บาท):", value=300)
 
-col1, col2 = st.columns(2)
+# --- 4. ฟังก์ชันเขียนข้อมูล ---
+with st.expander("✍️ เขียนรายจ่าย/ออมใหม่", expanded=True):
+    col1, col2 = st.columns(2)
+    item = col1.text_input("รายการ:", placeholder="เช่น ค่าข้าว")
+    price = col2.number_input("จำนวนเงิน (บาท):", min_value=0.0)
+    if st.button("บันทึกข้อมูล"):
+        new_row = pd.DataFrame([[datetime.now().date(), item, price]], columns=['วันที่', 'รายการ', 'จำนวน'])
+        st.session_state.logs = pd.concat([st.session_state.logs, new_row], ignore_index=True)
+        st.toast("บันทึกเรียบร้อย!")
 
-with col1:
-    st.subheader("💰 ระบบออมเงิน (Budget 300.-)")
-    spent = st.number_input("วันนี้ใช้ไปเท่าไหร่?", min_value=0)
-    if spent > 300:
-        st.error(f"เกินงบ! จ่ายเกินไป {spent-300} บาท")
-    else:
-        st.success(f"ยังนิ่งอยู่! เหลือเงิน {300-spent} บาท") [cite: 2025-12-20]
+# --- 5. ระบบไฟจราจร (เขียว-แดง) ---
+today_total = st.session_state.logs[st.session_state.logs['วันที่'] == datetime.now().date()]['จำนวน'].sum()
+if today_total <= budget:
+    bg, status, icon = "#003311", "🟢 ปลอดภัย", "✅"
+else:
+    bg, status, icon = "#440000", "🔴 เกินงบแล้ว!", "⚠️"
+    st.audio("https://www.soundjay.com/buttons/beep-01a.mp3") # เสียงเตือน
 
-    st.write("---")
-    st.subheader("📺 ความบันเทิง (YouTube)")
-    yt_url = st.text_input("วางลิงก์ YouTube ที่คุณพ่อชอบที่นี่:", "https://www.youtube.com/watch?v=Rvmvt7gscIM")
-    if yt_url:
-        st.video(yt_url) # แสดงวิดีโอในแอปเลย [cite: 2025-12-20]
+st.markdown(f"""
+    <div class="status-card" style="background: {bg};">
+        <h1 style="margin:0;">{today_total:,.2f} / {budget:,.2f}</h1>
+        <p style="font-size: 20px;">{status} | "อยู่นิ่งๆ ไม่เจ็บตัว"</p>
+    </div>
+""", unsafe_allow_html=True)
 
-with col2:
-    st.subheader("🧘 กระดานขยี้ใจความ (5-6 บรรทัด)")
-    note = st.text_area("ใส่ใจความสั้นๆ:")
-    
-    if st.button("🚀 GENERATE (ขยี้ใจความ)"):
-        if note:
-            with st.spinner("กำลังขยี้..."):
-                # สั่ง AI ขยี้สั้นๆ 5-6 บรรทัดตามสั่ง [cite: 2025-12-20]
-                prompt = f"ขยี้ข้อความ '{note}' เป็นคำคมบำบัดให้กำลังใจ 5-6 บรรทัด มีคำว่า 'อยู่นิ่งๆ ไม่เจ็บตัว' ด้วย" [cite: 2025-12-20]
-                response = model.generate_content(prompt)
-                
-                st.markdown(f"""
-                    <div class="lyrics-board">
-                        {response.text}
-                    </div>
-                """, unsafe_allow_html=True)
-                st.balloons() # ฉลองความสำเร็จแบบนิ่งๆ [cite: 2025-12-20]
+# --- 6. ปฏิทินและประวัติ ---
+st.write("---")
+st.subheader("🗓️ ปฏิทินบันทึกรายวัน")
+st.dataframe(st.session_state.logs, use_container_width=True)
+
+# --- 7. YouTube Playlist ของคุณพ่อ ---
+st.write("---")
+st.subheader("🎬 เพลย์ลิสต์โปรดของคุณพ่อ")
+st.video("https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=-xYvhNW1cDlT4yiu")
+
+st.markdown("<br><center><p style='color: #444;'>Smart Finance v1.0</p></center>", unsafe_allow_html=True)
