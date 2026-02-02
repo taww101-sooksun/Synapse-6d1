@@ -1,115 +1,115 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import random
 
-st.set_page_config(page_title="Classic Snake Multiplayer", layout="centered")
+st.set_page_config(page_title="Big Field Small Snake", layout="wide")
 
-# ส่วนหัวข้อ
-st.title("🐍 Classic Snake: Team Battle")
+st.markdown("<h1 style='text-align: center; color: #4CAF50;'>🐍 🇹🇭 สนามงู 65หมูกระทะ 🇹🇭 ()</h1>", unsafe_allow_html=True)
 
-if 'game_started' not in st.session_state:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.player_name = st.text_input("ชื่อผู้เล่น:", "Player1")
-    with col2:
-        st.session_state.player_team = st.radio("เลือกทีม:", ["Red notty", "Blue taty"], horizontal=True)
-    
-    if st.button("เริ่มเกมเลื้อย"):
-        st.session_state.game_started = True
+if 'start' not in st.session_state:
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    team = st.radio("เลือกฝ่ายของหนูๆ:", ["🔴 แดง notty", "🔵 สีน้ำเงิน taty"], horizontal=True)
+    if st.button("🚀 เริ่มเล่นเลย!"):
+        st.session_state.start = True
+        st.session_state.color = "#FF4B4B" if "แดง" in team else "#1C83E1"
         st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 else:
-    team_color = "#FF4B4B" if st.session_state.player_team == "Red" else "#1C83E1"
-    
-    # ส่วนแสดงคะแนน
-    st.subheader(f"ผู้เล่น: {st.session_state.player_name} | ทีม: {st.session_state.player_team}")
-
-    # โค้ด JavaScript สำหรับงูแบบมีหางและขยับเอง
-    snake_js_code = f"""
-    <div style="display: flex; justify-content: center; flex-direction: column; align-items: center;">
-        <canvas id="snakeGame" width="400" height="400" style="background: #111; border: 4px solid {team_color};"></canvas>
-        <h2 id="scoreDisplay" style="color: white; font-family: sans-serif;">Score: 0</h2>
+    # ขนาดจอ 600 และขนาดงู (box) แค่ 15
+    game_code = f"""
+    <div style="display: flex; flex-direction: column; align-items: center; background: #333; padding: 10px; border-radius: 20px;">
+        <div style="color: white; font-size: 24px; margin-bottom: 10px;">คะแนน: <span id="score">0</span></div>
+        
+        <canvas id="snakeCanvas" width="600" height="600" style="border: 5px solid white; background: #000; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></canvas>
+        
+        <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(3, 80px); gap: 15px;">
+            <div></div><button onclick="changeDir('UP')" style="width:80px; height:80px; font-size: 30px; border-radius: 50%;">⬆️</button><div></div>
+            <button onclick="changeDir('LEFT')" style="width:80px; height:80px; font-size: 30px; border-radius: 50%;">⬅️</button>
+            <button onclick="changeDir('DOWN')" style="width:80px; height:80px; font-size: 30px; border-radius: 50%;">⬇️</button>
+            <button onclick="changeDir('RIGHT')" style="width:80px; height:80px; font-size: 30px; border-radius: 50%;">➡️</button>
+        </div>
     </div>
 
     <script>
-    const canvas = document.getElementById("snakeGame");
-    const ctx = canvas.getContext("2d");
-    const scoreEl = document.getElementById("scoreDisplay");
+        const canvas = document.getElementById("snakeCanvas");
+        const ctx = canvas.getContext("2d");
+        let box = 15; // ขนาดงูตัวจิ๋ว
+        let score = 0;
+        let snake = [{{x: 20 * box, y: 20 * box}}, {{x: 19 * box, y: 20 * box}}];
+        let food = {{x: Math.floor(Math.random()*39)*box, y: Math.floor(Math.random()*39)*box}};
+        let dir = "RIGHT";
 
-    let box = 20;
-    let score = 0;
-    let snake = [{{x: 9 * box, y: 10 * box}}, {{x: 8 * box, y: 10 * box}}]; // ตัวงูเริ่มต้นมี 2 ข้อ
-    let food = {{x: Math.floor(random(0,19)) * box, y: Math.floor(random(0,19)) * box}};
-    let d = "RIGHT";
-
-    document.addEventListener("keydown", direction);
-    function direction(event) {{
-        if(event.keyCode == 37 && d != "RIGHT") d = "LEFT";
-        else if(event.keyCode == 38 && d != "DOWN") d = "UP";
-        else if(event.keyCode == 39 && d != "LEFT") d = "RIGHT";
-        else if(event.keyCode == 40 && d != "UP") d = "DOWN";
-    }}
-
-    function random(min, max) {{ return Math.random() * (max - min) + min; }}
-
-    function draw() {{
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // วาดหางงู
-        for(let i = 0; i < snake.length; i++) {{
-            ctx.fillStyle = (i == 0) ? "{team_color}" : "#CCCCCC"; 
-            ctx.fillRect(snake[i].x, snake[i].y, box-2, box-2);
+        function changeDir(d) {{ 
+            if(d=="UP" && dir!="DOWN") dir="UP";
+            if(d=="DOWN" && dir!="UP") dir="DOWN";
+            if(d=="LEFT" && dir!="RIGHT") dir="LEFT";
+            if(d=="RIGHT" && dir!="LEFT") dir="RIGHT";
         }}
 
-        // วาดอาหาร
-        ctx.fillStyle = "gold";
-        ctx.fillRect(food.x, food.y, box-2, box-2);
+        document.addEventListener("keydown", (e) => {{
+            if(e.keyCode==37 && dir!="RIGHT") dir="LEFT";
+            if(e.keyCode==38 && dir!="DOWN") dir="UP";
+            if(e.keyCode==39 && dir!="LEFT") dir="RIGHT";
+            if(e.keyCode==40 && dir!="UP") dir="DOWN";
+        }});
 
-        let snakeX = snake[0].x;
-        let snakeY = snake[0].y;
+        function draw() {{
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, 600, 600);
+            
+            // วาดงูจิ๋ว
+            for(let i=0; i<snake.length; i++) {{
+                ctx.fillStyle = (i==0) ? "{st.session_state.color}" : "#AAA";
+                ctx.strokeStyle = "black";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+            }}
+            
+            // วาดอาหาร
+            ctx.fillStyle = "#FFD700";
+            ctx.beginPath();
+            ctx.arc(food.x+box/2, food.y+box/2, box/2 - 2, 0, Math.PI*2);
+            ctx.fill();
 
-        if( d == "LEFT") snakeX -= box;
-        if( d == "UP") snakeY -= box;
-        if( d == "RIGHT") snakeX += box;
-        if( d == "DOWN") snakeY += box;
+            let headX = snake[0].x;
+            let headY = snake[0].y;
 
-        // ถ้ากินอาหาร
-        if(snakeX == food.x && snakeY == food.y) {{
-            score += 10;
-            scoreEl.innerHTML = "Score: " + score;
-            food = {{
-                x: Math.floor(random(0,19)) * box,
-                y: Math.floor(random(0,19)) * box
-            }};
-        }} else {{
-            snake.pop(); // ตัดหางออกเพื่อให้ตัวเท่าเดิมถ้าไม่ได้กิน
+            if(dir=="LEFT") headX -= box;
+            if(dir=="UP") headY -= box;
+            if(dir=="RIGHT") headX += box;
+            if(dir=="DOWN") headY += box;
+
+            // กินอาหาร
+            if(headX == food.x && headY == food.y) {{
+                score += 10;
+                document.getElementById("score").innerHTML = score;
+                food = {{x: Math.floor(Math.random()*39)*box, y: Math.floor(Math.random()*39)*box}};
+            }} else {{
+                snake.pop();
+            }}
+
+            let newHead = {{x: headX, y: headY}};
+
+            // ชนขอบหรือชนตัวเองตาย
+            if(headX<0 || headY<0 || headX>=600 || headY>=600 || collision(newHead, snake)) {{
+                alert("เกมจบแล้ว! หนูทำได้ " + score + " คะแนน");
+                location.reload();
+            }}
+            
+            snake.unshift(newHead);
+        }
+
+        function collision(head, array) {{
+            for(let i=0; i<array.length; i++) {{
+                if(head.x == array[i].x && head.y == array[i].y) return true;
+            }}
+            return false;
         }}
 
-        let newHead = {{x: snakeX, y: snakeY}};
-
-        // กฎการแพ้: ชนขอบ หรือ ชนตัวเอง
-        if(snakeX < 0 || snakeY < 0 || snakeX >= canvas.width || snakeY >= canvas.height || collision(newHead, snake)) {{
-            clearInterval(game);
-            alert("Game Over! คะแนนรวมของคุณ: " + score);
-            location.reload();
-        }}
-
-        snake.unshift(newHead);
-    }}
-
-    function collision(head, array) {{
-        for(let i = 0; i < array.length; i++) {{
-            if(head.x == array[i].x && head.y == array[i].y) return true;
-        }}
-        return false;
-    }}
-
-    let game = setInterval(draw, 120); // ปรับความเร็วตรงนี้ (120ms)
+        setInterval(draw, 100); // ความเร็วระดับกำลังดีสำหรับเด็กๆ
     </script>
     """
+    components.html(game_code, height=850)
     
-    components.html(snake_js_code, height=500)
-    
-    if st.button("กลับหน้าหลัก"):
-        del st.session_state.game_started
+    if st.button("⬅️ กลับไปหน้าเลือกทีม"):
+        del st.session_state.start
         st.rerun()
