@@ -1,104 +1,115 @@
-import customtkinter as ctk
+import streamlit as st
+import streamlit.components.v1 as components
+import random
 
-class ScrollingText(ctk.CTkFrame):
-    """แถบตัวหนังสือวิ่งสีสดใส"""
-    def __init__(self, master, text, color, **kwargs):
-        super().__init__(master, fg_color=color, height=35, **kwargs)
-        self.text = f" {text}          " * 10
-        self.label = ctk.CTkLabel(self, text=self.text, font=("Arial", 14, "bold"), text_color="white")
-        self.label.place(x=0, y=5)
-        self.x_pos = 0
-        self.animate()
+st.set_page_config(page_title="Classic Snake Multiplayer", layout="centered")
 
-    def animate(self):
-        self.x_pos -= 2
-        if self.x_pos < -500: self.x_pos = 0
-        self.label.place(x=self.x_pos, y=5)
-        self.after(30, self.animate)
+# ส่วนหัวข้อ
+st.title("🐍 Classic Snake: Team Battle")
 
-class VideoCard(ctk.CTkFrame):
-    """จอวิดีโอ + แผงควบคุมจัดเต็ม"""
-    def __init__(self, master, platform, **kwargs):
-        super().__init__(master, **kwargs)
-        
-        # หัวข้อ
-        ctk.CTkLabel(self, text=f"แผงควบคุม {platform}", font=("Arial", 18, "bold")).pack(pady=5)
+if 'game_started' not in st.session_state:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.player_name = st.text_input("ชื่อผู้เล่น:", "Player1")
+    with col2:
+        st.session_state.player_team = st.radio("เลือกทีม:", ["Red notty", "Blue taty"], horizontal=True)
+    
+    if st.button("เริ่มเกมเลื้อย"):
+        st.session_state.game_started = True
+        st.rerun()
+else:
+    team_color = "#FF4B4B" if st.session_state.player_team == "Red" else "#1C83E1"
+    
+    # ส่วนแสดงคะแนน
+    st.subheader(f"ผู้เล่น: {st.session_state.player_name} | ทีม: {st.session_state.player_team}")
 
-        # 1. ช่องใส่ลิงก์ + ปุ่มโหลด (เพิ่มลูกเล่น)
-        input_frame = ctk.CTkFrame(self, fg_color="transparent")
-        input_frame.pack(pady=5, fill="x", padx=10)
-        self.url_entry = ctk.CTkEntry(input_frame, placeholder_text=f"วางลิงก์ {platform} ตรงนี้...", width=250)
-        self.url_entry.pack(side="left", padx=5)
-        ctk.CTkButton(input_frame, text="โหลด", width=60, fg_color="gray").pack(side="left")
+    # โค้ด JavaScript สำหรับงูแบบมีหางและขยับเอง
+    snake_js_code = f"""
+    <div style="display: flex; justify-content: center; flex-direction: column; align-items: center;">
+        <canvas id="snakeGame" width="400" height="400" style="background: #111; border: 4px solid {team_color};"></canvas>
+        <h2 id="scoreDisplay" style="color: white; font-family: sans-serif;">Score: 0</h2>
+    </div>
 
-        # 2. จอวิดีโอจำลอง
-        self.screen = ctk.CTkFrame(self, width=450, height=250, fg_color="black", border_width=2, border_color="#333")
-        self.screen.pack(pady=10, padx=10)
-        ctk.CTkLabel(self.screen, text="[ SCREEN ]", text_color="#555", font=("Arial", 20)).place(relx=0.5, rely=0.5, anchor="center")
+    <script>
+    const canvas = document.getElementById("snakeGame");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("scoreDisplay");
 
-        # 3. ปุ่มควบคุมเครื่องเล่น (Media Controls)
-        control_btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        control_btn_frame.pack(pady=5)
-        ctk.CTkButton(control_btn_frame, text="◀◀", width=40).pack(side="left", padx=2)
-        ctk.CTkButton(control_btn_frame, text="PLAY", width=60, fg_color="green").pack(side="left", padx=2)
-        ctk.CTkButton(control_btn_frame, text="PAUSE", width=60, fg_color="orange").pack(side="left", padx=2)
-        ctk.CTkButton(control_btn_frame, text="STOP", width=60, fg_color="red").pack(side="left", padx=2)
-        ctk.CTkButton(control_btn_frame, text="▶▶", width=40).pack(side="left", padx=2)
+    let box = 20;
+    let score = 0;
+    let snake = [{{x: 9 * box, y: 10 * box}}, {{x: 8 * box, y: 10 * box}}]; // ตัวงูเริ่มต้นมี 2 ข้อ
+    let food = {{x: Math.floor(random(0,19)) * box, y: Math.floor(random(0,19)) * box}};
+    let d = "RIGHT";
 
-        # 4. แผง EQ 5 ปุ่ม (ต่ำ -> สูง)
-        eq_label_frame = ctk.CTkFrame(self, fg_color="#222")
-        eq_label_frame.pack(pady=10, padx=10, fill="x")
-        
-        self.sliders = []
-        bands = [".ต่ำ.", "ต่ำกลาง", ".กลาง.", "สูงกลาง", ".สูง."]
-        for b in bands:
-            unit = ctk.CTkFrame(eq_label_frame, fg_color="transparent")
-            unit.pack(side="left", expand=True, pady=10)
-            s = ctk.CTkSlider(unit, orientation="vertical", width=20, height=100)
-            s.set(0)
-            s.pack()
-            self.sliders.append(s)
-            ctk.CTkLabel(unit, text=b, font=("Arial", 10)).pack()
+    document.addEventListener("keydown", direction);
+    function direction(event) {{
+        if(event.keyCode == 37 && d != "RIGHT") d = "LEFT";
+        else if(event.keyCode == 38 && d != "DOWN") d = "UP";
+        else if(event.keyCode == 39 && d != "LEFT") d = "RIGHT";
+        else if(event.keyCode == 40 && d != "UP") d = "DOWN";
+    }}
 
-        # 5. ปุ่มทางลัดเสียง (Presets)
-        preset_frame = ctk.CTkFrame(self, fg_color="transparent")
-        preset_frame.pack(pady=5)
-        ctk.CTkButton(preset_frame, text="Bass Boost", size=(80, 25), command=self.set_bass).pack(side="left", padx=5)
-        ctk.CTkButton(preset_frame, text="Rock", size=(80, 25), command=self.set_rock).pack(side="left", padx=5)
-        ctk.CTkButton(preset_frame, text="Reset", size=(80, 25), fg_color="gray", command=self.reset_eq).pack(side="left", padx=5)
+    function random(min, max) {{ return Math.random() * (max - min) + min; }}
 
-    def set_bass(self):
-        vals = [80, 40, 0, -20, -40]
-        for s, v in zip(self.sliders, vals): s.set(v)
+    function draw() {{
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    def set_rock(self):
-        vals = [60, -20, 40, -20, 60]
-        for s, v in zip(self.sliders, vals): s.set(v)
+        // วาดหางงู
+        for(let i = 0; i < snake.length; i++) {{
+            ctx.fillStyle = (i == 0) ? "{team_color}" : "#CCCCCC"; 
+            ctx.fillRect(snake[i].x, snake[i].y, box-2, box-2);
+        }}
 
-    def reset_eq(self):
-        for s in self.sliders: s.set(0)
+        // วาดอาหาร
+        ctx.fillStyle = "gold";
+        ctx.fillRect(food.x, food.y, box-2, box-2);
 
-class FullApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.title("Super Media Equalizer - จัดเต็มลูกเล่น")
-        self.geometry("580x900")
+        let snakeX = snake[0].x;
+        let snakeY = snake[0].y;
 
-        self.scroll = ctk.CTkScrollableFrame(self)
-        self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        if( d == "LEFT") snakeX -= box;
+        if( d == "UP") snakeY -= box;
+        if( d == "RIGHT") snakeX += box;
+        if( d == "DOWN") snakeY += box;
 
-        # รายการคั่นด้วยตัวหนังสือวิ่ง
-        configs = [
-            ("YOUTUBE", "red", "● LIVE FROM YOUTUBE CHANNEL ●"),
-            ("TIKTOK", "black", "● LATEST TIKTOK FEED ●"),
-            ("FACEBOOK", "blue", "● FACEBOOK VIDEO POSTS ●"),
-            ("LINE VOOM", "green", "● LINE VOOM CONTENT ●")
-        ]
+        // ถ้ากินอาหาร
+        if(snakeX == food.x && snakeY == food.y) {{
+            score += 10;
+            scoreEl.innerHTML = "Score: " + score;
+            food = {{
+                x: Math.floor(random(0,19)) * box,
+                y: Math.floor(random(0,19)) * box
+            }};
+        }} else {{
+            snake.pop(); // ตัดหางออกเพื่อให้ตัวเท่าเดิมถ้าไม่ได้กิน
+        }}
 
-        for platform, color, msg in configs:
-            ScrollingText(self.scroll, text=msg, color=color).pack(fill="x", pady=(15, 0))
-            VideoCard(self.scroll, platform=platform, border_width=1, border_color="#555").pack(pady=(0, 20), padx=5, fill="x")
+        let newHead = {{x: snakeX, y: snakeY}};
 
-if __name__ == "__main__":
-    app = FullApp()
-    app.mainloop()
+        // กฎการแพ้: ชนขอบ หรือ ชนตัวเอง
+        if(snakeX < 0 || snakeY < 0 || snakeX >= canvas.width || snakeY >= canvas.height || collision(newHead, snake)) {{
+            clearInterval(game);
+            alert("Game Over! คะแนนรวมของคุณ: " + score);
+            location.reload();
+        }}
+
+        snake.unshift(newHead);
+    }}
+
+    function collision(head, array) {{
+        for(let i = 0; i < array.length; i++) {{
+            if(head.x == array[i].x && head.y == array[i].y) return true;
+        }}
+        return false;
+    }}
+
+    let game = setInterval(draw, 120); // ปรับความเร็วตรงนี้ (120ms)
+    </script>
+    """
+    
+    components.html(snake_js_code, height=500)
+    
+    if st.button("กลับหน้าหลัก"):
+        del st.session_state.game_started
+        st.rerun()
