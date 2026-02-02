@@ -1,56 +1,96 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. ตั้งค่าหน้าจอ (ชิดขอบซ้ายสุด)
-st.set_page_config(page_title="Snake Game", layout="wide")
+# ตั้งค่าหน้าจอแบบกว้างสะใจ
+st.set_page_config(page_title="Space Adventure", layout="centered")
 
-if 'start' not in st.session_state:
-    st.title("🐍 สนามงูยัก-65หมูกระทะ 🇹🇭")
-    team = st.radio("เลือกทีม:", ["แดง notty", "น้ำเงิน taty"], horizontal=True)
-    if st.button("เริ่มเล่น"):
-        st.session_state.start = True
-        st.session_state.color = "#FF4B4B" if team == "แดง" else "#1C83E1"
-        st.rerun()
-else:
-    # ตรงนี้แหละครับคุณพ่อ ห้ามมีช่องว่างข้างหน้าคำว่า game_code เยอะเกินไป
-    game_code = """
-    <div style="display: flex; flex-direction: column; align-items: center; background: #333; padding: 20px; border-radius: 20px;">
-        <div style="color: white; font-size: 24px; margin-bottom: 10px;">Score: <span id="score">0</span></div>
-        <canvas id="snakeCanvas" width="600" height="600" style="border: 5px solid white; background: #000;"></canvas>
-        <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(3, 80px); gap: 15px;">
-            <div></div><button onclick="changeDir('UP')" style="width:80px; height:80px; font-size: 30px;">⬆️</button><div></div>
-            <button onclick="changeDir('LEFT')" style="width:80px; height:80px; font-size: 30px;">⬅️</button>
-            <button onclick="changeDir('DOWN')" style="width:80px; height:80px; font-size: 30px;">⬇️</button>
-            <button onclick="changeDir('RIGHT')" style="width:80px; height:80px; font-size: 30px;">➡️</button>
-        </div>
+st.markdown("<h1 style='text-align: center; color: #f1c40f;'>🚀 -notty-ผจญภัยเก็บอัญมณีอวกาศผจญภัยเก็บอัญมณีอวกาศ</h1>", unsafe_allow_html=True)
+
+# ส่วนของ Logic เกมที่เขียนขึ้นใหม่ทั้งหมด
+game_js = """
+<div style="display: flex; flex-direction: column; align-items: center; background: #1a1a2e; padding: 20px; border-radius: 20px; border: 4px solid #16213e;">
+    <div style="color: #e94560; font-size: 24px; margin-bottom: 10px; font-family: 'Courier New', Courier, monospace;">
+        Gems: <span id="score">0</span> | HP: <span id="hp">❤️❤️❤️</span>
     </div>
-    <script>
-        const canvas = document.getElementById("snakeCanvas");
-        const ctx = canvas.getContext("2d");
-        let box = 15; let score = 0;
-        let snake = [{x: 20 * box, y: 20 * box}];
-        let food = {x: Math.floor(Math.random()*39)*box, y: Math.floor(Math.random()*39)*box};
-        let dir = "RIGHT";
-        function changeDir(d) { dir = d; }
-        function draw() {
-            ctx.fillStyle = "black"; ctx.fillRect(0, 0, 600, 600);
-            for(let i=0; i<snake.length; i++) {
-                ctx.fillStyle = (i==0) ? '""" + st.session_state.color + """' : "#AAA";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+    <canvas id="gameCanvas" width="500" height="500" style="background: #0f3460; border: 2px solid #533483;"></canvas>
+    
+    <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(3, 80px); gap: 10px;">
+        <div></div><button onclick="move('UP')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">🔼</button><div></div>
+        <button onclick="move('LEFT')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">◀️</button>
+        <button onclick="move('DOWN')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">🔽</button>
+        <button onclick="move('RIGHT')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">▶️</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    let score = 0;
+    let hp = 3;
+    let player = { x: 250, y: 400, size: 30 };
+    let gems = [];
+    let enemies = [];
+
+    // สร้างอัญมณีใหม่
+    function createGem() {
+        return { x: Math.random() * 470, y: 0, size: 20, speed: 2 + Math.random() * 3 };
+    }
+
+    // สร้างอุกกาบาต (สิ่งกีดขวาง)
+    function createEnemy() {
+        return { x: Math.random() * 470, y: 0, size: 25, speed: 4 + Math.random() * 2 };
+    }
+
+    function move(dir) {
+        if(dir === 'UP' && player.y > 0) player.y -= 30;
+        if(dir === 'DOWN' && player.y < 470) player.y += 30;
+        if(dir === 'LEFT' && player.x > 0) player.x -= 30;
+        if(dir === 'RIGHT' && player.x < 470) player.x += 30;
+    }
+
+    function update() {
+        ctx.clearRect(0, 0, 500, 500);
+
+        // วาดผู้เล่น (ยานอวกาศ)
+        ctx.font = "30px Arial";
+        ctx.fillText("🚀", player.x, player.y + 25);
+
+        // จัดการอัญมณี
+        if(Math.random() < 0.02) gems.push(createGem());
+        gems.forEach((gem, index) => {
+            gem.y += gem.speed;
+            ctx.fillText("💎", gem.x, gem.y);
+            
+            // เช็คเก็บของได้
+            if(Math.abs(player.x - gem.x) < 30 && Math.abs(player.y - gem.y) < 30) {
+                score += 1;
+                document.getElementById("score").innerText = score;
+                gems.splice(index, 1);
             }
-            ctx.fillStyle = "gold"; ctx.fillRect(food.x, food.y, box, box);
-            let headX = snake[0].x; let headY = snake[0].y;
-            if(dir=="LEFT") headX -= box; if(dir=="UP") headY -= box;
-            if(dir=="RIGHT") headX += box; if(dir=="DOWN") headY += box;
-            if(headX == food.x && headY == food.y) {
-                score += 10; document.getElementById("score").innerHTML = score;
-                food = {x: Math.floor(Math.random()*39)*box, y: Math.floor(Math.random()*39)*box};
-            } else { snake.pop(); }
-            let newHead = {x: headX, y: headY};
-            if(headX<0 || headY<0 || headX>=600 || headY>=600) location.reload();
-            snake.unshift(newHead);
-        }
-        setInterval(draw, 100);
-    </script>
-    """
-    components.html(game_code, height=900)
+        });
+
+        // จัดการอุกกาบาต
+        if(Math.random() < 0.01) enemies.push(createEnemy());
+        enemies.forEach((enemy, index) => {
+            enemy.y += enemy.speed;
+            ctx.fillText("☄️", enemy.x, enemy.y);
+            
+            // เช็คชนอุกกาบาต
+            if(Math.abs(player.x - enemy.x) < 25 && Math.abs(player.y - enemy.y) < 25) {
+                hp -= 1;
+                document.getElementById("hp").innerText = "❤️".repeat(hp);
+                enemies.splice(index, 1);
+                if(hp <= 0) {
+                    alert("Game Over! คุณเก็บอัญมณีได้: " + score);
+                    location.reload();
+                }
+            }
+        });
+
+        requestAnimationFrame(update);
+    }
+    update();
+</script>
+"""
+
+components.html(game_js, height=800)
