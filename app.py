@@ -1,96 +1,89 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import time
 
-# ตั้งค่าหน้าจอแบบกว้างสะใจ
-st.set_page_config(page_title="Space Adventure", layout="centered")
+# --- 1. ปรับแต่งดีไซน์ให้ "จี๊ดจ๊าด" และ "ไม่เหลี่ยม" ---
+st.set_page_config(page_title="Father's Wealth AI", layout="centered")
 
-st.markdown("<h1 style='text-align: center; color: #f1c40f;'>🚀 -notty-ผจญภัยเก็บอัญมณีอวกาศผจญภัยเก็บอัญมณีอวกาศ</h1>", unsafe_allow_html=True)
-
-# ส่วนของ Logic เกมที่เขียนขึ้นใหม่ทั้งหมด
-game_js = """
-<div style="display: flex; flex-direction: column; align-items: center; background: #1a1a2e; padding: 20px; border-radius: 20px; border: 4px solid #16213e;">
-    <div style="color: #e94560; font-size: 24px; margin-bottom: 10px; font-family: 'Courier New', Courier, monospace;">
-        Gems: <span id="score">0</span> | HP: <span id="hp">❤️❤️❤️</span>
-    </div>
-    <canvas id="gameCanvas" width="500" height="500" style="background: #0f3460; border: 2px solid #533483;"></canvas>
+st.markdown("""
+    <style>
+    /* พื้นหลังแบบไล่เฉดมืดหรู */
+    .stApp {
+        background: radial-gradient(circle at top, #1a2a22 0%, #0a0a0a 100%);
+    }
     
-    <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(3, 80px); gap: 10px;">
-        <div></div><button onclick="move('UP')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">🔼</button><div></div>
-        <button onclick="move('LEFT')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">◀️</button>
-        <button onclick="move('DOWN')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">🔽</button>
-        <button onclick="move('RIGHT')" style="width:80px; height:80px; font-size: 30px; cursor: pointer; border-radius: 15px;">▶️</button>
-    </div>
-</div>
-
-<script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    let score = 0;
-    let hp = 3;
-    let player = { x: 250, y: 400, size: 30 };
-    let gems = [];
-    let enemies = [];
-
-    // สร้างอัญมณีใหม่
-    function createGem() {
-        return { x: Math.random() * 470, y: 0, size: 20, speed: 2 + Math.random() * 3 };
+    /* การ์ดสรุปยอดแบบโปร่งแสง (Glassmorphism) */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 35px;
+        padding: 30px;
+        border: 1px solid rgba(0, 255, 135, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        text-align: center;
+        margin-bottom: 25px;
     }
 
-    // สร้างอุกกาบาต (สิ่งกีดขวาง)
-    function createEnemy() {
-        return { x: Math.random() * 470, y: 0, size: 25, speed: 4 + Math.random() * 2 };
+    /* ตัวเลขยอดเงินเน้นสีทองนีออน */
+    .money-text {
+        font-size: 50px !important;
+        font-weight: 900;
+        color: #00FF87;
+        text-shadow: 0 0 20px rgba(0, 255, 135, 0.5);
     }
 
-    function move(dir) {
-        if(dir === 'UP' && player.y > 0) player.y -= 30;
-        if(dir === 'DOWN' && player.y < 470) player.y += 30;
-        if(dir === 'LEFT' && player.x > 0) player.x -= 30;
-        if(dir === 'RIGHT' && player.x < 470) player.x += 30;
+    /* ปุ่มกดทรงมนสุดล้ำ */
+    .stButton>button {
+        border-radius: 50px !important;
+        background: linear-gradient(90deg, #00FF87, #60EFFF) !important;
+        color: #000 !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        border: none !important;
+        padding: 15px 30px !important;
+        transition: 0.3s all ease;
     }
-
-    function update() {
-        ctx.clearRect(0, 0, 500, 500);
-
-        // วาดผู้เล่น (ยานอวกาศ)
-        ctx.font = "30px Arial";
-        ctx.fillText("🚀", player.x, player.y + 25);
-
-        // จัดการอัญมณี
-        if(Math.random() < 0.02) gems.push(createGem());
-        gems.forEach((gem, index) => {
-            gem.y += gem.speed;
-            ctx.fillText("💎", gem.x, gem.y);
-            
-            // เช็คเก็บของได้
-            if(Math.abs(player.x - gem.x) < 30 && Math.abs(player.y - gem.y) < 30) {
-                score += 1;
-                document.getElementById("score").innerText = score;
-                gems.splice(index, 1);
-            }
-        });
-
-        // จัดการอุกกาบาต
-        if(Math.random() < 0.01) enemies.push(createEnemy());
-        enemies.forEach((enemy, index) => {
-            enemy.y += enemy.speed;
-            ctx.fillText("☄️", enemy.x, enemy.y);
-            
-            // เช็คชนอุกกาบาต
-            if(Math.abs(player.x - enemy.x) < 25 && Math.abs(player.y - enemy.y) < 25) {
-                hp -= 1;
-                document.getElementById("hp").innerText = "❤️".repeat(hp);
-                enemies.splice(index, 1);
-                if(hp <= 0) {
-                    alert("Game Over! คุณเก็บอัญมณีได้: " + score);
-                    location.reload();
-                }
-            }
-        });
-
-        requestAnimationFrame(update);
+    .stButton>button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(0, 255, 135, 0.6);
     }
-    update();
-</script>
-"""
+    </style>
+    """, unsafe_allow_html=True)
 
-components.html(game_js, height=800)
+# --- 2. หน้าจอ Dashboard ---
+st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+st.markdown("<p style='color: #888; margin-bottom: 0;'>ยอดสะสมรายปีของคุณ</p>", unsafe_allow_html=True)
+st.markdown('<p class="money-text">฿ 850,240.00</p>', unsafe_allow_html=True)
+st.markdown("<p style='color: #00FF87;'>▲ เพิ่มขึ้น 12% จากเดือนที่แล้ว</p>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- 3. ระบบสแกนอัตโนมัติ ---
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("### 📸 อัปโหลดสลิป")
+    uploaded_file = st.file_uploader("", type=["jpg", "png", "jpeg"])
+
+with col2:
+    st.markdown("### ⏳ สถานะ AI")
+    if uploaded_file:
+        # จำลองระบบอ่านอัตโนมัติ
+        progress_bar = st.progress(0)
+        for percent_complete in range(100):
+            time.sleep(0.01)
+            progress_bar.progress(percent_complete + 1)
+        
+        st.success("สแกนสำเร็จ!")
+        st.metric("ตรวจพบยอดโอน", "฿ 1,500.00", "+500")
+        st.balloons() # ฉลองความสำเร็จแบบจัดเต็ม!
+
+# --- 4. ตารางประวัติรายวัน (สไตล์คนรุ่นใหม่) ---
+st.markdown("---")
+st.subheader("🗓️ รายละเอียด 24 ชั่วโมงล่าสุด")
+data = {
+    "เวลา": ["10:30", "12:15", "14:45"],
+    "รายการ": ["โอนเงินเข้า", "ซื้อกาแฟ", "ออมเพิ่ม"],
+    "จำนวน": ["+ 5,000", "- 120", "+ 1,500"]
+}
+st.table(data)
+
+# --- 5. สโลแกนประจำตัวคุณพ่อ ---
+st.markdown("<br><center><p style='color: #555;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\" - Smart Finance 2026</p></center>", unsafe_allow_html=True)
