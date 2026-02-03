@@ -27,12 +27,26 @@ st.markdown("""
     <style>
          
         bank-slip {
-        background: linear-gradient(180deg, #0044cc; 0%, #0A0A0A; 100%);
-        padding: 20px;
-        border-radius: 20px;
+        # --- [ ส่วนสไตล์สลิปธนาคารที่ถูกต้อง ] ---
+st.markdown("""
+    <style>
+    .bank-slip {
+        background: linear-gradient(180deg, #0044cc 0%, #0A0A0A 100%);
+        padding: 25px;
+        border-radius: 25px;
         border: 1px solid #00FFCC;
         color: white;
         font-family: 'Tahoma', sans-serif;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    }
+    .slip-header { 
+        border-bottom: 1px solid rgba(255,255,255,0.2); 
+        padding-bottom: 10px; 
+        margin-bottom: 15px; 
+    }
+    </style>
+""", unsafe_allow_html=True)
+
     }
     .slip-header { border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 10px; }
     </style>
