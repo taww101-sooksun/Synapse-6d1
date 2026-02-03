@@ -2,83 +2,95 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# --- 1. ดีไซน์สไตล์ SYNAPSE (ดำ-เขียวมินต์-มน) ---
-st.set_page_config(page_title="Money Maverick", layout="centered")
+# --- 1. ดีไซน์หน้าจอ (ดำ-เขียว-มน) ---
+st.set_page_config(page_title="SYNAPSE Money", layout="centered")
 st.markdown("""
     <style>
     .stApp { background-color: #000000; color: white; }
-    /* ปรับแต่งกล่องข้อความให้มนเหมือนกรอบนาฬิกาที่คุณพ่อชอบ */
-    .stNumberInput, .stTextInput, .stDateInput { 
-        border-radius: 20px !important; 
-        background: #0E1117 !important; 
-        color: #00FFCC !important; 
+    /* ปรับช่องกรอกให้พิมพ์ง่ายและชัดเจน */
+    .stNumberInput input, .stTextInput input {
+        border-radius: 15px !important;
+        background-color: #121212 !important;
+        color: #00FFCC !important;
         border: 1px solid #00FFCC !important;
+        height: 45px !important;
     }
-    .stButton>button { 
-        border-radius: 30px !important; 
-        width: 100%; 
-        background: #0044cc !important; 
-        color: white !important; 
-        border: none; 
-        height: 50px; 
+    .status-card {
+        padding: 25px;
+        border-radius: 25px;
+        text-align: center;
+        margin-bottom: 20px;
+        border: 2px solid #00FFCC;
     }
-    .status-card { 
-        padding: 30px; 
-        border-radius: 30px; 
-        text-align: center; 
-        margin-bottom: 20px; 
-        box-shadow: 0 10px 30px rgba(0,255,204,0.2); 
+    .stButton>button {
+        border-radius: 25px !important;
+        background: #0044cc !important;
+        color: white !important;
+        height: 50px;
+        width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 2. ระบบฐานข้อมูล ---
-if 'logs' not in st.session_state:
-    st.session_state.logs = pd.DataFrame(columns=['วันที่', 'รายการ', 'จำนวน'])
+if 'money_logs' not in st.session_state:
+    st.session_state.money_logs = pd.DataFrame(columns=['วันที่', 'รายการ', 'จำนวน'])
 
-# --- 3. ส่วนหัว ---
-st.markdown("<h1 style='text-align: center; color: #00FFCC;'>💰 SYNAPSE ออมเงิน</h1>", unsafe_allow_html=True)
-budget = st.sidebar.number_input("📌 กำหนดงบวันนี้ (บาท):", value=300)
+# --- 3. ส่วนกำหนดงบ (แก้ให้พิมพ์ได้อิสระ) ---
+st.markdown("<h2 style='text-align: center; color: #00FFCC;'>💰 บันทึกงบรายวัน</h2>", unsafe_allow_html=True)
 
-# --- 4. บันทึกข้อมูล ---
-with st.expander("✍️ บันทึกรายจ่ายใหม่", expanded=True):
-    col1, col2 = st.columns(2)
-    item = col1.text_input("รายการ:", placeholder="เช่น ค่ากาแฟ")
-    price = col2.number_input("จำนวนเงิน (บาท):", min_value=0.0)
-    if st.button("บันทึกข้อมูล"):
-        if item:
-            new_row = pd.DataFrame([[datetime.now().date(), item, price]], columns=['วันที่', 'รายการ', 'จำนวน'])
-            st.session_state.logs = pd.concat([st.session_state.logs, new_row], ignore_index=True)
-            st.toast("บันทึกเรียบร้อย!")
+# ใช้ช่องนี้พิมพ์งบได้เลยครับ จะ 300 หรือเท่าไหร่ก็ได้
+user_budget = st.number_input("📌 ตั้งงบวันนี้ (บาท):", min_value=0.0, value=300.0, key="daily_budget_input")
+
+# --- 4. ฟังก์ชันบันทึกรายจ่าย ---
+with st.expander("✍️ เพิ่มรายการใหม่", expanded=True):
+    c1, c2 = st.columns([2, 1])
+    item_name = c1.text_input("ซื้ออะไร:", placeholder="เช่น ค่ากาแฟ", key="item_name")
+    item_price = c2.number_input("จำนวนเงิน:", min_value=0.0, step=1.0, key="item_price")
+    
+    if st.button("✅ บันทึกรายจ่าย"):
+        if item_name and item_price > 0:
+            new_record = pd.DataFrame([[datetime.now().date(), item_name, item_price]], columns=['วันที่', 'รายการ', 'จำนวน'])
+            st.session_state.money_logs = pd.concat([st.session_state.money_logs, new_record], ignore_index=True)
+            st.toast(f"บันทึก {item_name} แล้ว!")
         else:
-            st.warning("กรุณาใส่ชื่อรายการด้วยครับ")
+            st.warning("ใส่ข้อมูลให้ครบก่อนครับคุณพ่อ")
 
-# --- 5. ระบบไฟจราจร (เขียว-แดง) ---
-today_total = st.session_state.logs[st.session_state.logs['วันที่'] == datetime.now().date()]['จำนวน'].sum()
-if today_total <= budget:
-    bg, status = "#003311", "🟢 ปลอดภัย"
-else:
-    bg, status = "#440000", "🔴 เกินงบแล้ว!"
-    st.audio("https://www.soundjay.com/buttons/beep-01a.mp3")
+# --- 5. สรุปยอดและไฟจราจร ---
+today_data = st.session_state.money_logs[st.session_state.money_logs['วันที่'] == datetime.now().date()]
+total_spent = today_data['จำนวน'].sum()
+balance = user_budget - total_spent
+
+# เปลี่ยนสีตามสถานะ
+bg_color = "#003311" if balance >= 0 else "#440000"
+status_text = "🟢 ยังอยู่ในงบ" if balance >= 0 else "🔴 เกินงบแล้วนะ!"
 
 st.markdown(f"""
-    <div class="status-card" style="background: {bg}; border: 2px solid #00FFCC;">
-        <h1 style="margin:0; color: white;">{today_total:,.2f} / {budget:,.2f}</h1>
-        <p style="font-size: 20px; color: #00FFCC;">{status} | "อยู่นิ่งๆ ไม่เจ็บตัว"</p>
+    <div class="status-card" style="background-color: {bg_color};">
+        <h2 style="margin:0;">ยอดใช้ไป: {total_spent:,.2f} / {user_budget:,.2f}</h2>
+        <h3 style="color: #00FFCC;">คงเหลือ: {balance:,.2f} บาท</h3>
+        <p>{status_text} | "อยู่นิ่งๆ ไม่เจ็บตัว"</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 6. ประวัติ ---
-st.subheader("🗓️ บันทึกวันนี้")
-st.dataframe(st.session_state.logs, use_container_width=True)
+# --- 6. แสดงประวัติ ---
+if not today_data.empty:
+    st.subheader("🗓️ รายการวันนี้")
+    st.dataframe(today_data[['รายการ', 'จำนวน']], use_container_width=True)
 
-# --- 7. YouTube (แก้ปัญหาไม่ติด) ---
+# --- 7. YouTube Playlist (ติดชัวร์) ---
 st.write("---")
-st.subheader("🎬 เพลย์ลิสต์บำบัดใจ")
-# ใช้ปุ่มกดแทนเพื่อให้เปิดติด 100% ในทุกเครื่อง
-yt_link = "https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-if st.button("🎵 กดตรงนี้เพื่อฟังเพลง (ติดแน่นอน)"):
-    st.markdown(f'<meta http-equiv="refresh" content="0;url={yt_link}">', unsafe_allow_html=True)
-    st.write(f"หากไม่เด้ง [คลิกที่นี่]({yt_link})")
+st.markdown("<h3 style='color: #FFD700;'>🎵 ฟังเพลงบำบัดใจระหว่างออม</h3>", unsafe_allow_html=True)
 
-st.markdown("<br><center><p style='color: #444;'>SYNAPSE Smart Finance v1.1</p></center>", unsafe_allow_html=True)
+# ใส่ YouTube แบบ Embed ให้เล่นในหน้าแอปได้เลย
+yt_playlist = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f"""
+    <iframe width="100%" height="315" 
+    src="{yt_playlist}" 
+    title="YouTube video player" frameborder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+    allowfullscreen style="border-radius:20px; border: 1px solid #FFD700;">
+    </iframe>
+""", unsafe_allow_html=True)
+
+st.markdown("<br><center><p style='color: #444;'>Smart Finance v1.2 | อยู่นิ่งๆ ไม่เจ็บตัว</p></center>", unsafe_allow_html=True)
