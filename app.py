@@ -12,7 +12,7 @@ st.markdown("""
         ขอบโค้งมน: 15 พิกเซล !สำคัญ;
         background-color: #121212 !important;
         สี: #00FFCC !สำคัญ;
-        ขอบ: 1px ทึบ #00FFCC !สำคัญ;
+        ขอบ: 3px ทึบ #00FFCC !สำคัญ;
         ความสูง: 50 พิกเซล !สำคัญ;
         ขนาดตัวอักษร: 20 พิกเซล !สำคัญ;
     }
@@ -25,7 +25,8 @@ st.markdown("""
         # --- [ สลิปสไตล์ธนาคาร SYNAPSE ] ---
 st.markdown("""
     <style>
-    .bank-slip {
+         
+        bank-slip {
         background: linear-gradient(180deg, #0044cc 0%, #000000 100%);
         padding: 20px;
         border-radius: 20px;
