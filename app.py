@@ -5,34 +5,105 @@ from datetime import datetime
 # --- 1. ดีไซน์หน้าจอ (ดำ-เขียว-มน) ---
 st.set_page_config(page_title="SYNAPSE Money", layout="centered")
 st.markdown("""
-    <style>
+    <สไตล์>
     .stApp { background-color: #0A0A0A; color: white; }
-    /* ปรับช่องกรอกให้จิ้มง่าย แป้นพิมพ์ขึ้นทันที */
+    /*ความร้อนระอุช่องให้จิ้มง่ายมันจะขึ้นทันที */
     .stNumberInput input {
-        border-radius: 15px !important;
+        ขอบโค้งมน: 15 พิกเซล !สำคัญ;
         background-color: #121212 !important;
-        color: #00FFCC !important;
-        border: 1px solid #00FFCC !important;
-        height: 50px !important;
-        font-size: 20px !important;
+        สี: #00FFCC !สำคัญ;
+        ขอบ: 1px ทึบ #00FFCC !สำคัญ;
+        ความสูง: 50 พิกเซล !สำคัญ;
+        ขนาดตัวอักษร: 20 พิกเซล !สำคัญ;
     }
     .status-card {
-        padding: 25px;
-        border-radius: 25px;
-        text-align: center;
-        margin-bottom: 20px;
-        border: 2px solid #00FFCC;
+        ระยะห่างภายใน: 25 พิกเซล;
+        ขอบโค้งมน: 25 พิกเซล;
+        จัดแนวข้อความ: กึ่งกลาง;
+        ระยะขอบล่าง: 20 พิกเซล;
+        ขอบ: ทึบ 2 พิกเซล #00FFCC;
+        # --- [ สลิปสไตล์ธนาคาร SYNAPSE ] ---
+st.markdown("""
+    <style>
+    .bank-slip {
+        background: linear-gradient(180deg, #0044cc 0%, #000000 100%);
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid #00FFCC;
+        color: white;
+        font-family: 'Tahoma', sans-serif;
     }
+    .slip-header { border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ระบบฐานข้อมูล ---
-if 'money_logs' not in st.session_state:
-    st.session_state.money_logs = pd.DataFrame(columns=['วันที่', 'รายการ', 'จำนวน'])
+if st.button("📱 ดูสลิปธนาคารส่วนตัว"):
+    today = datetime.now().date()
+    today_data = st.session_state.logs[st.session_state.logs['วันที่'] == today]
+    
+    if not today_data.empty:
+        total = today_data['จำนวน'].sum()
+        st.markdown(f"""
+            <div class="bank-slip">
+                <div class="slip-header">
+                    <h3 style='margin:0;'>🏦 SYNAPSE BANK</h3>
+                    <p style='font-size:12px;'>บันทึกสำเร็จ | {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                </div>
+                <center>
+                    <p style='margin:0;'>ยอดใช้จ่ายรวมวันนี้</p>
+                    <h1 style='color: #00FFCC;'>฿ {total:,.2f}</h1>
+                </center>
+                <div style='font-size:14px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;'>
+                    {"".join([f"• {row['รายการ']}: {row['จำนวน']:,.2f} บาท<br>" for index, row in today_data.iterrows()])}
+                </div>
+                <p style='text-align:center; font-size:12px; margin-top:10px;'>--- "อยู่นิ่งๆ ไม่เจ็บตัว" ---</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("ยังไม่มีรายการบันทึกของวันนี้ครับคุณพ่อ")
+        # --- [ ส่วนเสริม: ออกใบสรุป Slip ] ---
+if not st.session_state.logs.empty:
+    st.write("---")
+    if st.button("📄 ออกใบสรุป (Slip) ของวันนี้"):
+        today = datetime.now().date()
+        today_data = st.session_state.logs[st.session_state.logs['วันที่'] == today]
+        
+        if not today_data.empty:
+            total = today_data['จำนวน'].sum()
+            # สร้างหน้าตา Slip แบบนิ่งๆ เท่ๆ
+            st.markdown(f"""
+                <div style="background-color: #f0f2f6; color: #333; padding: 20px; border-radius: 10px; font-family: 'Courier New', Courier, monospace; border: 2px dashed #999;">
+                    <center>
+                        <h2 style="color: #000;">STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>
+                        <p>วันที่: {today}</p>
+                        <hr style="border-top: 1px dashed #bbb;">
+                    </center>
+                    <table style="width: 100%;">
+                        {"".join([f"<tr><td>{row['รายการ']}</td><td style='text-align:right;'>{row['จำนวน']:,.2f}</td></tr>" for index, row in today_data.iterrows()])}
+                    </table>
+                    <hr style="border-top: 1px dashed #bbb;">
+                    <h3 style="text-align: center;">ยอดรวมใช้ไป: {total:,.2f} บาท</h3>
+                    <center><p>-- บันทึกเรียบร้อย ไม่เจ็บตัวแน่นอน --</p></center>
+                </div>
+            """, unsafe_allow_html=True)
+            st.balloons() # ฉลองที่ออกสลิปสำเร็จ!
+        else:
+            st.warning("วันนี้ยังไม่มีข้อมูลให้ออกสลิปครับคุณพ่อ")
 
-st.markdown("<h2 style='text-align: center; color: #00FFCC;'>💰 บันทึกงบรายวัน</h2>", unsafe_allow_html=True)
+        
 
-# --- [ จุดที่แก้ให้คุณพ่อ ] ---
+
+    }
+    </style>
+""" , unsafe_allow_html= True )
+
+# --- 2. ระบบเทคนิค ---
+ถ้า 'money_logs'  ไม่ อยู่ใน st.session_state :
+    เซนต์เซสชั่น_สถานะmoney_logs = pd. DataFrame ( columns= [ 'วันที่' , 'รายการ' , 'จำนวน' ] )
+
+เซนต์markdown ( "<h2 style='text-align: center; color: #00FFCC;'>💰 บันทึกงบรายวัน</h2>" , unsafe_allow_html= True )
+
+# --- [ จุดแก้ให้คุณพ่อ ] ---
 # 1. value=300: ตั้งเริ่มที่ 300
 # 2. step=1.0: เวลากดบวก/ลบ ให้ขยับทีละ 1 บาท ไม่ใช่สตางค์
 # 3. format="%.0f": แสดงผลเป็นเลขกลมๆ จะได้ดูง่ายครับ
