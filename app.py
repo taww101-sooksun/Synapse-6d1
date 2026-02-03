@@ -3,11 +3,11 @@ import pandas as pd
 from datetime import datetime
 
 # --- 1. ตั้งค่าและดีไซน์ (CSS) ---
-st.set_page_config(page_title="SYNAPSE Money🇹🇭-อยู่นิ้งๆเจ็บตัว-🇹🇭", layout="centered")
+st.set_page_config(page_title="SYNAPSE Money-🇹🇭-อยู่นิ้งๆเจ็บตัว-🇹🇭-", layout="centered")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0A0A0A; color: white; }
+    .stApp { background-color: #000000; color: white; }
     /* ปรับช่องกรอกให้จิ้มง่าย แป้นพิมพ์ขึ้นทันที */
     .stNumberInput input, .stTextInput input {
         border-radius: 15px !important;
