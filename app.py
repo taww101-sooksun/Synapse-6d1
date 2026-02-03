@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # --- 1. ตั้งค่าและดีไซน์ (CSS) ---
-st.set_page_config(page_title="SYNAPSE Money", layout="centered")
+st.set_page_config(page_title="SYNAPSE Money🇹🇭-อยู่นิ้งๆเจ็บตัว-🇹🇭", layout="centered")
 
 st.markdown("""
     <style>
@@ -22,10 +22,10 @@ st.markdown("""
         border-radius: 25px;
         text-align: center;
         margin-bottom: 20px;
-        border: 2px solid #00FFCC;
+        border: 4px solid #00FFCC;
     }
     .bank-slip {
-        background: linear-gradient(180deg, #0044cc 0%, #0A0A0A 100%);
+        background: linear-gradient(180deg, #0044cc 0%, #050505 100%);
         padding: 25px;
         border-radius: 25px;
         border: 1px solid #00FFCC;
