@@ -27,7 +27,7 @@ st.markdown("""
     <style>
          
         bank-slip {
-        background: linear-gradient(180deg, #0044cc 0%, #000000 100%);
+        background: linear-gradient(180deg, #0044cc 50%, #000000 100%);
         padding: 20px;
         border-radius: 20px;
         border: 1px solid #00FFCC;
