@@ -20,7 +20,7 @@ st.markdown("""
         border-radius: 25px;
         text-align: center;
         margin-bottom: 20px;
-        border: 2px solid #00FFCC;
+        border: 4px solid #00FFCC;
     }
     .stButton>button {
         border-radius: 25px !important;
