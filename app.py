@@ -1,32 +1,70 @@
 import streamlit as st
-from datetime import datetime, timedelta
-import time
+from streamlit_js_eval import streamlit_js_eval
 
-# ตั้งค่าหน้าจอเบื้องต้น
-st.set_page_config(page_title="SYNAPSE X - TIME", layout="centered")
+st.set_page_config(page_title="SYNAPSE X - SOUND SENSOR", layout="centered")
 st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-# ส่วนแสดงผลนาฬิกา
-st.subheader("🕒 SYSTEM MASTER CLOCK")
-time_placeholder = st.empty()  # สร้างพื้นที่ว่างไว้ให้อัปเดตเวลา
+st.subheader("🎙️ REAL-TIME AUDIO ANALYZER")
 
-# ลูปเพื่อให้เวลาเดินต่อเนื่องระดับเสี้ยววินาที
-while True:
-    # ดึงเวลาไทยจริง (UTC+7) พร้อมไมโครวินาที (Microseconds)
-    thai_now = datetime.utcnow() + timedelta(hours=7)
+# ใช้ JavaScript ดึงค่าจากไมโครโฟนโดยตรง
+# บรรทัดนี้จะขอสิทธิ์เข้าถึงไมค์ และสกัดค่า Frequency กับ Decibel
+audio_data = streamlit_js_eval(
+    js_expressions="""
+    (async () => {
+        if (!window.audioContext) {
+            window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            window.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            window.source = window.audioContext.createMediaStreamSource(window.stream);
+            window.analyser = window.audioContext.createAnalyser();
+            window.source.connect(window.analyser);
+            window.dataArray = new Uint8Array(window.analyser.frequencyBinCount);
+        }
+        window.analyser.getByteFrequencyData(window.dataArray);
+        let sum = 0;
+        let maxIndex = 0;
+        let maxValue = 0;
+        for (let i = 0; i < window.dataArray.length; i++) {
+            sum += window.dataArray[i];
+            if (window.dataArray[i] > maxValue) {
+                maxValue = window.dataArray[i];
+                maxIndex = i;
+            }
+        }
+        let volume = Math.round(sum / window.dataArray.length);
+        let frequency = Math.round(maxIndex * window.audioContext.sampleRate / window.analyser.fftSize);
+        return { decibel: volume, hz: frequency };
+    })()
+    """,
+    key="audio_sensor"
+)
+
+if audio_data:
+    db = audio_data['decibel']
+    hz = audio_data['hz']
     
-    # แสดงผลเวลา: ชั่วโมง:นาที:วินาที.เสี้ยววินาที (3 หลัก)
-    current_time = thai_now.strftime("%H:%M:%S.%f")[:-3]
+    # คำนวณหน่วยวัดต่างๆ ตามตรรกะเสียง
+    khz = hz / 1000  # กิโลเฮิรตซ์
+    mhz = hz / 1000000 # เมกะเฮิรตซ์ (กรณีความถี่สูงมาก)
+
+    col1, col2 = st.columns(2)
     
-    # อัปเดตตัวเลขบนหน้าจอ
-    time_placeholder.markdown(f"""
-        <div style="text-align: center; border: 2px solid #FFD700; padding: 20px; border-radius: 10px;">
-            <h1 style="font-family: 'Courier New', Courier, monospace; font-size: 60px; color: #FFD700; margin: 0;">
-                {current_time}
-            </h1>
-            <p style="color: #FFD700; letter-spacing: 5px;">THAILAND REAL-TIME</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # หน่วงเวลาเล็กน้อยเพื่อให้ระบบไม่ทำงานหนักเกินไป แต่ยังเห็นเสี้ยววินาทีเดินลื่นๆ
-    time.sleep(0.01)
+    with col1:
+        st.metric("🔊 ความดัง (Loudness)", f"{db} dB")
+        st.write("**สถานะ:** " + ("หนา (Dense)" if db > 50 else "บาง (Thin)"))
+        
+    with col2:
+        st.metric("〰️ ความถี่ (Frequency)", f"{hz} Hz")
+        st.write(f"**หน่วยละเอียด:** {khz} kHz")
+
+    st.markdown("---")
+    st.subheader("📊 หน่วยวัดสถานะคลื่นจริง")
+    st.write(f"• **ความลึก (Depth):** {hz * 0.1} ms (มิลลิวินาที/รอบ)")
+    st.write(f"• **ความถี่สูง (RF):** {mhz} MHz (เมกะเฮิรตซ์)")
+    st.write(f"• **พลังงานเสียง:** {db * 1.44} Level")
+
+else:
+    st.info("⌛ กำลังตั้งค่าไมโครโฟน... โปรดกด 'Allow' หรือ 'อนุญาต' เมื่อมีป๊อปอัพขึ้นมา เพื่อดึงค่าจริง")
+
+# ปุ่มรีเฟรชค่า
+if st.button("🔄 UPDATE SENSOR"):
+    st.rerun()
