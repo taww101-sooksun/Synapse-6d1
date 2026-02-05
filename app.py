@@ -3,57 +3,48 @@ import pandas as pd
 import requests
 from datetime import datetime, timedelta
 
-# --- 1. ตั้งค่าหน้าจอ (สไตล์ดำ-ทอง) ---
-st.set_page_config(page_title="SYNAPSE X - MASTERPIECE", layout="wide")
-st.markdown("""
-    <style>
-    .stApp {background-color: #000000; color: #FFD700;}
-    h1, h2, h3 {color: #FFD700 !important;}
-    .stButton>button {background-color: #FFD700; color: black; border-radius: 10px; width: 100%;}
-    </style>
-    """, unsafe_allow_html=True)
+# --- CONFIG ---
+st.set_page_config(page_title="SYNAPSE X - TRUTH", layout="wide")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.title("🔴 SYNAPSE X : REAL-TIME COMMAND")
-st.write(f"**SLOGAN:** อยู่นิ่งๆ ไม่เจ็บตัว | **STATUS:** ระบบตรวจจับ IP อัตโนมัติ")
-
-# --- 2. ระบบนาฬิกาไทย (UTC+7) ---
+# --- 1. เวลาจริง (THAILAND) ---
 thai_time = datetime.utcnow() + timedelta(hours=7)
-st.metric("🕒 SYSTEM TIME (THAILAND)", thai_time.strftime("%H:%M:%S"))
+st.metric("🕒 REAL TIME", thai_time.strftime("%H:%M:%S"))
 
-# --- 3. ระบบดึงพิกัดจาก IP (ไม้ตายสุดท้าย ไม่ต้องรอ Permission) ---
-st.subheader("📍 พิกัดพื้นที่ปัจจุบัน (ตรวจจับจาก IP)")
-
+# --- 2. ข้อมูลพิกัดและสภาพอากาศจริง (REAL SENSOR) ---
 try:
-    # ดึงข้อมูลจาก API ภายนอกเพื่อหาพิกัด
-    response = requests.get('https://ipapi.co/json/').json()
-    lat = response.get('latitude')
-    lon = response.get('longitude')
-    city = response.get('city')
-    region = response.get('region')
+    # ดึงพิกัดจาก IP จริง
+    geo = requests.get('https://ipapi.co/json/').json()
+    lat, lon = geo.get('latitude'), geo.get('longitude')
+    city = geo.get('city')
+    
+    # ดึงสภาพอากาศจริงจากพิกัด (Open-Meteo API - No Key Required)
+    weather = requests.get(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true').json()
+    temp = weather['current_weather']['temperature']
 
-    if lat and lon:
-        st.success(f"✅ ตรวจพบพื้นที่: {city}, {region} | LAT: {lat} | LON: {lon}")
-        # แสดงแผนที่
-        map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-        st.map(map_data)
-    else:
-        st.error("❌ ไม่สามารถดึงพิกัดจาก IP ได้ในขณะนี้")
+    st.subheader(f"📍 AREA: {city} | {lat}, {lon}")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("🌡️ REAL TEMP", f"{temp} °C")
+    with col2:
+        st.success("STATUS: SENSOR ONLINE")
+    
+    st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
 except:
-    st.error("⚠️ ระบบตรวจจับสัญญาณขัดข้อง")
+    st.error("⚠️ SENSOR ERROR: ไม่สามารถดึงข้อมูลจริงได้")
 
-# --- 4. ส่วนสูตรบำบัด 144 ---
+# --- 3. ลอจิก 144 (จับต้องได้) ---
 st.markdown("---")
-st.subheader("📐 Assassin 144 Logic")
-val_matrix = st.slider("ปรับระดับ Matrix (V)", 1, 144, 110)
+val_matrix = st.slider("MATRIX INPUT", 1, 144, 72)
 result_144 = (val_matrix * 144) / 10
-st.write(f"### ผลลัพธ์พลังงาน: **{result_144}**")
 
-# --- 5. ยูทูป (S.S.S PRIVATE STATION) ---
-st.markdown("---")
-st.subheader("📺 S.S.S PRIVATE STATION")
-st.markdown('<iframe width="100%" height="450" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>', unsafe_allow_html=True)
+if result_144 > 1500:
+    st.error(f"OVERLOAD: {result_144} | ลดค่าเพื่อความปลอดภัย")
+else:
+    st.write(f"### OUTPUT: **{result_144}**")
 
-# --- 6. ปุ่มสั่งการสุดท้าย ---
-if st.button("🚀 EXECUTE GLOBAL DEPLOY"):
-    st.balloons()
-    st.success(f"บันทึกข้อมูลเวลา {thai_time.strftime('%H:%M:%S')} เข้าสู่ระบบสำเร็จ!")
+# --- 4. สถานีจริง ---
+st.markdown('<iframe width="100%" height="315" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+
+if st.button("🚀 EXECUTE TRUTH"):
+    st.info(f"บันทึกค่าจริง ณ {thai_time.strftime('%H:%M:%S')} เรียบร้อย")
