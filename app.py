@@ -1,101 +1,63 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# --- 1. SETUP ---
-st.set_page_config(page_title="SYNAPSE X - MASTER", layout="wide")
+st.set_page_config(page_title="SYNAPSE X - GPS TEST", layout="centered")
 st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.title("🛰️ SYNAPSE X : REALITY DASHBOARD")
-st.subheader("ระบบรวมเซนเซอร์ความจริง (Version 1.0)")
+st.title("🌍 TEST: GPS & ENVIRONMENT")
+st.write("สถานะ: กำลังรอการเชื่อมต่อดาวเทียม...")
 
-# --- 2. MASTER LOGIC (HTML/JS) ---
-# ส่วนนี้คือส่วนที่ดึงค่าจริงจากมือถือคุณต๊ะ
-master_html = """
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-family: sans-serif;">
+# JavaScript สำหรับดึง GPS และเชื่อมต่อ API อากาศ
+env_test_js = """
+<div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
+    <div id="status" style="color: #00ffff; margin-bottom: 15px;">📍 พร้อมสแกนพิกัด</div>
     
-    <div style="border: 2px solid #FFD700; padding: 15px; border-radius: 12px; background: #111;">
-        <small style="color: #888;">COLOR SCAN (RGB)</small>
-        <video id="webcam" style="width: 100%; border-radius: 8px; margin-top: 5px;" autoplay playsinline></video>
-        <canvas id="canvas" style="display:none;"></canvas>
-        <h2 id="rgb_txt" style="color: #FFD700; margin-top: 10px;">R:0 G:0 B:0</h2>
+    <div style="margin-bottom: 20px;">
+        <p style="margin:0;">ละติจูด (Lat)</p>
+        <h2 id="lat">-</h2>
+        <p style="margin:0;">ลองจิจูด (Lon)</p>
+        <h2 id="lon">-</h2>
     </div>
 
-    <div style="border: 2px solid #00FFFF; padding: 15px; border-radius: 12px; background: #111;">
-        <small style="color: #888;">SOUND FREQUENCY (Hz)</small>
-        <div style="height: 60px; background: #222; margin-top: 5px; border-radius: 5px; overflow: hidden;">
-            <canvas id="audio_viz" style="width: 100%; height: 100%;"></canvas>
-        </div>
-        <h2 id="hz_txt" style="color: #00FFFF; margin-top: 10px;">0 Hz</h2>
+    <div style="background: #222; padding: 20px; border-radius: 15px;">
+        <p style="margin:0;">🌡️ อุณหภูมิ: <span id="temp" style="font-size: 25px;">--</span> °C</p>
+        <p style="margin:10px 0 0 0;">💧 ความชื้น: <span id="hum" style="font-size: 25px;">--</span> %</p>
     </div>
-
-    <div style="border: 2px solid #0f0; padding: 15px; border-radius: 12px; background: #111;">
-        <small style="color: #888;">POWER STATUS</small>
-        <h1 id="bat_txt" style="color: #0f0; font-size: 40px;">--%</h1>
-        <p id="charge_txt" style="margin: 0;">รอกดเริ่ม...</p>
-    </div>
-
-    <div style="border: 2px solid #ff00ff; padding: 15px; border-radius: 12px; background: #111;">
-        <small style="color: #888;">GEOLOCATION</small>
-        <p id="gps_txt" style="font-size: 14px; margin-top: 10px;">LAT: -- <br> LON: --</p>
-        <button id="mainBtn" style="width: 100%; padding: 12px; background: #FFD700; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">🟢 เริ่มดึงค่าความจริง</button>
-    </div>
-
+    
+    <button id="btn" style="margin-top: 20px; width: 100%; padding: 15px; background: #FFD700; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px;">🌍 กดเพื่อดึงค่าความจริง</button>
 </div>
 
 <script>
-    const btn = document.getElementById('mainBtn');
-    
-    async function startSensors() {
-        // --- 1. Camera & Audio Stream ---
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
-        document.getElementById('webcam').srcObject = stream;
+    const btn = document.getElementById('btn');
+    btn.onclick = () => {
+        document.getElementById('status').innerText = "🛰️ กำลังติดต่อดาวเทียม...";
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                
+                document.getElementById('lat').innerText = lat.toFixed(4);
+                document.getElementById('lon').innerText = lon.toFixed(4);
+                document.getElementById('status').innerText = "🟢 เชื่อมต่อพิกัดสำเร็จ";
 
-        // --- 2. Audio Context (Hz) ---
-        const audioCtx = new AudioContext();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-        // --- 3. Battery & GPS ---
-        const battery = await navigator.getBattery();
-        navigator.geolocation.getCurrentPosition(p => {
-            document.getElementById('gps_txt').innerHTML = `LAT: ${p.coords.latitude.toFixed(4)} <br> LON: ${p.coords.longitude.toFixed(4)}`;
-        });
-
-        // --- 4. Update Loop ---
-        btn.style.display = 'none';
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        function update() {
-            // Update Color
-            canvas.width = 1; canvas.height = 1;
-            ctx.drawImage(document.getElementById('webcam'), 0, 0, 1, 1);
-            const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-            document.getElementById('rgb_txt').innerText = `R:${r} G:${g} B:${b}`;
-
-            // Update Sound
-            analyser.getByteFrequencyData(dataArray);
-            let maxVal = 0; let maxIdx = 0;
-            for(let i=0; i<dataArray.length; i++) {
-                if(dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
-            }
-            document.getElementById('hz_txt').innerText = `${Math.round(maxIdx * audioCtx.sampleRate / 256)} Hz`;
-
-            // Update Battery
-            document.getElementById('bat_txt').innerText = Math.round(battery.level * 100) + "%";
-            document.getElementById('charge_txt').innerText = battery.charging ? "🔌 Charging" : "🔋 Discharging";
-
-            requestAnimationFrame(update);
+                // ดึงข้อมูลอากาศจาก Open-Meteo (ไม่ต้องใช้ Key)
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`);
+                    const data = await res.json();
+                    document.getElementById('temp').innerText = data.current_weather.temperature;
+                    document.getElementById('hum').innerText = data.hourly.relativehumidity_2m[0];
+                } catch (e) {
+                    document.getElementById('status').innerText = "⚠️ ดึงข้อมูลอากาศไม่ได้";
+                }
+            }, (err) => {
+                document.getElementById('status').innerText = "❌ ปฏิเสธการเข้าถึง GPS";
+            });
         }
-        update();
-    }
-    btn.onclick = startSensors;
+    };
 </script>
 """
 
-components.html(master_html, height=550)
+components.html(env_test_js, height=500)
 
-st.warning("⚠️ โปรดก๊อปปี้เฉพาะโค้ดในกล่องดำนี้ไปวางเท่านั้น ห้ามเอาคำอธิบายภาษาไทยไปวางในไฟล์ .py นะครับ")
+st.info("💡 เมื่อรันแล้ว อย่าลืมกด 'Allow' หรือ 'อนุญาต' ให้เบราว์เซอร์เข้าถึงตำแหน่ง (Location) นะครับ")
