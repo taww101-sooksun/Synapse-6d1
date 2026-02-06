@@ -1,90 +1,75 @@
 import streamlit as st
-import time
-from datetime import datetime
+import pandas as pd
 import numpy as np
+import time
 
-# --- การตั้งค่าระบบความปลอดภัยสูงสุด ---
-st.set_page_config(page_title="MATRIX_V2 | ABSOLUTE TRUTH", layout="wide")
+# --- CONFIG & LOGIC ---
+st.set_page_config(page_title="MATRIX_V2: อ่อนนุช 65", layout="wide")
 
-st.markdown("<h2 style='text-align: center;'>อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
+# สโลแกนของคุณ
+SLOGAN = "อยู่นิ่งๆ ไม่เจ็บตัว"
 
-# --- ส่วนประกอบ: การดึงพิกัด GPS จริงจาก Browser ---
-def get_gps_script():
-    # ใช้ JavaScript ดึงพิกัดจากอุปกรณ์ของผู้ใช้โดยตรงเพื่อให้ "จริง" ที่สุด
-    js_gps = """
-    <script>
-    navigator.geolocation.getCurrentPosition(function(position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const gps_display = document.getElementById("gps_data");
-        if(gps_display) {
-            gps_display.innerHTML = "📍 พิกัดความจริง (GPS): " + lat.toFixed(6) + ", " + lon.toFixed(6);
-        }
-    });
-    </script>
-    <div id="gps_data" style="font-family: monospace; font-size: 1.2rem; color: #00FF00; text-align: center; padding: 10px;">
-        🔍 กำลังค้นหาพิกัดจากดาวเทียม...
-    </div>
-    """
-    st.components.v1.html(js_gps, height=60)
-
-# --- ฐานข้อมูลหลัก (Core Logic) ---
-DATABASE_252 = np.arange(1, 253)
-KEYS_44 = 44
-VARS_12 = [1.02, 0.98, 1.00, 1.05, 0.99, 1.01, 1.03, 0.97, 1.00, 1.04, 1.02, 0.96]
-
-def calculate_v2_logic():
-    # เวลาที่เดินอย่างซื่อตรง (Absolute Time)
-    now = datetime.now()
-    t_stamp = now.timestamp()
+def get_matrix_logic(lat, lon, keys_44):
+    # ฐานข้อมูล 252 มาจากกุญแจ 44 คูณกับมิติแปรผันและเวลา
+    current_sec = time.localtime().tm_sec
+    base_val = (lat + lon) * keys_44
     
-    base_truth = DATABASE_252.sum() # 31878
-    gates_data = []
+    # สร้าง 6 ด่าน (A-F)
+    gates = ['A: Stability', 'B: Filtering', 'C: Reflection', 
+             'D: Equilibrium', 'E: Silence', 'F: Unity']
     
-    for i in range(6):
-        # สมการถอดรหัสที่เชื่อมโยง 'เลข-เวลา-กุญแจ'
-        val = (base_truth / VARS_12[i]) * (KEYS_44 / (i + 1))
-        # ทำให้ข้อมูลขยับตามเวลาจริงเสี้ยววินาที
-        sync_val = val + (now.second * (i + 1)) + (now.microsecond / 1000000)
-        gates_data.append(sync_val)
+    results = []
+    for i, gate in enumerate(gates):
+        # กลไก G+ (เพิ่ม) และ S- (ลด) เพื่อหักล้างกัน
+        g_plus = np.sin(current_sec + i) * 100 
+        s_minus = np.cos(current_sec + i) * 100
         
-    return gates_data, now.strftime("%H:%M:%S")
+        # การหักล้าง (Cancellation)
+        balance = g_plus + s_minus 
+        
+        # หน่วยวัดสภาวะ (SC/GU)
+        sc_unit = abs(balance) / 12  # หารด้วย 12 ตำแหน่ง
+        
+        results.append({
+            "ด่าน (Gate)": gate,
+            "G+ (ดึง)": round(g_plus, 2),
+            "S- (ลด)": round(s_minus, 2),
+            "ความนิ่ง (Balance)": "คงที่" if abs(balance) < 10 else "กำลังปรับจูน",
+            "หน่วยวัด (SC)": round(sc_unit, 2)
+        })
+    return pd.DataFrame(results)
 
-# --- การแสดงผลแบบ Real-time ---
-get_gps_script() # แสดง GPS ด้านบนสุดของระบบ
-placeholder = st.empty()
+# --- UI ---
+st.title(f"🌀 MATRIX_V2: {SLOGAN}")
+st.write(f"พิกัดปัจจุบัน: **อ่อนนุช 65 (ประเวศ)**")
 
-while True:
-    with placeholder.container():
-        data, time_label = calculate_v2_logic()
-        
-        st.subheader(f"⏱️ เวลาที่เดินถูกที่: {time_label}")
-        
-        # แสดงผล 6 ด่านมิติ
-        cols = st.columns(6)
-        gates = ["ความเสถียร", "การกรอง", "การสะท้อน", "สมดุล", "ความเงียบ", "ความสามัคคี"]
-        
-        for i, col in enumerate(cols):
-            col.metric(label=gates[i], value=f"{data[i]:,.2f}")
-            
-        # กราฟเส้นแสดงทิศทางของข้อมูล
-        st.line_chart(data)
-        
-        # เสียงความถี่ (Auditory Truth) - ดังตามความจริงของด่านสุดท้าย
-        freq = 300 + (data[5] % 500)
-        js_sound = f"""
-            <script>
-            var ctx = new AudioContext();
-            var osc = ctx.createOscillator();
-            var g = ctx.createGain();
-            osc.connect(g); g.connect(ctx.destination);
-            osc.frequency.value = {freq};
-            g.gain.value = 0.03;
-            osc.start(); setTimeout(() => osc.stop(), 150);
-            </script>
-        """
-        st.components.v1.html(js_sound, height=0)
-        
-        st.progress((data[5] % 100) / 100, text=f"ความแม่นยำของสัมผัสปัจจุบัน: {(data[5] % 100):.2f}%")
+# ส่วนดึง GPS (รองรับทั้ง Manual และ Browser)
+st.sidebar.header("📍 ระบบระบุพิกัด")
+lat_input = st.sidebar.number_input("Latitude", value=13.72, format="%.5f")
+lon_input = st.sidebar.number_input("Longitude", value=100.65, format="%.5f")
+keys_input = st.sidebar.slider("กุญแจ 44 จุด (Key Multiplier)", 1, 44, 44)
 
-    time.sleep(1) # รักษาจังหวะให้เดินตามนาฬิกาจริง
+# แสดงผล 6 มิติ
+st.subheader("📊 การคำนวณ 6 มิติ (หักล้าง G+ / S-)")
+data = get_matrix_logic(lat_input, lon_input, keys_input)
+
+# จัดหน้าจอเป็น 2 ฝั่ง
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.table(data)
+    st.write("*(หมายเหตุ: ตัวเลขจะหักล้างกันเพื่อเข้าสู่จุดศูนย์กลางที่คุณอยู่)*")
+
+with col2:
+    # กราฟแสดงความนิ่ง
+    st.line_chart(data["หน่วยวัด (SC)"])
+    st.metric(label="ฐานข้อมูลรวม", value="252 Points", delta=f"{keys_input} Keys")
+
+# ระบบเสียง/สัมผัส (Simulated)
+if st.button("🔊 สัมผัสความถี่ด่าน F (Unity)"):
+    st.success("ระบบกำลังส่งคลื่นความถี่ 'นิ่ง' เพื่อหักล้างสัญญาณรบกวนรอบตัวคุณ...")
+    st.toast("สัมผัสแรงดึงดูดที่จุดศูนย์กลาง...")
+
+# --- FOOTER ---
+st.divider()
+st.caption(f"MATRIX_V2 System | {time.strftime('%Y-%m-%d %H:%M:%S')} | ประเวศ, กรุงเทพฯ")
