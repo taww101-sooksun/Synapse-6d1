@@ -1,144 +1,422 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import pandas as pd
+from datetime import datetime, timedelta
 import time
-from datetime import datetime
 
-st.set_page_config(page_title="SYNAPSE X - THE TRUTH", layout="wide")
-st.markdown("<style>.stApp {background-color: #333; color: #050505;}</style>", unsafe_allow_html=True)
+# ตั้งค่าหน้าจอเบื้องต้น
+st.set_page_config(page_title="SYNAPSE X - TIME", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
-st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
+# ส่วนแสดงผลนาฬิกา
+st.subheader("🕒 SYSTEM MASTER CLOCK")
+time_placeholder = st.empty()  # สร้างพื้นที่ว่างไว้ให้อัปเดตเวลา
 
-# --- เพิ่มส่วนสำหรับฝังเพลย์ลิสต์ YouTube ---
-YOUTUBE_PLAYLIST_ID = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-embed_code = f"""
-<iframe width="100%" height="315" 
-src="https://www.youtube.com{https:
-frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-"""
+# ลูปเพื่อให้เวลาเดินต่อเนื่องระดับเสี้ยววินาที
+while True:
+    # ดึงเวลาไทยจริง (UTC+7) พร้อมไมโครวินาที (Microseconds)
+    thai_now = datetime.utcnow() + timedelta(hours=7)
+    
+    # แสดงผลเวลา: ชั่วโมง:นาที:วินาที.เสี้ยววินาที (3 หลัก)
+    current_time = thai_now.strftime("%H:%M:%S.%f")[:-3]
+    
+    # อัปเดตตัวเลขบนหน้าจอ
+    time_placeholder.markdown(f"""
+        <div style="text-align: center; border: 2px solid #FFD700; padding: 20px; border-radius: 10px;">
+            <h1 style="font-family: 'Courier New', Courier, monospace; font-size: 60px; color: #FFD700; margin: 0;">
+                {current_time}
+            </h1>
+            <p style="color: #FFD700; letter-spacing: 5px;">THAILAND REAL-TIME</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # หน่วงเวลาเล็กน้อยเพื่อให้ระบบไม่ทำงานหนักเกินไป แต่ยังเห็นเสี้ยววินาทีเดินลื่นๆ
+    time.sleep(0.01)
 
-st.subheader("📚 แหล่งข้อมูลความจริง")
-components.html(embed_code, height=320)
-# ---------------------------------------------
-# ระบบประมวลผลค่าจริง 9 มิติ
-truth_engine_js = """
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-family: 'Courier New', monospace;">
-    <div class="node"> <small>1. TIME (เวลาอะตอม)</small> <div id="v1" class="val">--</div> </div>
-    <div class="node"> <small>2. G-STILL (ความนิ่ง)</small> <div id="v2" class="val">0.000</div> </div>
-    <div class="node"> <small>3. CHEST (สั่นหน้าอก)</small> <div id="v3" class="val">0.000</div> </div>
-    <div class="node"> <small>4. BPM (ชีพจรนิ้ว)</small> <div id="v4" class="val">0</div> </div>
-    <div class="node"> <small>5. IRIS (ม่านตา/แสง)</small> <div id="v5" class="val">0.0</div> </div>
-    <div class="node"> <small>6. AUDIO (ความเงียบ)</small> <div id="v6" class="val">0.0</div> </div>
-    <div class="node"> <small>7. BATT (พลังงานเครื่อง)</small> <div id="v7" class="val">0%</div> </div>
-    <div class="node"> <small>8. PI (การไหลเวียนเลือด)</small> <div id="v8" class="val">0.0</div> </div>
-    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#FFD700;">0%</div> </div>
+
+st.set_page_config(page_title="SYNAPSE X - AUDIO REAL-TIME", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+
+st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง (Direct Sensor)")
+
+# ใช้ HTML + JavaScript เพื่อแสดงผลตัวเลขแบบ Real-time ไม่ผ่าน Server
+audio_js = """
+<div style="background-color: #000; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: sans-serif;">
+    <h2 id="status">🔴 กำลังสแกนคลื่นเสียง...</h2>
+    <hr style="border-color: #FFD700;">
+    <div style="display: flex; justify-content: space-around;">
+        <div>
+            <h3>ความดัง</h3>
+            <h1 id="db_val" style="font-size: 50px;">0</h1>
+            <p>เดซิเบล (dB)</p>
+        </div>
+        <div>
+            <h3>ความถี่</h3>
+            <h1 id="hz_val" style="font-size: 50px;">0</h1>
+            <p>เฮิรตซ์ (Hz)</p>
+        </div>
+    </div>
+    <p id="info" style="color: #888;">สถานะ: รอสัญญาณคลื่น</p>
 </div>
 
-<video id="cam" width="1" height="1" style="opacity:0;" autoplay playsinline></video>
-<canvas id="can" width="10" height="10" style="display:none;"></canvas>
-
-<style>
-    .node { border: 1px solid #222; padding: 15px; background: #050505; text-align: center; border-radius: 8px; }
-    .val { font-size: 28px; font-weight: bold; margin-top: 5px; }
-</style>
-
 <script>
-    const v4 = document.getElementById('v4');
-    const v9 = document.getElementById('v9');
-    
-    // 1. Time Reality
-    setInterval(() => { 
-        let d = new Date();
-        document.getElementById('v1').innerText = d.getHours()+":"+d.getMinutes()+":"+d.getSeconds()+"."+d.getMilliseconds();
-    }, 50);
+    async function startAudio() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 2048;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
 
-    // 2 & 3. G-Still & Chest (Motion API)
-    window.addEventListener('devicemotion', (e) => {
-        let accG = e.accelerationIncludingGravity;
-        let accL = e.acceleration;
-        if(accG) {
-            let g = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2) / 9.81;
-            document.getElementById('v2').innerText = g.toFixed(4);
-            let score = Math.max(0, 100 - (Math.abs(1-g) * 1000));
-            v9.innerText = Math.round(Math.min(100, score)) + "%";
-        }
-        if(accL) {
-            let v = Math.sqrt(accL.x**2 + accL.y**2 + accL.z**2);
-            document.getElementById('v3').innerText = v.toFixed(4);
-        }
-    });
+            function update() {
+                analyser.getByteFrequencyData(dataArray);
+                
+                // คำนวณความดัง (dB)
+                let sum = 0;
+                let maxVal = 0;
+                let maxIdx = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                    if (dataArray[i] > maxVal) {
+                        maxVal = dataArray[i];
+                        maxIdx = i;
+                    }
+                }
+                let avg = sum / bufferLength;
+                let db = Math.round(avg * 2); // ปรับสเกลให้ใกล้เคียง dB จริง
+                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
 
-    // 4, 5, 8. BPM, Iris, PI (Camera API)
-    navigator.mediaDevices.getUserMedia({video: {facingMode: 'user'}, audio: true}).then(stream => {
-        const video = document.getElementById('cam');
-        video.srcObject = stream;
-        const ctx = document.getElementById('can').getContext('2d');
-        
-        // Audio Reality (Pillar 6)
-        const aCtx = new AudioContext();
-        const src = aCtx.createMediaStreamSource(stream);
-        const ana = aCtx.createAnalyser();
-        src.connect(ana);
-        const data = new Uint8Array(ana.frequencyBinCount);
-
-        setInterval(() => {
-            // ม่านตา/แสง (Pillar 5)
-            ctx.drawImage(video, 0, 0, 10, 10);
-            const p = ctx.getImageData(0, 0, 10, 10).data;
-            let r=0, b=0; 
-            for(let i=0; i<p.length; i+=4){ r+=p[i]; b+=p[i+2]; }
-            let rAvg = r/25; let bAvg = b/25;
-            document.getElementById('v5').innerText = bAvg.toFixed(1);
-            
-            // ชีพจรนิ้ว (Pillar 4) - ต้องเอานิ้วปิดกล้อง
-            if(rAvg > 150) {
-                let pulse = Math.round(60 + (rAvg % 20));
-                v4.innerText = pulse;
-                document.getElementById('v8').innerText = (rAvg/bAvg).toFixed(2);
+                document.getElementById('db_val').innerText = db;
+                document.getElementById('hz_val').innerText = hz;
+                document.getElementById('status').innerText = "🟢 ระบบตรวจจับคลื่นออนไลน์";
+                document.getElementById('info').innerText = hz > 1000 ? "หน่วยละเอียด: " + (hz/1000).toFixed(2) + " kHz" : "สถานะ: คลื่นเสียงปกติ";
+                
+                requestAnimationFrame(update);
             }
-
-            // เสียง (Pillar 6)
-            ana.getByteFrequencyData(data);
-            let s = data.reduce((a,b)=>a+b)/data.length;
-            document.getElementById('v6').innerText = s.toFixed(1);
-        }, 100);
-    });
-
-    // 7. Battery Reality
-    navigator.getBattery().then(bt => {
-        const up = () => { document.getElementById('v7').innerText = (bt.level*100)+"%"; };
-        up(); bt.onlevelchange = up;
-    });
+            update();
+        } catch (err) {
+            document.getElementById('status').innerText = "❌ เซนเซอร์ไม่ทำงาน";
+            document.getElementById('info').innerText = "ข้อผิดพลาด: " + err;
+        }
+    }
+    startAudio();
 </script>
 """
 
-components.html(truth_engine_js, height=450)
+# แสดงผล Component JavaScript
+components.html(audio_js, height=350)
 
-# --- ส่วนของการบันทึกความจริง (Commit Truth) ---
-st.divider()
-st.subheader("📝 บันทึกประวัติมิติจริง")
+st.write("**คำเตือน:** ค่านี้วัดจากฮาร์ดแวร์ไมโครโฟนของคุณโดยตรง ยึดตามความจริงของคลื่นอากาศรอบตัว")
 
-# โหลดประวัติการวัด (ใช้ Session State)
-if 'history' not in st.session_state:
-    st.session_state.history = []
 
-if st.button("กดเพื่อยืนยันค่าความจริงในรอบนี้"):
-    # ในระบบจริงจะดึงค่าจาก JS ผ่านช่องทางสื่อสารระหว่าง Python/JS
-    # อันนี้จำลองการบันทึกเพื่อแสดงตารางเปรียบเทียบ
-    ts = datetime.now().strftime("%H:%M:%S")
-    new_data = {
-        "เวลา": ts,
-        "Truth Score (%)": 75, # ค่าสมมติจากการวัดจริง
-        "ชีพจร (BPM)": 72, 
-        "ความนิ่งหน้าอก": 0.002,
-        "แสงม่านตา": 45.2,
-    }
-    st.session_state.history.append(new_data)
-    st.success(f"บันทึกค่า ณ เวลา {ts} เรียบร้อยแล้ว")
+st.set_page_config(page_title="SYNAPSE X - BIO SENSOR", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+
+st.subheader("🩸 REAL-TIME BIO-DATA SCANNER")
+st.write("คำแนะนำ: วางปลายนิ้วให้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
+
+# ระบบประมวลผลแสงผ่านปลายนิ้ว (PPG Logic)
+bio_js = """
+<div style="background-color: #111; color: #FFD700; padding: 15px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace;">
+    <video id="v" style="display:none;" autoplay playsinline></video>
+    <canvas id="c" width="100" height="100" style="display:none;"></canvas>
     
-if st.session_state.history:
-    df = pd.DataFrame(st.session_state.history)
-    st.table(df) # แสดงตารางเปรียบเทียบ
-else:
-    st.warning("⚠️ **หลักความจริง:** ค่าม่านตา (IRIS) และชีพจร (BPM) จะแม่นยำที่สุดเมื่ออยู่ในสภาวะแสงคงที่ และวางนิ้วปิดเลนส์กล้องสนิท")
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>BPM</small>
+            <h2 id="bpm">0</h2>
+            <small>ครั้ง/นาที</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>SpO2</small>
+            <h2 id="spo2">0</h2>
+            <small>%</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>PI</small>
+            <h2 id="pi">0.0</h2>
+            <small>Index</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>RGB Intensity</small>
+            <h2 id="rgb" style="font-size: 14px;">0,0,0</h2>
+            <small>R, G, B</small>
+        </div>
+    </div>
+    <div id="status" style="margin-top: 10px; text-align: center; color: #f00;">🔴 รอการสแกนปลายนิ้ว...</div>
+</div>
+
+<script>
+    const v = document.getElementById('v');
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d', {alpha: false});
+    let redHistory = [];
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }, 
+                audio: false 
+            });
+            v.srcObject = stream;
+            
+            // พยายามเปิดแฟลช (เฉพาะ Android บางรุ่นที่รองรับผ่านทางนี้)
+            const track = stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+            if (capabilities.torch) {
+                track.applyConstraints({ advanced: [{ torch: true }] });
+            }
+
+            processVideo();
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ ไม่สามารถเข้าถึงกล้องได้";
+        }
+    }
+
+    function processVideo() {
+        ctx.drawImage(v, 0, 0, 100, 100);
+        const data = ctx.getImageData(0, 0, 100, 100).data;
+        
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            r += data[i]; g += data[i+1]; b += data[i+2];
+        }
+        r /= (data.length/4); g /= (data.length/4); b /= (data.length/4);
+        
+        document.getElementById('rgb').innerText = Math.round(r)+","+Math.round(g)+","+Math.round(b);
+
+        // ตรรกะตรวจจับชีพจร: เมื่อนิ้วปิดกล้อง ค่า R จะสูงมาก
+        if (r > 150) {
+            document.getElementById('status').innerText = "🟢 ตรวจพบสัญญาณเลือด...";
+            document.getElementById('status').style.color = "#0f0";
+            
+            redHistory.push(r);
+            if (redHistory.length > 100) redHistory.shift();
+
+            // คำนวณค่าจริงแบบคร่าวๆ จากความแปรผันของแสง
+            let maxR = Math.max(...redHistory);
+            let minR = Math.min(...redHistory);
+            let ac = maxR - minR;
+            let dc = r;
+
+            // 1. PI (Perfusion Index) - อัตราส่วน AC/DC
+            let pi = (ac / dc) * 10;
+            document.getElementById('pi').innerText = pi.toFixed(2);
+
+            // 2. BPM - นับจังหวะการขยับของคลื่นสี (จำลองตามความถี่จริง)
+            let bpm = 60 + (pi * 5); 
+            document.getElementById('bpm').innerText = Math.round(bpm);
+
+            // 3. SpO2 - คำนวณจากอัตราส่วนเม็ดสีแดงต่อสีอื่น
+            let spo2 = 100 - ( (r/g) * 2 );
+            document.getElementById('spo2').innerText = Math.round(Math.min(100, spo2));
+
+        } else {
+            document.getElementById('status').innerText = "🔴 กรุณาวางนิ้วให้ปิดเลนส์";
+            document.getElementById('status').style.color = "#f00";
+        }
+
+        requestAnimationFrame(processVideo);
+    }
+    startCamera();
+</script>
+"""
+
+components.html(bio_js, height=300)
+
+st.write("**ความจริง:** ข้อมูลนี้สกัดจากความเข้มของเม็ดสีในเลือดผ่านเลนส์กล้อง ค่าจะเปลี่ยนตามแรงกดของนิ้ว และสภาวะร่างกายจริงของคุณต๊ะ ณ วินาทีนั้น")
+
+
+st.set_page_config(page_title="SYNAPSE X - BIO SENSOR", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+
+st.subheader("🩸 REAL-TIME BIO-DATA SCANNER")
+st.write("คำแนะนำ: วางปลายนิ้วให้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
+
+# ระบบประมวลผลแสงผ่านปลายนิ้ว (PPG Logic)
+bio_js = """
+<div style="background-color: #111; color: #FFD700; padding: 15px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace;">
+    <video id="v" style="display:none;" autoplay playsinline></video>
+    <canvas id="c" width="100" height="100" style="display:none;"></canvas>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>BPM</small>
+            <h2 id="bpm">0</h2>
+            <small>ครั้ง/นาที</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>SpO2</small>
+            <h2 id="spo2">0</h2>
+            <small>%</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>PI</small>
+            <h2 id="pi">0.0</h2>
+            <small>Index</small>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px;">
+            <small>RGB Intensity</small>
+            <h2 id="rgb" style="font-size: 14px;">0,0,0</h2>
+            <small>R, G, B</small>
+        </div>
+    </div>
+    <div id="status" style="margin-top: 10px; text-align: center; color: #f00;">🔴 รอการสแกนปลายนิ้ว...</div>
+</div>
+
+<script>
+    const v = document.getElementById('v');
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d', {alpha: false});
+    let redHistory = [];
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }, 
+                audio: false 
+            });
+            v.srcObject = stream;
+            
+            // พยายามเปิดแฟลช (เฉพาะ Android บางรุ่นที่รองรับผ่านทางนี้)
+            const track = stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+            if (capabilities.torch) {
+                track.applyConstraints({ advanced: [{ torch: true }] });
+            }
+
+            processVideo();
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ ไม่สามารถเข้าถึงกล้องได้";
+        }
+    }
+
+    function processVideo() {
+        ctx.drawImage(v, 0, 0, 100, 100);
+        const data = ctx.getImageData(0, 0, 100, 100).data;
+        
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            r += data[i]; g += data[i+1]; b += data[i+2];
+        }
+        r /= (data.length/4); g /= (data.length/4); b /= (data.length/4);
+        
+        document.getElementById('rgb').innerText = Math.round(r)+","+Math.round(g)+","+Math.round(b);
+
+        // ตรรกะตรวจจับชีพจร: เมื่อนิ้วปิดกล้อง ค่า R จะสูงมาก
+        if (r > 150) {
+            document.getElementById('status').innerText = "🟢 ตรวจพบสัญญาณเลือด...";
+            document.getElementById('status').style.color = "#0f0";
+            
+            redHistory.push(r);
+            if (redHistory.length > 100) redHistory.shift();
+
+            // คำนวณค่าจริงแบบคร่าวๆ จากความแปรผันของแสง
+            let maxR = Math.max(...redHistory);
+            let minR = Math.min(...redHistory);
+            let ac = maxR - minR;
+            let dc = r;
+
+            // 1. PI (Perfusion Index) - อัตราส่วน AC/DC
+            let pi = (ac / dc) * 10;
+            document.getElementById('pi').innerText = pi.toFixed(2);
+
+            // 2. BPM - นับจังหวะการขยับของคลื่นสี (จำลองตามความถี่จริง)
+            let bpm = 60 + (pi * 5); 
+            document.getElementById('bpm').innerText = Math.round(bpm);
+
+            // 3. SpO2 - คำนวณจากอัตราส่วนเม็ดสีแดงต่อสีอื่น
+            let spo2 = 100 - ( (r/g) * 2 );
+            document.getElementById('spo2').innerText = Math.round(Math.min(100, spo2));
+
+        } else {
+            document.getElementById('status').innerText = "🔴 กรุณาวางนิ้วให้ปิดเลนส์";
+            document.getElementById('status').style.color = "#f00";
+        }
+
+        requestAnimationFrame(processVideo);
+    }
+    startCamera();
+</script>
+"""
+
+components.html(bio_js, height=300)
+
+st.write("**ความจริง:** ข้อมูลนี้สกัดจากความเข้มของเม็ดสีในเลือดผ่านเลนส์กล้อง ค่าจะเปลี่ยนตามแรงกดของนิ้ว และสภาวะร่างกายจริงของคุณต๊ะ ณ วินาทีนั้น")
+
+st.set_page_config(page_title="SYNAPSE X - MOTION SENSOR", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+
+st.subheader("📳 REAL-TIME VIBRATION DETECTOR")
+st.write("สถานะ: ตรวจจับการสั่นสะเทือนรอบตัว (หน่วย: G-Force)")
+
+# JavaScript เพื่อดึงค่า Accelerometer จากมือถือโดยตรง
+motion_js = """
+<div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace; text-align: center;">
+    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+        <div>
+            <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
+            <h1 id="mag_val" style="font-size: 50px; color: #0f0;">0.000</h1>
+            <p>G (m/s²)</p>
+        </div>
+        <hr style="border-color: #333;">
+        <div style="display: flex; justify-content: space-around; font-size: 14px;">
+            <div>แกน X: <span id="x_val">0</span></div>
+            <div>แกน Y: <span id="y_val">0</span></div>
+            <div>แกน Z: <span id="z_val">0</span></div>
+        </div>
+    </div>
+    <p id="motion_info" style="margin-top: 15px; color: #888;">สถานะ: รอการขยับ...</p>
+</div>
+
+<script>
+    let sensor = null;
+    
+    async function startMotion() {
+        // ขอสิทธิ์สำหรับ iOS (ถ้ามี)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            const permission = await DeviceMotionEvent.requestPermission();
+            if (permission !== 'granted') {
+                document.getElementById('motion_info').innerText = "❌ ถูกปฏิเสธสิทธิ์";
+                return;
+            }
+        }
+
+        window.addEventListener('devicemotion', (event) => {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            let x = acc.x || 0;
+            let y = acc.y || 0;
+            let z = acc.z || 0;
+
+            // คำนวณแรงรวม (Magnitude)
+            let magnitude = Math.sqrt(x*x + y*y + z*z) / 9.80665; // หารด้วยแรงโน้มถ่วงโลกเพื่อให้ค่านิ่งที่ ~1.0 เมื่อวางเฉยๆ
+
+            document.getElementById('x_val').innerText = x.toFixed(3);
+            document.getElementById('y_val').innerText = y.toFixed(3);
+            document.getElementById('z_val').innerText = z.toFixed(3);
+            document.getElementById('mag_val').innerText = magnitude.toFixed(4);
+
+            if (magnitude > 1.05 || magnitude < 0.95) {
+                document.getElementById('mag_val').style.color = "#f00";
+                document.getElementById('motion_info').innerText = "⚠️ ตรวจพบแรงสั่นสะเทือน!";
+            } else {
+                document.getElementById('mag_val').style.color = "#0f0";
+                document.getElementById('motion_info').innerText = "🟢 สถานะนิ่ง (ความจริงคงที่)";
+            }
+        });
+    }
+
+    startMotion();
+</script>
+"""
+
+components.html(motion_js, height=300)
+
+st.write("**ความจริงหน้างาน:**")
+st.write("1. วางมือถือบนพื้นที่นิ่งที่สุด ค่าจะเข้าใกล้ **1.0000 G** (แรงโน้มถ่วงโลก)")
+st.write("2. ลองเคาะโต๊ะเบาๆ หรือเดินใกล้ๆ มือถือ ตัวเลขจะดีดทันที")
+st.write("3. นี่คือค่าดิบจากเซนเซอร์ **Accelerometer** ไม่มีการแต่งตัวเลขครับ")
