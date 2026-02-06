@@ -6,13 +6,13 @@ from datetime import datetime
 
 # เปลี่ยนพื้นหลังหลักเป็นสีขาว และตัวหนังสือสีดำ
 st.set_page_config(page_title="SYNAPSE X - THE TRUTH (Light Theme)", layout="wide")
-st.markdown("<style>.stApp {background-color: #FFFFFF; color: #000000;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stApp {background-color: #FFFFFF; color: #050505;}</style>", unsafe_allow_html=True)
 
 st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
 st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
 
 # --- ส่วนสำหรับฝังเพลย์ลิสต์ YouTube ---
-YOUTUBE_PLAYLIST_ID = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+YOUTUBE_PLAYLIST_ID = "https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=pNziPxc9WaGzyo8d"
 embed_code = f"""
 <iframe width="100%" height="315" 
 src="https://www.youtube.com{YOUTUBE_PLAYLIST_ID}" 
@@ -34,21 +34,21 @@ truth_engine_js = """
     <div class="node"> <small>6. AUDIO (ความเงียบ)</small> <div id="v6" class="val">0.0</div> </div>
     <div class="node"> <small>7. BATT (พลังงานเครื่อง)</small> <div id="v7" class="val">0%</div> </div>
     <div class="node"> <small>8. PI (การไหลเวียนเลือด)</small> <div id="v8" class="val">0.0</div> </div>
-    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#0000FF;">0%</div> </div>
+    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#0A0A0A;">0%</div> </div>
 </div>
 
 <video id="cam" width="1" height="1" style="opacity:0;" autoplay playsinline></video>
-<canvas id="can" width="10" height="10" style="display:none;"></canvas>
+<canvas id="can" width="100" height="100" style="display:none;"></canvas>
 
 <style>
     /* เปลี่ยนกล่องข้อมูลเป็นพื้นหลังสีขาว/เทาอ่อน และตัวหนังสือสีดำ */
-    .node { border: 1px solid #CCCCCC; padding: 15px; background: #F9F9F9; text-align: center; border-radius: 8px; color: #000000; }
+    .node { border: 1px solid #0A0A0A; padding: 15px; background: #05050A; text-align: center; border-radius: 8px; color: #000000; }
     .val { font-size: 28px; font-weight: bold; margin-top: 5px; color: #006400; } /* ใช้สีเขียวเข้มแทนสีทอง */
     small { color: #555555; }
 </style>
 
 <script>
-    const v4 = document.getElementById('v4');
+    const v1 = document.getElementById('v1');
     const v9 = document.getElementById('v9');
     
     // ... (ส่วน Script JavaScript Sensors อื่นๆ ยังคงเดิม) ...
