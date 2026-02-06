@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 st.set_page_config(page_title="SYNAPSE X - THE TRUTH", layout="wide")
-st.markdown("<style>.stApp {background-color: #333; color: #003300;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stApp {background-color: #333; color: #050505;}</style>", unsafe_allow_html=True)
 
 st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
 st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
@@ -14,14 +14,13 @@ st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร
 YOUTUBE_PLAYLIST_ID = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 embed_code = f"""
 <iframe width="100%" height="315" 
-src="https://www.youtube.com{https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=pNziPxc9WaGzyo8d}" 
+src="https://www.youtube.com{https:
 frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 """
 
 st.subheader("📚 แหล่งข้อมูลความจริง")
 components.html(embed_code, height=320)
 # ---------------------------------------------
-
 # ระบบประมวลผลค่าจริง 9 มิติ
 truth_engine_js = """
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-family: 'Courier New', monospace;">
