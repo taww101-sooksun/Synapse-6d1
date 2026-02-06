@@ -1,79 +1,90 @@
 import streamlit as st
 import time
+from datetime import datetime
 import numpy as np
 
-# --- การตั้งค่าระบบให้ "นิ่ง" และเสถียรที่สุด ---
-st.set_page_config(page_title="MATRIX_V2 OFFICIAL", layout="wide")
+# --- การตั้งค่าระบบความปลอดภัยสูงสุด ---
+st.set_page_config(page_title="MATRIX_V2 | ABSOLUTE TRUTH", layout="wide")
 
-# สโลแกนประทับหน้าจอ
-st.markdown("<h3 style='text-align: center;'>อยู่นิ่งๆ ไม่เจ็บตัว</h3>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center;'>อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
 
-# --- ฐานข้อมูลหลัก (The Core Truth) ---
-DATABASE_252 = np.arange(1, 253) # ฐานเลข 252 ตัวเลข
-KEYS_44 = 44                     # กุญแจ 42 อักษร + 2 เครื่องหมาย
-VARIABLES_12 = [1.02, 0.98, 1.00, 1.05, 0.99, 1.01, 1.03, 0.97, 1.00, 1.04, 1.02, 0.96]
+# --- ส่วนประกอบ: การดึงพิกัด GPS จริงจาก Browser ---
+def get_gps_script():
+    # ใช้ JavaScript ดึงพิกัดจากอุปกรณ์ของผู้ใช้โดยตรงเพื่อให้ "จริง" ที่สุด
+    js_gps = """
+    <script>
+    navigator.geolocation.getCurrentPosition(function(position) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const gps_display = document.getElementById("gps_data");
+        if(gps_display) {
+            gps_display.innerHTML = "📍 พิกัดความจริง (GPS): " + lat.toFixed(6) + ", " + lon.toFixed(6);
+        }
+    });
+    </script>
+    <div id="gps_data" style="font-family: monospace; font-size: 1.2rem; color: #00FF00; text-align: center; padding: 10px;">
+        🔍 กำลังค้นหาพิกัดจากดาวเทียม...
+    </div>
+    """
+    st.components.v1.html(js_gps, height=60)
 
-def get_actual_truth():
-    # ดึงค่าเวลาจริง (เวลาไม่เคยหลอกใคร)
-    t = time.localtime()
-    current_sec = t.tm_sec
-    current_min = t.tm_min
+# --- ฐานข้อมูลหลัก (Core Logic) ---
+DATABASE_252 = np.arange(1, 253)
+KEYS_44 = 44
+VARS_12 = [1.02, 0.98, 1.00, 1.05, 0.99, 1.01, 1.03, 0.97, 1.00, 1.04, 1.02, 0.96]
+
+def calculate_v2_logic():
+    # เวลาที่เดินอย่างซื่อตรง (Absolute Time)
+    now = datetime.now()
+    t_stamp = now.timestamp()
     
-    # คำนวณค่าดัชนีรวม (Master Index)
-    base_sum = DATABASE_252.sum() # 31878
-    time_stamp = (current_sec + 1) * (current_min + 1)
+    base_truth = DATABASE_252.sum() # 31878
+    gates_data = []
     
-    # มิติ 6 ด่าน (Calculated Reality)
-    gate_results = []
     for i in range(6):
-        # คำนวณค่าจริงในแต่ละด่าน โดยอิงจากตัวแปรเสริม 12 ตัว
-        val = (base_sum / VARIABLES_12[i]) * (KEYS_44 / (i + 1))
-        # ผสมค่าเวลาจริงเข้าไปเพื่อให้ข้อมูล "มีชีวิต" และไม่ซ้ำเดิม
-        live_val = val + (time_stamp * (i + 1))
-        gate_results.append(live_val)
+        # สมการถอดรหัสที่เชื่อมโยง 'เลข-เวลา-กุญแจ'
+        val = (base_truth / VARS_12[i]) * (KEYS_44 / (i + 1))
+        # ทำให้ข้อมูลขยับตามเวลาจริงเสี้ยววินาที
+        sync_val = val + (now.second * (i + 1)) + (now.microsecond / 1000000)
+        gates_data.append(sync_val)
         
-    return gate_results, time.strftime("%H:%M:%S", t)
+    return gates_data, now.strftime("%H:%M:%S")
 
-# --- ส่วนการแสดงผล (Visual & Auditory) ---
+# --- การแสดงผลแบบ Real-time ---
+get_gps_script() # แสดง GPS ด้านบนสุดของระบบ
 placeholder = st.empty()
 
 while True:
     with placeholder.container():
-        data, current_time = get_actual_truth()
+        data, time_label = calculate_v2_logic()
         
-        st.header(f"📍 พิกัดเวลาปัจจุบัน: {current_time}")
+        st.subheader(f"⏱️ เวลาที่เดินถูกที่: {time_label}")
         
-        # แสดงผล 6 ด่านมิติด้วย Metric (เห็นด้วยตา)
+        # แสดงผล 6 ด่านมิติ
         cols = st.columns(6)
-        gates = ["Stability", "Filtering", "Reflection", "Equilibrium", "Silence", "Unity"]
+        gates = ["ความเสถียร", "การกรอง", "การสะท้อน", "สมดุล", "ความเงียบ", "ความสามัคคี"]
         
         for i, col in enumerate(cols):
             col.metric(label=gates[i], value=f"{data[i]:,.2f}")
             
-        # กราฟความจริงเชิงตัวเลข (The Numerical Path)
-        st.area_chart(data)
+        # กราฟเส้นแสดงทิศทางของข้อมูล
+        st.line_chart(data)
         
-        # ส่วนของเสียง (ได้ยินด้วยหู)
-        # ส่งคลื่นความถี่ Sine Wave ตามค่าด่าน Unity เข้าสู่ลำโพง
-        freq = 200 + (data[5] % 800)
+        # เสียงความถี่ (Auditory Truth) - ดังตามความจริงของด่านสุดท้าย
+        freq = 300 + (data[5] % 500)
         js_sound = f"""
             <script>
-            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var ctx = new AudioContext();
             var osc = ctx.createOscillator();
             var g = ctx.createGain();
-            osc.connect(g);
-            g.connect(ctx.destination);
+            osc.connect(g); g.connect(ctx.destination);
             osc.frequency.value = {freq};
-            g.gain.value = 0.05;
-            osc.start();
-            setTimeout(() => osc.stop(), 200);
+            g.gain.value = 0.03;
+            osc.start(); setTimeout(() => osc.stop(), 150);
             </script>
         """
         st.components.v1.html(js_sound, height=0)
         
-        # แสดงค่าสัมผัส (The Scent Signal)
-        scent_strength = (data[5] % 100)
-        st.progress(scent_strength / 100, text=f"ความเข้มข้นสัมผัสกลิ่น: {scent_strength:.2f}%")
+        st.progress((data[5] % 100) / 100, text=f"ความแม่นยำของสัมผัสปัจจุบัน: {(data[5] % 100):.2f}%")
 
-    # พักระบบตามรอบนาฬิกา (เพื่อให้เครื่องนิ่ง ไม่ค้าง)
-    time.sleep(1)
+    time.sleep(1) # รักษาจังหวะให้เดินตามนาฬิกาจริง
