@@ -77,18 +77,9 @@ def display_globe():
 # --- 4. แสดงผลหน้าจอหลัก ---
 display_globe()
 
-st.markdown('<div class="run-text"><marquee scrollamount="10">อยู่นิ่งๆ ไม่เจ็บตัว... สถานีเพลง 6D เปิดเอาเองนะครับ จะลงเพลงไว้ให้ยาวๆ 24 ช.ม!</marquee></div>', unsafe_allow_html=True)
+st.markdown('<div class="run-text"><marquee scrollamount="10">อยู่นิ่งๆ ไม่เจ็บตัว... สถานีเพลง
 
-# --- 5. ส่วนของเพื่อน (รูปจะอยู่ล่างสุดจริงๆ) ---
-st.write("---")
-st.subheader("📸 มุมเพื่อนโชว์รูป")
-friend_files = st.file_uploader("ส่งรูปมาโชว์ตรงนี้", type=['jpg','png','jpeg'], accept_multiple_files=True)
-
-if friend_files:
-    for f in friend_files:
-        st.image(f, use_container_width=True)
-
-# --- 6. คลังเพลง (ดึงจาก GitHub) ---
+# --- 5. คลังเพลง (ดึงจาก GitHub) ---
 st.write("### 💿 รายการเพลงของ อยู่นิ้งๆไม่เจ็บตัว")
 music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
 
@@ -97,28 +88,9 @@ if music_files:
     st.audio(song)
 else:
     st.error("⚠️ อย่าลืมลงเพลง .mp3 ในหน้าแรกของ GitHub นะครับ")
+
 if friend_files:
     for f in friend_files:
         st.image(f, use_container_width=True)
-# --- 3. ระบบเลือกเพลงและเล่นต่อเนื่อง ---
-if 'track_index' not in st.session_state:
-    st.session_state.track_index = 0
 
-current_track = playlist[st.session_state.track_index]
-
-st.subheader(f"▶️ กำลังบรรเลง: {current_track['title']}")
-
-# --- 6. คลังเพลง (ดึงจาก GitHub) ---
-st.write("### 💿 รายการเพลงของ อยู่นิ้งๆไม่เจ็บตัว")
-music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
-
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("⏮️ เพลงก่อนหน้า"):
-        st.session_state.track_index = (st.session_state.track_index - 1) % len(playlist)
-        st.rerun()
-with col2:
-    if st.button("ถัดไป ⏭️"):
-        st.session_state.track_index = (st.session_state.track_index + 1) % len(playlist)
-        st.rerun()
 st.write("#### *สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว*")
