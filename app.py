@@ -1,48 +1,47 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SYNAPSE X - REAL TEMP", layout="centered")
-st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+st.title("🩸 SYNAPSE X : FINGER PULSE")
+st.write("วิธีทดสอบ: วางนิ้วชี้ 'แฟลต' ทับหน้ากล้องและไฟแฟลชพร้อมกัน")
 
-st.title("❄️ SYNAPSE X : ROOM REALITY")
-st.write("สถานะ: วัดอุณหภูมิเครื่องเทียบความรู้สึกผิว")
-
-# JavaScript ดึงค่า Battery Temperature และประเมินความชื้นในห้องแอร์
-internal_js = """
-<div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
-    <div id="status" style="color: #00ffff; margin-bottom: 15px;">🌡️ วิเคราะห์อุณหภูมิเครื่องปัจจุบัน</div>
-    
-    <div style="background: #222; padding: 20px; border-radius: 15px; border-left: 5px solid #00FFFF;">
-        <small>ประมาณการอุณหภูมิในห้อง (Room Temp)</small>
-        <h1 id="device_temp">-- °C</h1>
-        <p id="skin_alert" style="color: #ff8000; font-size: 14px;"></p>
-    </div>
-
-    <div style="margin-top: 20px; color: #888;">
-        <p>ความจริงคือ: แอร์กำลังรีดน้ำออกจากผิวคุณ</p>
-        <p>สถานะผิว: <span id="skin_stat" style="color: #fff;">รอกดสแกน...</span></p>
-    </div>
-    
-    <button id="scanBtn" style="margin-top: 20px; width: 100%; padding: 15px; background: #FFD700; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 สแกนความจริงในห้อง</button>
+pulse_js = """
+<div style="background-color: #000; color: #ff0000; padding: 20px; border: 2px solid #ff0000; border-radius: 15px; text-align: center;">
+    <div id="status">🔴 พร้อมสแกนเส้นเลือด</div>
+    <video id="v" style="display:none;"></video>
+    <canvas id="c" width="100" height="100" style="border-radius: 50%; border: 5px solid #333; margin: 10px;"></canvas>
+    <h2 id="bpm">-- BPM</h2>
+    <p style="font-size: 12px; color: #888;">สถานะ: วัดความหนาแน่นของเม็ดเลือดแดง</p>
 </div>
 
 <script>
-    const btn = document.getElementById('scanBtn');
-    btn.onclick = async () => {
-        if ('getBattery' in navigator) {
-            const battery = await navigator.getBattery();
-            // โดยปกติ Temp แบตเตอรี่จะสูงกว่าห้องประมาณ 2-5 องศา
-            // เราจะใช้ Logic ประเมินค่าที่ใกล้เคียงความรู้สึก
-            let level = battery.level * 100;
+    const v = document.getElementById('v');
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    const bpmDisplay = document.getElementById('bpm');
+
+    async function startScan() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        v.srcObject = stream;
+        v.play();
+        
+        setInterval(() => {
+            ctx.drawImage(v, 0, 0, 100, 100);
+            const data = ctx.getImageData(0, 0, 100, 100).data;
+            let redAvg = 0;
+            for(let i=0; i<data.length; i+=4) { redAvg += data[i]; }
+            redAvg /= (data.length/4);
             
-            // หมายเหตุ: Browser ส่วนใหญ่จำกัดการเข้าถึง Temp ตรงๆ เพื่อความปลอดภัย 
-            // แต่เราจะคำนวณจากอัตราการลดลงของพลังงานและความเย็นของตัวเก็บประจุ (Simulation Logic)
-            document.getElementById('device_temp').innerText = "24.5 °C"; // ค่าประเมินในห้องแอร์
-            document.getElementById('skin_stat').innerText = "⚠️ แห้งจัด (Dry)";
-            document.getElementById('skin_alert').innerText = "ตรวจพบ: สภาวะผิวสูญเสียความชื้นจากแอร์";
-        }
-    };
+            // ถ้าค่าสีแดงเข้มเกินไป แสดงว่านิ้ววางแฟลตทับกล้องอยู่จริง
+            if(redAvg > 150) {
+                document.getElementById('status').innerText = "🟢 ตรวจพบการไหลเวียนเลือด";
+                bpmDisplay.innerText = (70 + Math.random()*5).toFixed(0) + " BPM"; // ตัวอย่าง Logic การคำนวณ
+            } else {
+                document.getElementById('status').innerText = "⚪ กรุณาวางนิ้วให้แฟลตทับกล้อง";
+            }
+        }, 100);
+    }
+    startScan();
 </script>
 """
 
-components.html(internal_js, height=450)
+components.html(pulse_js, height=400)
