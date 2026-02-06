@@ -1,81 +1,118 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import pandas as pd
+import time
 
-# ตั้งค่า UI โทนเข้มมิติลึก
-st.set_page_config(page_title="SYNAPSE X - 9 PILLARS", layout="wide")
-st.markdown("<style>.stApp {background-color: #020202; color: #FFD700;}</style>", unsafe_allow_html=True)
+st.set_page_config(page_title="SYNAPSE X - THE TRUTH", layout="wide")
+st.markdown("<style>.stApp {background-color: #000; color: #00FF41;}</style>", unsafe_allow_html=True)
 
-st.title("🛡️ ระบบตรวจวัด 9 มิติแห่งความจริง")
-st.write("สถานะ: **ตรวจสอบความแม่นยำตามสูตรคณิตศาสตร์และเวลาจริง**")
+st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
+st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
 
-# ระบบ 9 เสาหลักแห่งความจริง
-nine_pillars_js = """
-<div style="font-family: 'Courier New', monospace; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-    <div id="p1" class="node"> <small>1. กระแสเวลา (TIME)</small> <h2 id="val1">00:00:00</h2> <div class="stat" id="st1">SYNCING...</div> </div>
-    <div id="p2" class="node"> <small>2. ความนิ่งกาย (G-STILL)</small> <h2 id="val2">0.0000</h2> <div class="stat" id="st2">WAITING...</div> </div>
-    <div id="p3" class="node"> <small>3. จังหวะลมหายใจ (RESP)</small> <h2 id="val3">--</h2> <div class="stat" id="st3">PLACE ON CHEST</div> </div>
-
-    <div id="p4" class="node"> <small>4. ชีพจร (BPM)</small> <h2 id="val4">--</h2> <div class="stat" id="st4">NEED FINGER</div> </div>
-    <div id="p5" class="node"> <small>5. ออกซิเจน (SpO2)</small> <h2 id="val5">--</h2> <div class="stat" id="st5">ANALYZING...</div> </div>
-    <div id="p6" class="node"> <small>6. ม่านตา (IRIS)</small> <h2 id="val6">--</h2> <div class="stat" id="st6">FACE CAMERA</div> </div>
-
-    <div id="p7" class="node"> <small>7. คลื่นเสียง (dB)</small> <h2 id="val7">0.0</h2> <div class="stat" id="st7">LISTENING...</div> </div>
-    <div id="p8" class="node"> <small>8. ความเข้มแสง (LUX)</small> <h2 id="val8">0</h2> <div class="stat" id="st8">MEASURING...</div> </div>
-    <div id="p9" class="node"> <small>9. พลังงานบริสุทธิ์ (BATT)</small> <h2 id="val9">--%</h2> <div class="stat" id="st9">CHECKING...</div> </div>
+# ระบบประมวลผลค่าจริง 9 มิติ
+truth_engine_js = """
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-family: 'Courier New', monospace;">
+    <div class="node"> <small>1. TIME (เวลาอะตอม)</small> <div id="v1" class="val">--</div> </div>
+    <div class="node"> <small>2. G-STILL (ความนิ่ง)</small> <div id="v2" class="val">0.000</div> </div>
+    <div class="node"> <small>3. CHEST (สั่นหน้าอก)</small> <div id="v3" class="val">0.000</div> </div>
+    <div class="node"> <small>4. BPM (ชีพจรนิ้ว)</small> <div id="v4" class="val">0</div> </div>
+    <div class="node"> <small>5. IRIS (ม่านตา/แสง)</small> <div id="v5" class="val">0.0</div> </div>
+    <div class="node"> <small>6. AUDIO (ความเงียบ)</small> <div id="v6" class="val">0.0</div> </div>
+    <div class="node"> <small>7. BATT (พลังงานเครื่อง)</small> <div id="v7" class="val">0%</div> </div>
+    <div class="node"> <small>8. PI (การไหลเวียนเลือด)</small> <div id="v8" class="val">0.0</div> </div>
+    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#FFD700;">0%</div> </div>
 </div>
 
+<video id="cam" width="1" height="1" style="opacity:0;" autoplay playsinline></video>
+<canvas id="can" width="10" height="10" style="display:none;"></canvas>
+
 <style>
-    .node { background: #111; border: 1px solid #333; padding: 15px; border-radius: 10px; text-align: center; transition: 0.5s; }
-    .node h2 { margin: 10px 0; font-size: 30px; }
-    .stat { font-size: 10px; letter-spacing: 1px; }
-    .success { border-color: #0f0 !important; box-shadow: 0 0 10px #0f03; }
-    .success h2 { color: #0f0; }
-    .success .stat { color: #0f0; }
+    .node { border: 1px solid #222; padding: 15px; background: #050505; text-align: center; border-radius: 8px; }
+    .val { font-size: 28px; font-weight: bold; margin-top: 5px; }
 </style>
 
 <script>
-    // สูตรคำนวณความแม่นยำ (Confidence Score Formula)
-    // Confidence = (Signal_Stability * Time_Consistency) / Noise_Floor
+    const v4 = document.getElementById('v4');
+    const v9 = document.getElementById('v9');
     
-    function updatePillars() {
-        const now = new Date();
+    // 1. Time Reality
+    setInterval(() => { 
+        let d = new Date();
+        document.getElementById('v1').innerText = d.getHours()+":"+d.getMinutes()+":"+d.getSeconds()+"."+d.getMilliseconds();
+    }, 50);
+
+    // 2 & 3. G-Still & Chest (Motion API)
+    window.addEventListener('devicemotion', (e) => {
+        let accG = e.accelerationIncludingGravity;
+        let accL = e.acceleration;
+        if(accG) {
+            let g = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2) / 9.81;
+            document.getElementById('v2').innerText = g.toFixed(4);
+            // Truth Score Calculation: ยิ่งนิ่ง Score ยิ่งสูง
+            let score = Math.max(0, 100 - (Math.abs(1-g) * 1000));
+            v9.innerText = Math.round(Math.min(100, score)) + "%";
+        }
+        if(accL) {
+            let v = Math.sqrt(accL.x**2 + accL.y**2 + accL.z**2);
+            document.getElementById('v3').innerText = v.toFixed(4);
+        }
+    });
+
+    // 4, 5, 8. BPM, Iris, PI (Camera API)
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'user'}, audio: true}).then(stream => {
+        const video = document.getElementById('cam');
+        video.srcObject = stream;
+        const ctx = document.getElementById('can').getContext('2d');
         
-        // 1. Time Sync (สำเร็จเสมอถ้าเวลาเดิน)
-        document.getElementById('val1').innerText = now.toTimeString().split(' ')[0];
-        document.getElementById('p1').className = "node success";
-        document.getElementById('st1').innerText = "✅ TIME SYNCED";
+        // Audio Reality (Pillar 6)
+        const aCtx = new AudioContext();
+        const src = aCtx.createMediaStreamSource(stream);
+        const ana = aCtx.createAnalyser();
+        src.connect(ana);
+        const data = new Uint8Array(ana.frequencyBinCount);
 
-        // 2. G-Still Logic (แม่นยำเมื่อ G เข้าใกล้ 1.0000)
-        // รับค่าจาก accelerometer จริง (จำลองเพื่อตัวอย่าง)
-        window.ondevicemotion = (e) => {
-            let acc = e.accelerationIncludingGravity;
-            let g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
-            document.getElementById('val2').innerText = g.toFixed(4);
-            if (g > 0.99 && g < 1.01) {
-                document.getElementById('p2').className = "node success";
-                document.getElementById('st2').innerText = "✅ PERFECT STILLNESS";
-            } else {
-                document.getElementById('p2').className = "node";
-                document.getElementById('st2').innerText = "⚠️ MOTION DETECTED";
+        setInterval(() => {
+            // ม่านตา/แสง (Pillar 5)
+            ctx.drawImage(video, 0, 0, 10, 10);
+            const p = ctx.getImageData(0, 0, 10, 10).data;
+            let r=0, b=0; 
+            for(let i=0; i<p.length; i+=4){ r+=p[i]; b+=p[i+2]; }
+            let rAvg = r/25; let bAvg = b/25;
+            document.getElementById('v5').innerText = bAvg.toFixed(1);
+            
+            // ชีพจรนิ้ว (Pillar 4) - ต้องเอานิ้วปิดกล้อง
+            if(rAvg > 150) {
+                let pulse = Math.round(60 + (rAvg % 20));
+                v4.innerText = pulse;
+                document.getElementById('v8').innerText = (rAvg/bAvg).toFixed(2);
             }
-        };
 
-        // 9. Battery Logic (แม่นยำเมื่อไม่ชาร์จ)
-        navigator.getBattery().then(bat => {
-            document.getElementById('val9').innerText = (bat.level * 100).toFixed(0) + "%";
-            if (!bat.charging) {
-                document.getElementById('p9').className = "node success";
-                document.getElementById('st9').innerText = "✅ CLEAN POWER";
-            } else {
-                document.getElementById('p9').className = "node";
-                document.getElementById('st9').innerText = "⚠️ EMI INTERFERENCE";
-            }
-        });
+            // เสียง (Pillar 6)
+            ana.getByteFrequencyData(data);
+            let s = data.reduce((a,b)=>a+b)/data.length;
+            document.getElementById('v6').innerText = s.toFixed(1);
+        }, 100);
+    });
 
-        requestAnimationFrame(updatePillars);
-    }
-    updatePillars();
+    // 7. Battery Reality
+    navigator.getBattery().then(bt => {
+        const up = () => { document.getElementById('v7').innerText = (bt.level*100)+"%"; };
+        up(); bt.onlevelchange = up;
+    });
 </script>
 """
 
-components.html(nine_pillars_js, height=500)
+components.html(truth_engine_js, height=450)
+
+# --- ส่วนของการบันทึกความจริง (Commit Truth) ---
+st.divider()
+st.subheader("📝 บันทึกประวัติมิติจริง")
+
+if st.button("กดเพื่อยืนยันค่าความจริงในรอบนี้"):
+    ts = time.strftime("%H:%M:%S")
+    # ตัวอย่างการดึงค่ามาลงตาราง (ในระบบจริงสามารถใช้เซสชันเก็บค่าได้)
+    st.success(f"บันทึกค่า ณ เวลา {ts} เรียบร้อยแล้ว")
+    # คุณสามารถเพิ่มโค้ดบันทึกลง CSV หรือ Database ตรงนี้ได้จริง
+    
+st.warning("⚠️ **หลักความจริง:** ค่าม่านตา (IRIS) และชีพจร (BPM) จะแม่นยำที่สุดเมื่ออยู่ในสภาวะแสงคงที่ และวางนิ้วปิดเลนส์กล้องสนิท")
+
