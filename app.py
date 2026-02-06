@@ -1,89 +1,101 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SYNAPSE X - ENVIRONMENT", layout="centered")
+# --- 1. SETUP ---
+st.set_page_config(page_title="SYNAPSE X - MASTER", layout="wide")
 st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.subheader("🌍 REAL-TIME WORLD ENVIRONMENT SCANNER")
-st.write("สถานะ: เชื่อมต่อพิกัดดาวเทียมและสถานีตรวจอากาศ")
+st.title("🛰️ SYNAPSE X : REALITY DASHBOARD")
+st.subheader("ระบบรวมเซนเซอร์ความจริง (Version 1.0)")
 
-# JavaScript ดึงค่า GPS และเชื่อมต่อ API สภาพอากาศ (แบบจำลองโครงสร้างข้อมูลจริง)
-env_js = """
-<div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
-    <div id="loc_status" style="color: #00ffff; margin-bottom: 15px;">📍 กำลังค้นหาพิกัดดาวเทียม...</div>
+# --- 2. MASTER LOGIC (HTML/JS) ---
+# ส่วนนี้คือส่วนที่ดึงค่าจริงจากมือถือคุณต๊ะ
+master_html = """
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-family: sans-serif;">
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div style="background: #222; padding: 15px; border-radius: 10px;">
-            <small>ละติจูด (Lat)</small>
-            <h3 id="lat_val">--.----</h3>
-        </div>
-        <div style="background: #222; padding: 15px; border-radius: 10px;">
-            <small>ลองจิจูด (Lon)</small>
-            <h3 id="lon_val">--.----</h3>
-        </div>
+    <div style="border: 2px solid #FFD700; padding: 15px; border-radius: 12px; background: #111;">
+        <small style="color: #888;">COLOR SCAN (RGB)</small>
+        <video id="webcam" style="width: 100%; border-radius: 8px; margin-top: 5px;" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <h2 id="rgb_txt" style="color: #FFD700; margin-top: 10px;">R:0 G:0 B:0</h2>
     </div>
 
-    <div style="margin-top: 20px; background: linear-gradient(145deg, #222, #333); padding: 20px; border-radius: 15px; border: 1px solid #444;">
-        <h2 style="margin: 0; color: #FFD700;">สภาพอากาศรอบตัว</h2>
-        <div style="display: flex; justify-content: space-around; margin-top: 15px;">
-            <div>
-                <small>อุณหภูมิ</small>
-                <h2 id="temp_val">-- °C</h2>
-            </div>
-            <div>
-                <small>ความชื้น</small>
-                <h2 id="hum_val">-- %</h2>
-            </div>
+    <div style="border: 2px solid #00FFFF; padding: 15px; border-radius: 12px; background: #111;">
+        <small style="color: #888;">SOUND FREQUENCY (Hz)</small>
+        <div style="height: 60px; background: #222; margin-top: 5px; border-radius: 5px; overflow: hidden;">
+            <canvas id="audio_viz" style="width: 100%; height: 100%;"></canvas>
         </div>
+        <h2 id="hz_txt" style="color: #00FFFF; margin-top: 10px;">0 Hz</h2>
     </div>
-    
-    <button id="geoBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: #FFD700; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">🌍 สแกนพื้นที่ความจริง</button>
+
+    <div style="border: 2px solid #0f0; padding: 15px; border-radius: 12px; background: #111;">
+        <small style="color: #888;">POWER STATUS</small>
+        <h1 id="bat_txt" style="color: #0f0; font-size: 40px;">--%</h1>
+        <p id="charge_txt" style="margin: 0;">รอกดเริ่ม...</p>
+    </div>
+
+    <div style="border: 2px solid #ff00ff; padding: 15px; border-radius: 12px; background: #111;">
+        <small style="color: #888;">GEOLOCATION</small>
+        <p id="gps_txt" style="font-size: 14px; margin-top: 10px;">LAT: -- <br> LON: --</p>
+        <button id="mainBtn" style="width: 100%; padding: 12px; background: #FFD700; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">🟢 เริ่มดึงค่าความจริง</button>
+    </div>
+
 </div>
 
 <script>
-    const btn = document.getElementById('geoBtn');
+    const btn = document.getElementById('mainBtn');
     
-    btn.onclick = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                
-                document.getElementById('lat_val').innerText = lat.toFixed(4);
-                document.getElementById('lon_val').innerText = lon.toFixed(4);
-                document.getElementById('loc_status').innerText = "🟢 เชื่อมต่อดาวเทียมสำเร็จ";
-                
-                // ดึงข้อมูลสภาพอากาศจาก Open-Meteo (API ฟรีที่ไม่ต้องใช้ Key เพื่อความสะดวกของคุณต๊ะ)
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`);
-                    const data = await res.json();
-                    
-                    document.getElementById('temp_val').innerText = data.current_weather.temperature + " °C";
-                    document.getElementById('hum_val').innerText = data.hourly.relativehumidity_2m[0] + " %";
-                } catch (e) {
-                    document.getElementById('loc_status').innerText = "⚠️ เชื่อมต่อข้อมูลอากาศไม่ได้";
-                }
-            });
-        } else {
-            alert("มือถือเครื่องนี้ไม่รองรับระบบ GPS");
+    async function startSensors() {
+        // --- 1. Camera & Audio Stream ---
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+        document.getElementById('webcam').srcObject = stream;
+
+        // --- 2. Audio Context (Hz) ---
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        // --- 3. Battery & GPS ---
+        const battery = await navigator.getBattery();
+        navigator.geolocation.getCurrentPosition(p => {
+            document.getElementById('gps_txt').innerHTML = `LAT: ${p.coords.latitude.toFixed(4)} <br> LON: ${p.coords.longitude.toFixed(4)}`;
+        });
+
+        // --- 4. Update Loop ---
+        btn.style.display = 'none';
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function update() {
+            // Update Color
+            canvas.width = 1; canvas.height = 1;
+            ctx.drawImage(document.getElementById('webcam'), 0, 0, 1, 1);
+            const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+            document.getElementById('rgb_txt').innerText = `R:${r} G:${g} B:${b}`;
+
+            // Update Sound
+            analyser.getByteFrequencyData(dataArray);
+            let maxVal = 0; let maxIdx = 0;
+            for(let i=0; i<dataArray.length; i++) {
+                if(dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
+            }
+            document.getElementById('hz_txt').innerText = `${Math.round(maxIdx * audioCtx.sampleRate / 256)} Hz`;
+
+            // Update Battery
+            document.getElementById('bat_txt').innerText = Math.round(battery.level * 100) + "%";
+            document.getElementById('charge_txt').innerText = battery.charging ? "🔌 Charging" : "🔋 Discharging";
+
+            requestAnimationFrame(update);
         }
-    };
+        update();
+    }
+    btn.onclick = startSensors;
 </script>
 """
 
-components.html(env_js, height=500)
+components.html(master_html, height=550)
 
-st.write("---")
-st.write("**ความจริงที่ได้จากข้อ 10:**")
-* **พิกัด (Lat/Lon):** บอกว่าคุณอยู่จุดไหนของโลกจริงๆ
-* **อุณหภูมิและความชื้น:** นี่คือปัจจัยภายนอกที่ส่งผลต่อ "ความสงบ" ของร่างกาย ถ้าความชื้นสูงเกินไป (ฝนจะตก) ประจุไฟฟ้าในอากาศจะเปลี่ยน ซึ่งมีผลต่อแอปบำบัดแน่นอนครับ
-
----
-
-### 🏆 สรุปภารกิจ 10 ความจริงของคุณต๊ะ
-ตอนนี้คุณมี "อาวุธ" ครบมือแล้วครับ:
-1. เวลาจริง 2. เสียงจริง 3. ชีพจร(จำลอง) 4. แรงสั่นจริง 5. ทิศทางจริง 6. แสงสแกนจริง 7. สีจริง 8. ความถี่เสียงจริง 9. พลังงานแบตจริง 10. บรรยากาศโลกจริง
-
-**สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว**
-ตอนนี้ข้อมูลครบแล้ว คุณต๊ะมี "ภาพในหัว" หรือยังครับว่า จะเอาความจริงทั้ง 10 อย่างนี้มา "ยำ" รวมกันให้กลายเป็นปุ่มกดบำบัดปุ่มเดียวได้อย่างไร?
-
+st.warning("⚠️ โปรดก๊อปปี้เฉพาะโค้ดในกล่องดำนี้ไปวางเท่านั้น ห้ามเอาคำอธิบายภาษาไทยไปวางในไฟล์ .py นะครับ")
