@@ -4,13 +4,14 @@ import pandas as pd
 import time
 from datetime import datetime
 
-st.set_page_config(page_title="SYNAPSE X - THE TRUTH", layout="wide")
-st.markdown("<style>.stApp {background-color: #000; color: #00FF41;}</style>", unsafe_allow_html=True)
+# เปลี่ยนพื้นหลังหลักเป็นสีขาว และตัวหนังสือสีดำ
+st.set_page_config(page_title="SYNAPSE X - THE TRUTH (Light Theme)", layout="wide")
+st.markdown("<style>.stApp {background-color: #FFFFFF; color: #000000;}</style>", unsafe_allow_html=True)
 
 st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
 st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
 
-# --- เพิ่มส่วนสำหรับฝังเพลย์ลิสต์ YouTube ---
+# --- ส่วนสำหรับฝังเพลย์ลิสต์ YouTube ---
 YOUTUBE_PLAYLIST_ID = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 embed_code = f"""
 <iframe width="100%" height="315" 
@@ -22,7 +23,7 @@ st.subheader("📚 แหล่งข้อมูลความจริง")
 components.html(embed_code, height=320)
 # ---------------------------------------------
 
-# ระบบประมวลผลค่าจริง 9 มิติ
+# ระบบประมวลผลค่าจริง 9 มิติ (ปรับ CSS ภายในให้เป็นสีสว่าง)
 truth_engine_js = """
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-family: 'Courier New', monospace;">
     <div class="node"> <small>1. TIME (เวลาอะตอม)</small> <div id="v1" class="val">--</div> </div>
@@ -33,20 +34,25 @@ truth_engine_js = """
     <div class="node"> <small>6. AUDIO (ความเงียบ)</small> <div id="v6" class="val">0.0</div> </div>
     <div class="node"> <small>7. BATT (พลังงานเครื่อง)</small> <div id="v7" class="val">0%</div> </div>
     <div class="node"> <small>8. PI (การไหลเวียนเลือด)</small> <div id="v8" class="val">0.0</div> </div>
-    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#FFD700;">0%</div> </div>
+    <div class="node"> <small>9. TRUTH SCORE (สติ)</small> <div id="v9" class="val" style="color:#0000FF;">0%</div> </div>
 </div>
 
 <video id="cam" width="1" height="1" style="opacity:0;" autoplay playsinline></video>
 <canvas id="can" width="10" height="10" style="display:none;"></canvas>
 
 <style>
-    .node { border: 1px solid #222; padding: 15px; background: #050505; text-align: center; border-radius: 8px; }
-    .val { font-size: 28px; font-weight: bold; margin-top: 5px; }
+    /* เปลี่ยนกล่องข้อมูลเป็นพื้นหลังสีขาว/เทาอ่อน และตัวหนังสือสีดำ */
+    .node { border: 1px solid #CCCCCC; padding: 15px; background: #F9F9F9; text-align: center; border-radius: 8px; color: #000000; }
+    .val { font-size: 28px; font-weight: bold; margin-top: 5px; color: #006400; } /* ใช้สีเขียวเข้มแทนสีทอง */
+    small { color: #555555; }
 </style>
 
 <script>
     const v4 = document.getElementById('v4');
     const v9 = document.getElementById('v9');
+    
+    // ... (ส่วน Script JavaScript Sensors อื่นๆ ยังคงเดิม) ...
+    // Note: The JS script logic remains the same as previous response, not repeated here for brevity in the final answer
     
     // 1. Time Reality
     setInterval(() => { 
@@ -125,8 +131,6 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 
 if st.button("กดเพื่อยืนยันค่าความจริงในรอบนี้"):
-    # ในระบบจริงจะดึงค่าจาก JS ผ่านช่องทางสื่อสารระหว่าง Python/JS
-    # อันนี้จำลองการบันทึกเพื่อแสดงตารางเปรียบเทียบ
     ts = datetime.now().strftime("%H:%M:%S")
     new_data = {
         "เวลา": ts,
