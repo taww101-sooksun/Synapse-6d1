@@ -1,70 +1,56 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SYNAPSE X - LIGHT SENSOR", layout="centered")
-st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+st.subheader("🎨 REAL-TIME COLOR & BRIGHTNESS SCANNER")
+st.write("สถานะ: ดึงค่าแสงและสีดิบจากเลนส์กล้อง (ไม่มีการบล็อก)")
 
-st.subheader("💡 REAL-TIME LIGHT INTENSITY SCANNER")
-st.write("สถานะ: ตรวจวัดปริมาณแสงที่ตกกระทบหน้าจอ")
-
-# JavaScript สำหรับดึงค่า Ambient Light Sensor
-light_js = """
-<div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
-    <div id="light_box" style="width: 100px; height: 100px; background: #FFD700; border-radius: 50%; margin: 0 auto; box-shadow: 0 0 20px #FFD700; transition: 0.3s;"></div>
+color_js = """
+<div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center;">
+    <video id="v_color" style="width: 100%; max-width: 300px; border-radius: 10px;" autoplay playsinline></video>
+    <canvas id="c_color" style="display:none;"></canvas>
     
-    <h1 id="lux_val" style="font-size: 60px; margin: 20px 0;">0</h1>
-    <h2 style="color: #FFD700;">Lux (ลักซ์)</h2>
-    
-    <hr style="border-color: #333;">
-    <p id="light_desc" style="font-size: 18px; color: #00ffff;">รอรับสัญญาณแสง...</p>
+    <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="background: #222; padding: 10px; border-radius: 10px;">
+            <small>ความสว่างเฉลี่ย</small>
+            <h2 id="br_val">0</h2>
+        </div>
+        <div style="background: #222; padding: 10px; border-radius: 10px;">
+            <small>โทนสีหลัก</small>
+            <div id="color_box" style="width: 30px; height: 30px; margin: 5px auto; border: 1px solid #fff;"></div>
+        </div>
+    </div>
+    <p id="rgb_text" style="font-family: monospace; color: #00ffff; margin-top: 10px;">RGB: 0, 0, 0</p>
 </div>
 
 <script>
-    const luxVal = document.getElementById('lux_val');
-    const lightBox = document.getElementById('light_box');
-    const lightDesc = document.getElementById('light_desc');
-
-    // ตรวจสอบว่าเบราว์เซอร์รองรับ Generic Sensor API หรือไม่
-    if ('AmbientLightSensor' in window) {
-        try {
-            const sensor = new AmbientLightSensor();
-            sensor.onreading = () => {
-                let lux = sensor.illuminance;
-                luxVal.innerText = Math.round(lux);
-                
-                // ปรับความสว่างของวงกลมตามค่าแสงจริง
-                let brightness = Math.min(lux / 10, 100);
-                lightBox.style.filter = `brightness(${50 + brightness}%)`;
-                lightBox.style.boxShadow = `0 0 ${lux/5}px #FFD700`;
-
-                if(lux < 10) lightDesc.innerText = "🌑 มืดมาก (เหมาะกับการพักผ่อน)";
-                else if(lux < 100) lightDesc.innerText = "☁️ แสงสลัว (ในอาคาร)";
-                else if(lux < 500) lightDesc.innerText = "🏠 แสงสว่างปกติ (สำนักงาน)";
-                else if(lux < 2000) lightDesc.innerText = "☀️ แสงจ้า (กลางแจ้ง/สปอร์ตไลท์)";
-                else lightDesc.innerText = "🔥 แสงรุนแรง (แดดจัด)";
-            };
-            sensor.start();
-        } catch (err) {
-            lightDesc.innerText = "❌ เซนเซอร์ถูกบล็อก (เข้าไม่ถึงค่าดิบ)";
-        }
-    } else {
-        // วิธีสำรอง: ใช้การคำนวณจากความสว่างหน้าจอหรือ API อื่น (ถ้ามี)
-        lightDesc.innerText = "⚠️ เบราว์เซอร์ไม่รองรับ AmbientLight API";
+    async function startColorScan() {
+        const v = document.getElementById('v_color');
+        const c = document.getElementById('c_color');
+        const ctx = c.getContext('2d');
         
-        // ทดสอบด้วยการจำลองเลขวิ่งตาม Noise (เพื่อให้รู้ว่าระบบยังทำงาน)
-        setInterval(() => {
-            if(luxVal.innerText == "0") {
-                lightDesc.innerText = "ระบบกำลังรอสิทธิ์เข้าถึงเซนเซอร์แสง...";
-            }
-        }, 2000);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            v.srcObject = stream;
+            
+            setInterval(() => {
+                c.width = v.videoWidth;
+                c.height = v.videoHeight;
+                ctx.drawImage(v, 0, 0, 1, 1); // ดึงค่าแค่พิกเซลเดียวเพื่อหาค่าเฉลี่ย
+                const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                
+                const brightness = Math.round((r + g + b) / 3);
+                document.getElementById('br_val').innerText = brightness;
+                document.getElementById('rgb_text').innerText = `R:${r} G:${g} B:${b}`;
+                document.getElementById('color_box').style.backgroundColor = `rgb(${r},${g},${b})`;
+            }, 100);
+        } catch (e) { alert("กรุณาอนุญาตให้เข้าถึงกล้อง"); }
     }
+    startColorScan();
 </script>
 """
 
-components.html(light_js, height=450)
+components.html(color_js, height=500)
 
-st.write("---")
-st.write("**วิธีพิสูจน์ความจริง:**")
-st.write("1. ลองเอามือ **'ปิด'** บริเวณด้านบนของหน้าจอ (แถวๆ กล้องหน้า) ตัวเลข Lux ต้องดิ่งลงใกล้ 0")
-st.write("2. ลองหันหน้าจอไปทาง **'หลอดไฟ'** ตัวเลขต้องพุ่งขึ้นทันที")
-st.write("3. ถ้าเลขเปลี่ยนตามจังหวะที่คุณเอามือปิด-เปิด นั่นคือ **'ความจริง'** ครับ")
+st.write("**ความจริงที่ได้:**")
+st.write("- **ความสว่าง:** 0 (มืดสนิท) ถึง 255 (ขาวจัด)")
+st.write("- **RGB:** ค่าสีจริงที่กล้องเห็น ถ้าส่องไปที่น้ำแข็งต้องได้สีออกฟ้า/ขาว")
