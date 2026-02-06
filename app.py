@@ -5,7 +5,7 @@ import time
 
 # ตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(page_title="SYNAPSE X - TIME", layout="centered")
-st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stApp {background-color: #050505; color: #FFD700;}</style>", unsafe_allow_html=True)
 
 # ส่วนแสดงผลนาฬิกา
 st.subheader("🕒 SYSTEM MASTER CLOCK")
