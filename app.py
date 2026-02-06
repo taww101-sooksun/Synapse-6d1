@@ -6,7 +6,7 @@ from datetime import datetime
 
 # เปลี่ยนพื้นหลังหลักเป็นสีขาว และตัวหนังสือสีดำ
 st.set_page_config(page_title="SYNAPSE X - THE TRUTH (Light Theme)", layout="wide")
-st.markdown("<style>.stApp {background-color: #FFFFFF; color: #050505;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stApp {background-color: #050505; color: #050505;}</style>", unsafe_allow_html=True)
 
 st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
 st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
@@ -15,17 +15,17 @@ st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร
 YOUTUBE_PLAYLIST_ID = "https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=pNziPxc9WaGzyo8d"
 embed_code = f"""
 <iframe width="100%" height="315" 
-src="https://www.youtube.com{YOUTUBE_PLAYLIST_ID}" 
+src="https://www.youtube.com{https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=pNziPxc9WaGzyo8d}" 
 frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 """
 
 st.subheader("📚 แหล่งข้อมูลความจริง")
-components.html(embed_code, height=320)
+components.html(embed_code, height=500)
 # ---------------------------------------------
 
 # ระบบประมวลผลค่าจริง 9 มิติ (ปรับ CSS ภายในให้เป็นสีสว่าง)
 truth_engine_js = """
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-family: 'Courier New', monospace;">
+<div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 100px; font-family: 'Courier New', monospace;">
     <div class="node"> <small>1. TIME (เวลาอะตอม)</small> <div id="v1" class="val">--</div> </div>
     <div class="node"> <small>2. G-STILL (ความนิ่ง)</small> <div id="v2" class="val">0.000</div> </div>
     <div class="node"> <small>3. CHEST (สั่นหน้าอก)</small> <div id="v3" class="val">0.000</div> </div>
