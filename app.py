@@ -1,96 +1,104 @@
-import streamlit as st
-import os
-import base64
+import torch
+import numpy as np
+import librosa
+import soundfile as sf
+from fairseq import checkpoint_utils
 
-# 1. ตั้งค่าหน้าจอ
-st.set_page_config(page_title="MUSIC 6D PRO", layout="wide", initial_sidebar_state="collapsed")
-# --- 2. แต่งหน้าตาให้เท่ (UI) ---
-st.set_page_config(page_title="SYNAPSE 6D Pro", layout="centered")
+# --- 1. ตั้งค่าพื้นฐาน (Config) ---
+device = "cuda" if torch.cuda.is_available() else "cpu" # ถ้าในมือถือมักจะเป็น cpu
+is_half = False # มือถือส่วนใหญ่ต้องปิด Half precision ไม่งั้น error
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #050505; color: white; }
-    .stButton>button { 
-        background-color: #FF0000; color: white; border-radius: 10px; 
-        height: 60px; font-weight: bold; border: 2px solid #FFD700;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-st.title("Music 6D อยู่นิ้งๆไม่เจ็บตัว")
-st.write('สโลแกน: "อยู่นิ่งๆ ไม่เจ็บตัว"')
-# 2. คาถา CSS ล็อกพิกัด (บังคับรูปอยู่ข้างในเท่านั้น)
-st.markdown("""
-    <style>
-    .stApp { background-color: #000; color: #fff; }
-    header, footer, [data-testid="stToolbar"] {visibility:hidden !important;}
-    
-    /* สร้างกรอบทีวี */
-    .tv-box {
-        border: 15px solid #FF0000;
-        border-right: 15px solid #0000FF;
-        border-bottom: 15px solid #0000FF;
-        border-radius: 40px;
-        width: 100%;
-        height: 350px;
-        background-color: #000;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        box-shadow: 0 0 30px #FF0000;
-    }
-
-    /* บังคับรูปในกรอบ */
-    .tv-box img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* ปรับให้รูปพอดีกรอบ ไม่เบี้ยว */
-    }
-
-    /* ตัวหนังสือวิ่ง */
-    .run-text {
-        background: #111;
-        border: 2px solid #0000FF;
-        border-radius: 10px;
-        padding: 10px;
-        color: #FF0000;
-        font-size: 24px;
-        font-weight: bold;
-        text-align: center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 3. ส่วนดึงรูป globe.jpg แบบ Base64 (ไม้ตาย) ---
-def display_globe():
-    if os.path.exists("globe.jpg"):
-        with open("globe.jpg", "rb") as f:
-            data = base64.b64encode(f.read()).decode()
-        # ยัดรูปเข้าไปใน div .tv-box โดยตรง
-        st.markdown(f'<div class="tv-box"><img src="data:image/jpeg;base64,{data}"></div>', unsafe_allow_html=True)
+# --- 2. ฟังก์ชันโหลด Hubert (ตัวแปลงเสียงเป็น Code) ---
+def load_hubert(hubert_path):
+    print(f"กำลังโหลด Hubert จาก: {hubert_path}")
+    models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
+        [hubert_path],
+        suffix="",
+    )
+    hubert_model = models[0]
+    hubert_model = hubert_model.to(device)
+    if is_half:
+        hubert_model = hubert_model.half()
     else:
-        # ถ้าไม่มีรูป ให้โชว์คำเตือนในกรอบ
-        st.markdown('<div class="tv-box"><h2 style="color:red;">ไม่พบไฟล์ globe.jpg</h2></div>', unsafe_allow_html=True)
+        hubert_model = hubert_model.float()
+    hubert_model.eval()
+    return hubert_model
 
-# --- 4. แสดงผลหน้าจอหลัก ---
-display_globe()
+# --- 3. ฟังก์ชันโหลดโมเดลเสียง RVC (.pth) ---
+def get_vc(model_path):
+    print(f"กำลังโหลดโมเดลเสียงจาก: {model_path}")
+    cpt = torch.load(model_path, map_location="cpu")
+    tgt_sr = cpt["config"][-1] # ค่า Sample Rate ของโมเดล
+    cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0] # แก้ config ให้ตรงกับ weight
+    net_g = cpt["net_g"] # นี่คือตัว Neural Network (สมอง)
+    net_g = net_g.to(device)
+    if is_half:
+        net_g = net_g.half()
+    else:
+        net_g = net_g.float()
+    net_g.eval()
+    vc = net_g
+    return vc, tgt_sr
 
-st.markdown('<div class="run-text"><marquee scrollamount="10">อยู่นิ่งๆ ไม่เจ็บตัว... สถานีเพลง
+# --- 4. ฟังก์ชันแปลงเสียง (Inference Core) ---
+def rvc_convert(model_path, hubert_path, input_audio_path, f0_up_key=0):
+    # f0_up_key: ปรับคีย์เสียง (0 = ปกติ, 12 = สูงขึ้น 1 octave, -12 = ต่ำลง)
+    
+    # 4.1 โหลดของ
+    hubert_model = load_hubert(hubert_path)
+    net_g, tgt_sr = get_vc(model_path)
+    
+    # 4.2 โหลดเสียงเรา
+    print(f"กำลังอ่านไฟล์เสียง: {input_audio_path}")
+    audio, sr = librosa.load(input_audio_path, sr=16000) # RVC บังคับ input 16k
+    
+    # 4.3 แปลงเสียงเป็น Tensor
+    audio_opt = torch.from_numpy(audio).to(device)
+    if is_half: audio_opt = audio_opt.half()
+    else: audio_opt = audio_opt.float()
+    
+    # 4.4 ส่งเข้า Hubert เพื่อดึง Feature
+    feats = audio_opt.unsqueeze(0).unsqueeze(0)
+    with torch.no_grad():
+        padding_mask = torch.BoolTensor(feats.shape).fill_(False)
+        inputs = {
+            "source": feats,
+            "padding_mask": padding_mask,
+            "output_layer": 9, # ปกติใช้ layer 9 หรือ 12
+        }
+        logits = hubert_model.extract_features(**inputs)
+        feats = hubert_model.final_proj(logits[0])
+    
+    # 4.5 ส่งเข้า VC Model (แปลงเนื้อเสียง)
+    # ตรงนี้ต้องมีการคำนวณ Pitch (F0) ด้วยถ้าเป็นโมเดลร้องเพลง แต่ขอตัดแบบง่ายสุดให้ก่อน
+    # เพื่อให้รันผ่านบนมือถือ
+    
+    print("กำลังประมวลผลแปลงเสียง... (ขั้นตอนนี้กินเครื่องหนักสุด)")
+    with torch.no_grad():
+         # สั่งโมเดลทำงาน (Output ออกมาเป็น Audio)
+         # หมายเหตุ: โค้ดส่วนนี้ย่อมา ของจริงต้องมี f0 prediction ถ้าจะเอาเนียนกริบ
+         audio_out = net_g.infer(feats, torch.LongTensor([feats.shape[1]]).to(device))
+         
+    output_audio = audio_out[0][0, 0].data.cpu().float().numpy()
+    
+    return output_audio, tgt_sr
 
-# --- 5. คลังเพลง (ดึงจาก GitHub) ---
-st.write("### 💿 รายการเพลงของ อยู่นิ้งๆไม่เจ็บตัว")
-music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
-
-if music_files:
-    song = st.selectbox("เลือกเพลง:", music_files)
-    st.audio(song)
-else:
-    st.error("⚠️ อย่าลืมลงเพลง .mp3 ในหน้าแรกของ GitHub นะครับ")
-
-if friend_files:
-    for f in friend_files:
-        st.image(f, use_container_width=True)
-
-st.write("#### *สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว*")
+# --- ส่วนสั่งงาน (EXECUTE) ---
+if __name__ == "__main__":
+    try:
+        # ใส่ชื่อไฟล์ของคุณตรงนี้
+        my_model = "my_voice_model.pth"      # ไฟล์โมเดลที่ฝึกเสร็จแล้ว
+        my_hubert = "hubert_base.pt"         # ไฟล์ Hubert
+        my_input = "test_input.wav"          # เสียงของคุณ
+        
+        # เริ่มกระบวนการ
+        out_audio, out_sr = rvc_convert(my_model, my_hubert, my_input, f0_up_key=0)
+        
+        # บันทึกไฟล์
+        sf.write("output_final.wav", out_audio, out_sr)
+        print("สำเร็จ! ได้ไฟล์ output_final.wav แล้ว")
+        
+    except Exception as e:
+        print("Error! เกิดข้อผิดพลาด:")
+        print(e)
+        print("คำแนะนำ: เช็คว่าลง library ครบไหม (torch, fairseq, librosa)")
