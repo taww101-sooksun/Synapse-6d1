@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 st.set_page_config(page_title="SYNAPSE X - THE TRUTH", layout="wide")
-st.markdown("<style>.stApp {background-color: #333; color: #00FF41;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stApp {background-color: #333; color: #003300;}</style>", unsafe_allow_html=True)
 
 st.title("🛡️ 9 เสาหลักแห่งความจริง (The 9 Pillars of Reality)")
 st.write("สถานะ: **เชื่อมต่อฮาร์ดแวร์โดยตรง (Direct Sensor Access)**")
