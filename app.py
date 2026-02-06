@@ -1,47 +1,41 @@
-import streamlit as st
-import streamlit.components.v1 as components
+# MATRIX_V2: Lightweight Truth Engine
+# Slogan: "อยู่นิ่งๆ ไม่เจ็บตัว"
 
-st.title("🩸 SYNAPSE X : FINGER PULSE")
-st.write("วิธีทดสอบ: วางนิ้วชี้ 'แฟลต' ทับหน้ากล้องและไฟแฟลชพร้อมกัน")
+import time
 
-pulse_js = """
-<div style="background-color: #000; color: #ff0000; padding: 20px; border: 2px solid #ff0000; border-radius: 15px; text-align: center;">
-    <div id="status">🔴 พร้อมสแกนเส้นเลือด</div>
-    <video id="v" style="display:none;"></video>
-    <canvas id="c" width="100" height="100" style="border-radius: 50%; border: 5px solid #333; margin: 10px;"></canvas>
-    <h2 id="bpm">-- BPM</h2>
-    <p style="font-size: 12px; color: #888;">สถานะ: วัดความหนาแน่นของเม็ดเลือดแดง</p>
-</div>
+# [1] ฐานข้อมูล 252 ตัวเลข (จำลองโครงสร้าง Matrix)
+db_252 = list(range(1, 253)) 
 
-<script>
-    const v = document.getElementById('v');
-    const c = document.getElementById('c');
-    const ctx = c.getContext('2d');
-    const bpmDisplay = document.getElementById('bpm');
+# [2] กุญแจ 42 ตัวอักษร + 2 เครื่องหมาย
+keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop" + "+=" 
 
-    async function startScan() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        v.srcObject = stream;
-        v.play();
+# [3] ตัวแปรเสริม 12 อย่าง (Input Variables)
+aux_vars = [1.02, 0.98, 1.00, 1.05, 0.99, 1.01, 1.03, 0.97, 1.00, 1.04, 1.02, 0.96]
+
+def decode_matrix_v2():
+    print(f"--- เริ่มต้นการถอดรหัส ณ เวลา: {time.strftime('%H:%M:%S')} ---")
+    
+    # คำนวณความเชื่อมโยง (Numerical Connection)
+    # ยึดค่าความจริงจากตัวเลข 252 ตัว หารด้วยมิติทั้ง 6
+    base_truth = sum(db_252) / len(aux_vars)
+    
+    # มิติ 6 ด่าน (The 6 Gates)
+    gates = ["Stability", "Filtering", "Reflection", "Equilibrium", "Silence", "Unity"]
+    results = {}
+
+    for i, gate in enumerate(gates):
+        # คำนวณค่ามิติโดยใช้กุญแจและตัวแปรเสริม
+        gate_value = (base_truth * aux_vars[i]) / len(keys)
+        results[gate] = round(gate_value, 4)
         
-        setInterval(() => {
-            ctx.drawImage(v, 0, 0, 100, 100);
-            const data = ctx.getImageData(0, 0, 100, 100).data;
-            let redAvg = 0;
-            for(let i=0; i<data.length; i+=4) { redAvg += data[i]; }
-            redAvg /= (data.length/4);
-            
-            // ถ้าค่าสีแดงเข้มเกินไป แสดงว่านิ้ววางแฟลตทับกล้องอยู่จริง
-            if(redAvg > 150) {
-                document.getElementById('status').innerText = "🟢 ตรวจพบการไหลเวียนเลือด";
-                bpmDisplay.innerText = (70 + Math.random()*5).toFixed(0) + " BPM"; // ตัวอย่าง Logic การคำนวณ
-            } else {
-                document.getElementById('status').innerText = "⚪ กรุณาวางนิ้วให้แฟลตทับกล้อง";
-            }
-        }, 100);
-    }
-    startScan();
-</script>
-"""
+    return results
 
-components.html(pulse_js, height=400)
+# รันผลลัพธ์เพื่อแสดงค่าข้อมูลจริง
+output_data = decode_matrix_v2()
+
+print(f"ผลลัพธ์มิติทั้ง 6 (Gate Values):")
+for gate, value in output_data.items():
+    print(f"  > {gate}: {value}")
+
+# ค่าสัมผัส (Scent Output) ที่สอดคล้องกับเวลา
+print(f"\nสถานะสัมผัสปัจจุบัน: {round(sum(aux_vars), 2)} (ค่าความบริสุทธิ์ของกลิ่น)")
