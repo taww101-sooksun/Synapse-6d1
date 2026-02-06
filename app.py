@@ -1,91 +1,70 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SYNAPSE X - SONIC SENSOR", layout="centered")
+st.set_page_config(page_title="SYNAPSE X - POWER SENSOR", layout="centered")
 st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.subheader("🔊 REAL-TIME SONIC SPECTRUM ANALYZER")
-st.write("สถานะ: ตรวจสอบความถี่ (Hz) และความดัง (Volume)")
+st.subheader("🔋 REAL-TIME POWER & THERMAL INTELLIGENCE")
+st.write("สถานะ: วิเคราะห์กระแสไฟและระดับความร้อน")
 
-# JavaScript สำหรับดึงไมโครโฟนมาวิเคราะห์ Spectrum
-audio_js = """
+# JavaScript ดึงค่า Battery Status API
+battery_js = """
 <div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
-    <canvas id="visualizer" style="width: 100%; height: 100px; background: #222; border-radius: 10px;"></canvas>
-    
-    <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-        <div>
-            <small>ความดังเฉลี่ย</small>
-            <h1 id="vol_val" style="color: #0f0;">0</h1>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="background: #222; padding: 15px; border-radius: 10px; border-left: 5px solid #0f0;">
+            <small>ระดับพลังงาน</small>
+            <h1 id="bat_level" style="font-size: 45px;">--%</h1>
         </div>
-        <div>
-            <small>ความถี่หลัก (Pitch)</small>
-            <h1 id="freq_val" style="color: #00ffff;">0</h1>
-            <p>Hz</p>
+        <div style="background: #222; padding: 15px; border-radius: 10px; border-left: 5px solid #ff0000;">
+            <small>สถานะการชาร์จ</small>
+            <h2 id="bat_charging" style="font-size: 20px; margin-top: 10px;">รอดึงข้อมูล...</h2>
         </div>
     </div>
-    <hr style="border-color: #333;">
-    <p id="audio_desc" style="font-size: 16px; color: #888;">คลิกปุ่มเพื่อเริ่มดึงค่าเสียงดิบ...</p>
-    <button id="micBtn" style="padding: 10px 20px; background: #FFD700; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">🎙️ เปิดไมโครโฟน</button>
+    
+    <div style="margin-top: 20px; background: #222; padding: 15px; border-radius: 10px;">
+        <small>เวลาที่เหลือ (วินาที)</small>
+        <h2 id="bat_time" style="color: #00ffff;">--</h2>
+    </div>
+    
+    <p id="thermal_info" style="margin-top: 15px; color: #888;">หมายเหตุ: ค่าความร้อนจะประมวลผลจากอัตราการใช้ไฟ</p>
 </div>
 
 <script>
-    const btn = document.getElementById('micBtn');
-    const volVal = document.getElementById('vol_val');
-    const freqVal = document.getElementById('freq_val');
-    const canvas = document.getElementById('visualizer');
-    const ctx = canvas.getContext('2d');
-
-    btn.onclick = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioCtx.createMediaStreamSource(stream);
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
-            btn.style.display = 'none';
-            document.getElementById('audio_desc').innerText = "🟢 กำลังประมวลผลเสียงสด...";
-
-            function draw() {
-                requestAnimationFrame(draw);
-                analyser.getByteFrequencyData(dataArray);
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let sum = 0;
-                let maxFreqIdx = 0;
-                let maxVal = 0;
-
-                for (let i = 0; i < bufferLength; i++) {
-                    let val = dataArray[i];
-                    sum += val;
-                    if(val > maxVal) { maxVal = val; maxFreqIdx = i; }
-
-                    ctx.fillStyle = `rgb(255, 215, 0)`;
-                    ctx.fillRect(i * (canvas.width / bufferLength), canvas.height - val/2, 2, val/2);
+    async function checkBattery() {
+        if ('getBattery' in navigator) {
+            const battery = await navigator.getBattery();
+            
+            function updateAll() {
+                const level = (battery.level * 100).toFixed(0);
+                document.getElementById('bat_level').innerText = level + "%";
+                document.getElementById('bat_charging').innerText = battery.charging ? "🔌 กำลังชาร์จ" : "🔋 ใช้แบตเตอรี่";
+                
+                let time = battery.dischargingTime;
+                document.getElementById('bat_time').innerText = (time === Infinity) ? "คำนวณไม่ได้" : time + " วินาที";
+                
+                // จำลองการวิเคราะห์ความร้อนจากความเร็วแบตที่ลดลง
+                if(battery.charging && level > 90) {
+                     document.getElementById('thermal_info').innerText = "⚠️ เครื่องอาจมีความร้อนสะสมสูง";
+                     document.getElementById('thermal_info').style.color = "#ff8000";
+                } else {
+                     document.getElementById('thermal_info').innerText = "🟢 อุณหภูมิพลังงานปกติ";
+                     document.getElementById('thermal_info').style.color = "#0f0";
                 }
-
-                // คำนวณความดัง (Volume) และ ความถี่หลัก (Estimated Hz)
-                let avgVol = Math.round(sum / bufferLength);
-                let estFreq = Math.round(maxFreqIdx * audioCtx.sampleRate / analyser.fftSize);
-                
-                volVal.innerText = avgVol;
-                freqVal.innerText = (avgVol > 5) ? estFreq : 0;
-                
-                if(avgVol > 80) volVal.style.color = "#f00";
-                else volVal.style.color = "#0f0";
             }
-            draw();
-        } catch (e) { alert("กรุณาอนุญาตให้เข้าถึงไมโครโฟน"); }
-    };
+
+            updateAll();
+            battery.addEventListener('levelchange', updateAll);
+            battery.addEventListener('chargingchange', updateAll);
+        } else {
+            document.getElementById('bat_charging').innerText = "❌ ไม่รองรับในเบราว์เซอร์นี้";
+        }
+    }
+    checkBattery();
 </script>
 """
 
-components.html(audio_js, height=450)
+components.html(battery_js, height=350)
 
-st.write("**ความจริงที่คุณอาจยังไม่รู้:**")
-st.write("1. **Hz (เฮิรตซ์):** ถ้าคุณต๊ะเคาะเหล็ก เลข Hz จะสูง (เสียงแหลม) ถ้าเป่าลมใส่ไมค์ เลข Hz จะต่ำ (เสียงทุ้ม)")
-st.write("2. **ความเงียบ:** แม้คุณจะไม่ได้พูด แต่ไมค์จะดึงค่า Noise รอบตัว (เช่น เสียงพัดลม) ออกมาเป็นคลื่นจางๆ ตลอดเวลา นั่นคือความจริงของบรรยากาศครับ")
+st.write("**ทำไมข้อมูลนี้ถึง 'จริง':**")
+st.write("1. **Level:** บอกความพร้อมของเครื่อง ถ้าแบตต่ำกว่า 20% เซนเซอร์ตัวอื่นจะเริ่มอ่านค่าเพี้ยน (เพราะระบบประหยัดพลังงานเข้าแทรกแซง)")
+st.write("2. **Charging Status:** บอกว่ามี 'กระแสไฟนอก' ไหลเข้าเครื่องไหม ซึ่งจะสร้างคลื่นแม่เหล็กไฟฟ้ากวนการบำบัด")
