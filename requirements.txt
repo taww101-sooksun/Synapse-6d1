@@ -8,3 +8,4 @@ pydub
 requests
 streamlit-player
 streamlit-js-eval
+torch
