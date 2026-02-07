@@ -1,69 +1,46 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.title("🛰️ SYNAPSE X: HIPHOP ENGINE ACTIVE")
+st.title("🛰️ SYNAPSE X: ARTIST COVER MODE")
+st.subheader("Song: ธารารัตน์ (YOUNGOHM)")
 
-full_power_code = """
-<div style="background: #000; border: 2px solid #FFD700; padding: 25px; border-radius: 15px; color: #FFD700; text-align: center;">
-    <h2 style="color: #00FF00;">🟢 SYSTEM ONLINE</h2>
-    <p>1. ใส่หูฟัง | 2. กดปุ่มทอง | 3. เริ่มแร็ปได้เลย!</p>
+artist_mode_html = """
+<div style="background: #000; border: 3px solid #00FF00; padding: 25px; border-radius: 15px; color: #00FF00; text-align: center;">
+    <h3 id="status">เตรียมตัวพยากรณ์เสียง...</h3>
     
-    <button id="startBtn" style="background: #FFD700; color: black; padding: 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; font-size: 20px; box-shadow: 0 0 20px #FFD700;">
-        🔥 START HIPHOP SESSION
-    </button>
-
-    <div style="margin-top: 20px;">
-        <label>ปรับระดับเสียงบีท (เลข 4)</label><br>
-        <input type="range" id="beatVol" min="0" max="1" step="0.1" value="0.5" style="width: 80%;">
+    <div style="background: #222; padding: 15px; margin: 15px 0; border-radius: 10px; font-size: 20px;">
+        <p id="lyric">" รูปร่างหน้าตาเธอก็ดูจะดี... "</p>
     </div>
+
+    <button id="startBtn" style="background: #00FF00; color: black; padding: 15px 40px; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer;">
+        ▶️ เริ่มการสวมร่าง (START SESSION)
+    </button>
 </div>
 
 <script>
-let audioCtx, beatSource, beatGain;
-
 document.getElementById('startBtn').onclick = async () => {
-    if (audioCtx) return; // กันกดซ้ำ
-    
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    // --- เลข 1 & 2 (เสียงคุณ) ---
+    // โหลดเพลงต้นฉบับ (เลข 3 + 4)
+    // หมายเหตุ: ในระบบจริงเราจะใช้ไฟล์ที่คุณเตรียมไว้ แต่ตรงนี้ผมใช้ตัวอย่างเสียงนำทางครับ
+    const resp = await fetch('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'); 
+    const buffer = await audioCtx.decodeAudioData(await resp.arrayBuffer());
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+
+    // ระบบเลข 2: เชื่อมเสียงไมค์คุณ (1) เข้ากับระบบ
     const userVoice = audioCtx.createMediaStreamSource(stream);
-    const tuner = audioCtx.createBiquadFilter();
-    tuner.type = "peaking";
-    tuner.frequency.value = 1500; // จูนเสียงให้พุ่ง
-    tuner.gain.value = 10;
-
-    // --- เลข 4 (บีท Hiphop) ---
-    beatGain = audioCtx.createGain();
-    beatGain.gain.value = 0.5;
     
-    // ผมใช้บีท Hiphop แบบเบสแน่นๆ ให้ครับ
-    const resp = await fetch('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3');
-    const arrayBuffer = await resp.arrayBuffer();
-    const buffer = await audioCtx.decodeAudioData(arrayBuffer);
-    
-    beatSource = audioCtx.createBufferSource();
-    beatSource.buffer = buffer;
-    beatSource.loop = true;
+    // รวมร่างออกลำโพง (7)
+    source.connect(audioCtx.destination);
+    userVoice.connect(audioCtx.destination);
 
-    // --- รวมร่างเป็นเลข 7 ---
-    userVoice.connect(tuner);
-    tuner.connect(audioCtx.destination);
-    
-    beatSource.connect(beatGain);
-    beatGain.connect(audioCtx.destination);
-
-    beatSource.start();
-    document.getElementById('startBtn').innerText = "🎤 ON STAGE!";
-    document.getElementById('startBtn').style.background = "#00FF00";
-};
-
-// ตัวปรับเสียงบีท
-document.getElementById('beatVol').oninput = (e) => {
-    if (beatGain) beatGain.gain.value = e.target.value;
+    source.start();
+    document.getElementById('status').innerText = "🔴 กำลังอัดเสียง... พูดตามเลย!";
+    document.getElementById('startBtn').style.display = "none";
 };
 </script>
 """
 
-components.html(full_power_code, height=450)
+components.html(artist_mode_html, height=400)
