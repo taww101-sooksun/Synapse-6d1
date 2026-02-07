@@ -1,68 +1,57 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.title("🛰️ SYNAPSE X: FULL SYSTEM (1➔2➔3➔4 = 7)")
-st.write(f"สถานะ: ล้อกำลังหมุน... {st.session_state.get('slogan', 'อยู่นิ่งๆ ไม่เจ็บตัว')}")
+st.title("🛰️ SYNAPSE X: JUMPSTART ENGINE")
+st.write("เป้าหมาย: ทำให้ล้อหมุน (มีเสียงออก) ให้ได้ก่อน!")
 
-# นี่คือหัวใจของระบบ 1-2-3-4-7
-full_system_html = """
-<div style="background: #111; border: 2px solid #FFD700; padding: 30px; border-radius: 15px; color: #FFD700; text-align: center;">
-    <h2 style="margin-bottom: 20px;">🎤 SYNAPSE X AUDIO ENGINE</h2>
+repair_code = """
+<div style="background: #000; border: 2px dashed #FFD700; padding: 25px; border-radius: 15px; color: #FFD700; text-align: center;">
+    <h3 id="engineStatus">🔴 ENGINE OFF</h3>
+    <p>ใส่หูฟัง แล้วกดปุ่มข้างล่างค้างไว้ 2 วินาทีครับ</p>
     
-    <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
-        <div><small>INPUT (1)</small><br><b>VOICE</b></div>
-        <div><small>PROCESS (2)</small><br><b>TUNER</b></div>
-        <div><small>BEAT (4)</small><br><b>HIPHOP</b></div>
-    </div>
-
-    <button id="powerBtn" style="background: #FFD700; color: #000; padding: 15px 40px; border: none; border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px #FFD700;">
-        START ENGINE (7)
+    <button id="igniteBtn" style="background: #FFD700; color: black; padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 18px;">
+        IGNITE (สตาร์ทเครื่อง)
     </button>
+
+    <div id="log" style="margin-top: 20px; font-family: monospace; font-size: 12px; color: #888;"></div>
 </div>
 
 <script>
-let audioCtx;
-let beatSource;
+const log = (msg) => { document.getElementById('log').innerText += "\\n> " + msg; };
 
-document.getElementById('powerBtn').onclick = async () => {
-    // 1. สตาร์ทเครื่องยนต์เสียง
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // 2. รับเสียงคุณ (เลข 1)
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const userVoice = audioCtx.createMediaStreamSource(stream);
+document.getElementById('igniteBtn').onclick = async () => {
+    try {
+        log("กำลังขอเข้าถึงไมโครโฟน...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        log("AudioContext สถานะ: " + audioCtx.state);
 
-    // 3. ตั้งค่าพนักงานเลข 2 (ตัวดึงคีย์) 
-    // ในที่นี้จำลองด้วย Filter ที่ทำให้เสียงพุ่งและตรงคีย์มากขึ้น
-    const tuner = audioCtx.createBiquadFilter();
-    tuner.type = "peaking";
-    tuner.frequency.value = 1000; 
-    tuner.gain.value = 15;
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+            log("ปลุกระบบที่หลับอยู่... Resume สำเร็จ!");
+        }
 
-    // 4. โหลดบีท Hiphop (เลข 4)
-    // ใช้บีทตัวอย่างที่เป็น Loop จังหวะหนักๆ
-    const beatResponse = await fetch('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3');
-    const beatArray = await beatResponse.arrayBuffer();
-    const beatBuffer = await audioCtx.decodeAudioData(beatArray);
-    beatSource = audioCtx.createBufferSource();
-    beatSource.buffer = beatBuffer;
-    beatSource.loop = true;
+        const source = audioCtx.createMediaStreamSource(stream);
+        
+        // เลข 2: ตัวดึงเสียงแบบง่าย (High-pass) เพื่อเช็คว่าผ่านการปรุงแต่งไหม
+        const processor = audioCtx.createBiquadFilter();
+        processor.type = "highpass";
+        processor.frequency.value = 800;
 
-    // 5. รวมร่างเป็นเลข 7 (Master Output)
-    const masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.8;
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
 
-    userVoice.connect(tuner);   // 1 + 2 = 3
-    tuner.connect(masterGain);   // ส่ง 3 ไปที่ Mixer
-    beatSource.connect(masterGain); // ส่ง 4 ไปที่ Mixer
-    
-    masterGain.connect(audioCtx.destination); // 7 ส่งออกลำโพง!
+        document.getElementById('engineStatus').innerText = "🟢 ENGINE RUNNING";
+        document.getElementById('engineStatus').style.color = "#00FF00";
+        log("เครื่องติดแล้ว! ลองพูดดูครับ");
 
-    beatSource.start();
-    document.getElementById('powerBtn').innerText = "SYSTEM ACTIVE 🛰️";
-    document.getElementById('powerBtn').style.background = "#00FF00";
+    } catch (err) {
+        log("ERROR: " + err.message);
+        document.getElementById('engineStatus').innerText = "❌ ENGINE FAILURE";
+    }
 };
 </script>
 """
 
-components.html(full_system_html, height=400)
+components.html(repair_code, height=350)
