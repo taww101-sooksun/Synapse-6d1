@@ -1,1 +1,5 @@
+.streamlit/
+*.pth
+.env
+__pycache__/
 
