@@ -3,6 +3,15 @@ import streamlit as st
 import google.generativeai as genai
 import json
 import time
+from gtts import gTTS
+import io
+
+# ... (ในส่วนที่กดปุ่ม Activate) ...
+# สร้างเสียงพูดจากข้อความที่ AI แนะนำ
+tts = gTTS(text=f"ระบบตรวจพบพลังงานระดับ {data['v']}. แนะนำให้คุณ {data['chords']}", lang='th')
+fp = io.BytesIO()
+tts.write_to_fp(fp)
+st.audio(fp, format='audio/mp3')
 
 # --- 1. ตั้งค่าดีไซน์ตามโลโก้ (ม่วง-ดำ-เขียวมินต์) ---
 st.set_page_config(page_title="SYNAPSE 6D Pro", page_icon="💎", layout="centered")
