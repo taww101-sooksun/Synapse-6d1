@@ -1,104 +1,79 @@
-import torch
+import streamlit as st
 import numpy as np
-import librosa
-import soundfile as sf
-from fairseq import checkpoint_utils
+import time
+from datetime import datetime
 
-# --- 1. ตั้งค่าพื้นฐาน (Config) ---
-device = "cuda" if torch.cuda.is_available() else "cpu" # ถ้าในมือถือมักจะเป็น cpu
-is_half = False # มือถือส่วนใหญ่ต้องปิด Half precision ไม่งั้น error
+# 1. UI SETTING (เข้มสุด ลกสุด)
+st.set_page_config(page_title="SYNAPSE X - COMMAND CENTER", layout="wide")
+st.markdown("""
+    <style>
+    .stApp { background-color: #000000; color: #00FF00; font-family: 'Courier New', Courier, monospace; }
+    .metric-box { border: 1px solid #333; padding: 10px; background: #050505; border-radius: 5px; }
+    .status-text { color: #FFD700; font-size: 12px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 2. ฟังก์ชันโหลด Hubert (ตัวแปลงเสียงเป็น Code) ---
-def load_hubert(hubert_path):
-    print(f"กำลังโหลด Hubert จาก: {hubert_path}")
-    models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
-        [hubert_path],
-        suffix="",
-    )
-    hubert_model = models[0]
-    hubert_model = hubert_model.to(device)
-    if is_half:
-        hubert_model = hubert_model.half()
-    else:
-        hubert_model = hubert_model.float()
-    hubert_model.eval()
-    return hubert_model
+# --- HEADER & SLOGAN ---
+st.markdown("<h1 style='text-align: center; color: #FF0000;'>🔴 SYNAPSE X : MASTER CONTROL</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #FFD700;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\" | มองโลกในแง่ดีเสมอ แม้ข้างในจะเจ็บปวด</p>", unsafe_allow_html=True)
 
-# --- 3. ฟังก์ชันโหลดโมเดลเสียง RVC (.pth) ---
-def get_vc(model_path):
-    print(f"กำลังโหลดโมเดลเสียงจาก: {model_path}")
-    cpt = torch.load(model_path, map_location="cpu")
-    tgt_sr = cpt["config"][-1] # ค่า Sample Rate ของโมเดล
-    cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0] # แก้ config ให้ตรงกับ weight
-    net_g = cpt["net_g"] # นี่คือตัว Neural Network (สมอง)
-    net_g = net_g.to(device)
-    if is_half:
-        net_g = net_g.half()
-    else:
-        net_g = net_g.float()
-    net_g.eval()
-    vc = net_g
-    return vc, tgt_sr
+# 2. MASTER CLOCK (นาฬิกา 8 ช่วงเวลา)
+now = datetime.now()
+current_time = now.strftime("%H:%M:%S")
+hour = now.hour
 
-# --- 4. ฟังก์ชันแปลงเสียง (Inference Core) ---
-def rvc_convert(model_path, hubert_path, input_audio_path, f0_up_key=0):
-    # f0_up_key: ปรับคีย์เสียง (0 = ปกติ, 12 = สูงขึ้น 1 octave, -12 = ต่ำลง)
-    
-    # 4.1 โหลดของ
-    hubert_model = load_hubert(hubert_path)
-    net_g, tgt_sr = get_vc(model_path)
-    
-    # 4.2 โหลดเสียงเรา
-    print(f"กำลังอ่านไฟล์เสียง: {input_audio_path}")
-    audio, sr = librosa.load(input_audio_path, sr=16000) # RVC บังคับ input 16k
-    
-    # 4.3 แปลงเสียงเป็น Tensor
-    audio_opt = torch.from_numpy(audio).to(device)
-    if is_half: audio_opt = audio_opt.half()
-    else: audio_opt = audio_opt.float()
-    
-    # 4.4 ส่งเข้า Hubert เพื่อดึง Feature
-    feats = audio_opt.unsqueeze(0).unsqueeze(0)
-    with torch.no_grad():
-        padding_mask = torch.BoolTensor(feats.shape).fill_(False)
-        inputs = {
-            "source": feats,
-            "padding_mask": padding_mask,
-            "output_layer": 9, # ปกติใช้ layer 9 หรือ 12
-        }
-        logits = hubert_model.extract_features(**inputs)
-        feats = hubert_model.final_proj(logits[0])
-    
-    # 4.5 ส่งเข้า VC Model (แปลงเนื้อเสียง)
-    # ตรงนี้ต้องมีการคำนวณ Pitch (F0) ด้วยถ้าเป็นโมเดลร้องเพลง แต่ขอตัดแบบง่ายสุดให้ก่อน
-    # เพื่อให้รันผ่านบนมือถือ
-    
-    print("กำลังประมวลผลแปลงเสียง... (ขั้นตอนนี้กินเครื่องหนักสุด)")
-    with torch.no_grad():
-         # สั่งโมเดลทำงาน (Output ออกมาเป็น Audio)
-         # หมายเหตุ: โค้ดส่วนนี้ย่อมา ของจริงต้องมี f0 prediction ถ้าจะเอาเนียนกริบ
-         audio_out = net_g.infer(feats, torch.LongTensor([feats.shape[1]]).to(device))
-         
-    output_audio = audio_out[0][0, 0].data.cpu().float().numpy()
-    
-    return output_audio, tgt_sr
+# 3. LOGIC DETERMINATION (กำหนดโหมดจากเวลาจริง)
+if 6 <= hour < 9:
+    mode, freq, mood_color = "AWAKENING", 528, "#FFD700"
+elif 21 <= hour or hour < 3:
+    mode, freq, mood_color = "DEEP HEALING", 432, "#00008B"
+else:
+    mode, freq, mood_color = "EQUILIBRIUM", 440, "#FFFFFF"
 
-# --- ส่วนสั่งงาน (EXECUTE) ---
-if __name__ == "__main__":
-    try:
-        # ใส่ชื่อไฟล์ของคุณตรงนี้
-        my_model = "my_voice_model.pth"      # ไฟล์โมเดลที่ฝึกเสร็จแล้ว
-        my_hubert = "hubert_base.pt"         # ไฟล์ Hubert
-        my_input = "test_input.wav"          # เสียงของคุณ
-        
-        # เริ่มกระบวนการ
-        out_audio, out_sr = rvc_convert(my_model, my_hubert, my_input, f0_up_key=0)
-        
-        # บันทึกไฟล์
-        sf.write("output_final.wav", out_audio, out_sr)
-        print("สำเร็จ! ได้ไฟล์ output_final.wav แล้ว")
-        
-    except Exception as e:
-        print("Error! เกิดข้อผิดพลาด:")
-        print(e)
-        print("คำแนะนำ: เช็คว่าลง library ครบไหม (torch, fairseq, librosa)")
+# 4. DASHBOARD (Metrics ลกๆ 4 คอลัมน์)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f"<div class='metric-box'>❤️ PULSE (Real-time)<br><h2 style='color:red;'>72 BPM</h2><span class='status-text'>STABLE</span></div>", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"<div class='metric-box'>📍 GPS COORDS<br><h2 style='color:#00f2fe;'>13.75, 100.52</h2><span class='status-text'>LOCATED: THAILAND</span></div>", unsafe_allow_html=True)
+with col3:
+    st.markdown(f"<div class='metric-box'>☁️ BARO / LIGHT<br><h2 style='color:#00FF00;'>1012 hPa</h2><span class='status-text'>LIGHT: 450 LUX</span></div>", unsafe_allow_html=True)
+with col4:
+    st.markdown(f"<div class='metric-box'>🕒 SYSTEM TIME<br><h2 style='color:white;'>{current_time}</h2><span class='status-text'>MODE: {mode}</span></div>", unsafe_allow_html=True)
+
+# 5. ASSASSIN 144 MATH ENGINE (สูตรคณิตศาสตร์แท้)
+st.markdown("---")
+st.subheader("📐 Assassin 144 : Matrix Calculation")
+st.latex(r"Sound(t) = \int_{144} Matrix(V,A) \cdot \Phi(f,T) dt")
+st.code(f"# Current Matrix State\nFrequency_Target: {freq}Hz\nAmplitude_Mod: 0.85\nPhase_Shift: 0.002", language='python')
+
+# 6. YOUTUBE PLAYLIST & 7. EMOTION LED (แสดงผลข้างกัน)
+st.markdown("---")
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+    st.subheader("📺 S.S.S STATION (24/7 LIVE)")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    st.markdown(f'<iframe width="100%" height="400" src="https://www.youtube.com/embed/videoseries?list={playlist_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+
+with right_col:
+    st.subheader("💡 Emotion LED")
+    st.markdown(f"<div style='width:100%; height:150px; background-color:{mood_color}; border-radius:20px; border: 5px solid #333;'></div>", unsafe_allow_html=True)
+    st.write(f"Current Hue: {mood_color}")
+    
+    # 8. MATRIX V1.0/V2.0 Sliders
+    st.slider("Valence (Joy/Sad)", 0.0, 1.0, 0.7)
+    st.slider("Arousal (Energy)", 0.0, 1.0, 0.5)
+
+# 9. CONSOLE LOGS (ตัวหนังสือวิ่งรกๆ)
+st.markdown("---")
+st.subheader("📋 System Console Logs")
+st.text_area("Live Data Stream", value="[INFO] Synchronizing GPS...\n[SUCCESS] Matrix 144 Loaded.\n[ACTIVE] Frequency adjusted to " + str(freq) + "Hz\n[READY] Awaiting User Interaction...", height=100)
+
+# 10. TURBO CONTROL BUTTONS
+st.markdown("---")
+cb1, cb2, cb3, cb4 = st.columns(4)
+with cb1: st.button("🚀 TURBO BOOST", use_container_width=True)
+with cb2: st.button("💾 SAVE STATE", use_container_width=True)
+with cb3: st.button("📡 SHARE MATRIX", use_container_width=True)
+with cb4: st.button("🛑 EMERGENCY RESET", use_container_width=True)
