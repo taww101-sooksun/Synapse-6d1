@@ -5,7 +5,7 @@ st.title("แยกมิติเสียง: MATRIX_V2 Divider")
 st.write("เลือกฟังเสียงจากพิกัดมิติต่างๆ เพื่อความนิ่งที่สมบูรณ์")
 
 # ฟังก์ชันสร้างเสียงพื้นฐาน
-def create_tone(freq, dur=4.0):
+def create_tone(freq, dur=44.0):
     sr = 44100
     t = np.linspace(0, dur, int(sr * dur), False)
     # ใส่ fade in/out เล็กน้อยเพื่อไม่ให้เสียงกระชาก (ถนอมหู/ถนอมเครื่อง)
