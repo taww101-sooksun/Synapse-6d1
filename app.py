@@ -1,29 +1,29 @@
 import streamlit as st
 import numpy as np
 
-st.title("🎼 MATRIX_V2: Vocal & Key Tuning")
-st.write("จูนเสียงมนุษย์เข้ากับพิกัด 147 และ 252 | สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
+st.title("🎸 MATRIX_V2: Chord Progression Mode")
+st.write("การเรียงตัวของมิติในรูปแบบคอร์ดเพลง | สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-def generate_vocal_tone(freq, label, note, color):
-    t = np.linspace(0, 4, 44100 * 4)
-    # สร้างคลื่นเสียงที่มีความนุ่มนวล (Warm Sine Wave)
-    tone = np.sin(freq * 2 * np.pi * t) * 0.5
-    st.subheader(f"มิติเสียง: {label}")
-    st.write(f"พิกัด: {freq} Hz | คีย์ดนตรี: **{note}**")
-    st.audio(tone, sample_rate=44100)
+def play_chord(root_freq, type="major", dur=2.0):
+    sr = 44100
+    t = np.linspace(0, dur, int(sr * dur), False)
+    
+    # คำนวณความถี่คู่เสียง (Intervals)
+    if type == "major":
+        chord = [1.0, 1.25, 1.5] # Root, Major 3rd, Perfect 5th
+    else: # minor
+        chord = [1.0, 1.18, 1.5] # Root, Minor 3rd, Perfect 5th
+        
+    combined_signal = sum(np.sin(root_freq * i * 2 * np.pi * t) for i in chord)
+    return combined_signal * 0.2, sr
 
-# --- รันมิติเสียงผู้ชาย ---
-with st.container():
-    generate_vocal_tone(147.0, "Male Vocal (ความนิ่ง)", "D3 (Re)", "blue")
-
-# --- รันมิติเสียงผู้หญิง ---
-with st.container():
-    generate_vocal_tone(252.0, "Female Vocal (ความชัดเจน)", "B3 (Ti)", "pink")
-
-# --- มิติผสม (The Harmony) ---
-if st.button("รันเสียงประสานมิติ (Harmony Sync)"):
-    t = np.linspace(0, 5, 44100 * 5)
-    harmony = (np.sin(147 * 2 * np.pi * t) + np.sin(252 * 2 * np.pi * t)) * 0.3
-    st.write("สถานะ: เสียงประสานระหว่าง **D3** และ **B3** (คู่เมเจอร์ซิกซ์)")
-    st.audio(harmony, sample_rate=44100)
-    st.success("การประสานงานของกุญแจ 44 ดอก สมบูรณ์แบบ!")
+if st.button("เริ่มรันลำดับคอร์ด (Start Progression)"):
+    # คอร์ด D -> Bm -> G -> A
+    chords = [(147.0, "major", "D"), (123.4, "minor", "Bm"), (196.0, "major", "G"), (220.0, "major", "A")]
+    
+    for freq, c_type, name in chords:
+        sig, rate = play_chord(freq, c_type)
+        st.write(f"กำลังรันคอร์ด: **{name}**")
+        st.audio(sig, sample_rate=rate)
+        
+    st.success("จบลำดับมิติ... ระบบนิ่งสนิทและปลอดภัย")
