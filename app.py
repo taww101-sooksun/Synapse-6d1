@@ -4,7 +4,7 @@ import numpy as np
 st.title("🎤 MATRIX_V2: Hip Hop Dimension")
 st.write("สถานะ: Beats Mode | สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-def generate_hiphop_beat(duration=8):
+def generate_hiphop_beat(duration=180):
     sr = 44100
     t = np.linspace(0, duration, int(sr * duration), False)
     tempo = 90  # Beats per minute
@@ -14,8 +14,8 @@ def generate_hiphop_beat(duration=8):
     kick_pattern = np.zeros_like(t)
     for i in range(0, int(duration/beat_duration)):
         start = int(i * beat_duration * sr)
-        end = start + int(0.2 * sr) # เสียง Kick สั้นๆ
-        kick_pattern[start:end] = np.sin(147 * 2 * np.pi * t[start:end])
+        end = start + int(0.4 * sr) # เสียง Kick สั้นๆ
+        kick_pattern[start:end] = np.sin(147 * 4 * np.pi * t[start:end])
         
     # 2. Snare (เสียงแป๊ะที่จังหวะ 2 และ 4)
     snare_pattern = np.zeros_like(t)
