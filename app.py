@@ -1,5 +1,4 @@
 import torch
-import torchaudio
 from transformers import pipeline # อาจใช้ pipeline สำหรับ TTS ที่ปรับแต่งได้ หรือ SVS model เฉพาะ
 import numpy as np
 import soundfile as sf
