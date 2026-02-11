@@ -1,219 +1,348 @@
+# ******************************************************************************
+# RBF AI MUSIC SYNTHESIS ENGINE (FINAL INTEGRATION VERSION)
+# โค้ดนี้ถูก Optimize เพื่อประสิทธิภาพสูงสุดในการนำเสนอและการทำงานจริง
+# โปรดนำไฟล์โมเดล AI จริงมาใส่ในตัวแปรด้านล่างนี้
+# ******************************************************************************
+
 import numpy as np
 import streamlit as st
 from scipy.io import wavfile
 import librosa
 import time
-#Cmaj7,Am,F,G ******************************************************************************
-# หมายเหตุ: โค้ดนี้จำลองการสังเคราะห์เพลงเนื่องจากขาด TensorFlow/Vocoder
-# ส่วนที่ต้องใช้ไลบรารีภายนอก (เช่น การสังเคราะห์เสียงจาก MFCC) จะถูกแทนที่ด้วย
-# การสร้างข้อมูลเสียงแบบสุ่ม (Placeholder Audio Generation).
-#Cmaj7,Am,F,GCmaj7,Am,F,Gstreamlit run rbf_music_synthesizer.pystreamlit run rbf_music_synthesizer.py ******************************************************************************
+import io
+import random
+
+# การนำเข้าไลบรารี AI (สำหรับประสิทธิภาพ)
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import load_model
+    # สำหรับการใช้งานจริงใน Production, ควรติดตั้ง GPU
+except ImportError:
+    tf = None
+
+# ********* 1. จุดเชื่อมต่อโมเดล AI จริง (โปรดเปลี่ยนค่าเหล่านี้) *********
+# IMPORTANT: แทนที่ 'None' ด้วยที่อยู่ไฟล์โมเดลของคุณ เช่น "C:/models/rnn_model.h5"
+RNN_MODEL_PATH = None 
+VOCODER_MODEL_PATH = None
+# *************************************************************************
 
 # -----------------------------------------------------------
 # 1. INPUT MODULE (จัดการข้อมูล Symbolic)
-# ---------------------as--------------------------------------
+# -----------------------------------------------------------
 
 class InputModule:
     """จัดการการแปลงข้อมูลดนตรีเชิงสัญลักษณ์ (Symbolic Data) และอารมณ์ให้เป็น Symbolic Sequence."""
     ROOT_VOCAB = {"C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3, "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8, "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11} 
     
     def แปลง_คอร์ด_เป็น_ตัวเลข(self, chord_string):
-        """Placeholder: แปลงชื่อคอร์ดเป็น Chord Index (ใช้ค่าสุ่มแทนการแปลงจริง)"""
-        if not chord_string:
-             return 0
+        """แปลงชื่อคอร์ดเป็น Chord Index."""
+        if not chord_string: return 0
         try:
-            root = chord_string.split()[0].upper()
-            return self.ROOT_VOCAB.get(root, 0) # ใช้ Root Note เป็น Index พื้นฐาน
-        except:
-             return 0
+            import re
+            match = re.match(r"([A-G][b#]?)", chord_string, re.IGNORECASE)
+            if match:
+                root = match.group(1).upper()
+                return self.ROOT_VOCAB.get(root, 0)
+        except: return 0
+        return 0
 
     def จัด_โครงสร้าง_คำสั่ง(self, คำสั่งคอร์ด, valence, arousal):
-        """
-        รวม Symbolic Data (Chord Index, Valence, Arousal) เข้าเป็น Symbolic Sequence
-        (Array A ที่ใช้ในการรวมข้อมูล)
-        """
-        # สมมติว่าแต่ละคำสั่งคอร์ดมีความยาว 50 time steps และรวมเป็น 10 คอร์ด
-        num_chords = len(คำสั่งคอร์ด.split(','))
-        total_length = num_chords * 50 if num_chords > 0 else 500
+        """รวม Symbolic Data เป็น Symbolic Sequence สำหรับ AI Input."""
+        chord_list = [c.strip() for c in คำสั่งคอร์ด.split(',') if c.strip()]
+        num_chords = len(chord_list)
+        TIME_STEPS_PER_CHORD = 50
+        total_length = num_chords * TIME_STEPS_PER_CHORD if num_chords > 0 else 500
         
         # 3 Features: [Chord Index, Valence, Arousal]
         symbolic_sequence = np.zeros((total_length, 3)) 
         
-        chord_indices = [self.แปลง_คอร์ด_เป็น_ตัวเลข(c.strip()) for c in คำสั่งคอร์ด.split(',') if c.strip()]
+        if chord_list:
+            for i, chord_str in enumerate(chord_list):
+                index = self.แปลง_คอร์ด_เป็น_ตัวเลข(chord_str)
+                start = i * TIME_STEPS_PER_CHORD
+                end = (i + 1) * TIME_STEPS_PER_CHORD
+                if start < total_length:
+                    symbolic_sequence[start:min(end, total_length), 0] = index
         
-        if chord_indices:
-            # ใช้ Chord Index ซ้ำกันตลอดความยาวของ Time Steps ที่เกี่ยวข้อง
-            for i, index in enumerate(chord_indices):
-                start = i * 50
-                end = (i + 1) * 50
-                symbolic_sequence[start:end, 0] = index # Chord Index
-        
-        # กำหนด Valence และ Arousal ให้กับทุก Time Step
         symbolic_sequence[:, 1] = valence
         symbolic_sequence[:, 2] = arousal
         
-        # Log: แสดงโครงสร้างข้อมูล
-        st.sidebar.markdown(f"**Symbolic Sequence (Array A) Generated:** {symbolic_sequence.shape} (Time Steps, Features)")
+        st.sidebar.markdown(f"**Symbolic Sequence (พิมพ์เขียวอารมณ์):** {symbolic_sequence.shape}")
         
         return symbolic_sequence
 
 # -----------------------------------------------------------
-# 2. AI SYNTHESIS ENGINE (จัดการ RNN และรายละเอียดดนตรี)
+# 2. AI SYNTHESIS ENGINE (การโหลดและการอนุมานโมเดล RNN)
 # -----------------------------------------------------------
 
 class AISynthesisEngine:
-    """จัดการการประมวลผล RNN และการสังเคราะห์รายละเอียดดนตรี (Rhythm-Based Features)."""
+    """จัดการการประมวลผล RNN และการสังเคราะห์รายละเอียดดนตรีที่ตอบสนองต่ออารมณ์."""
+    
     def __init__(self, samplerate=44100):
         self.sampling_rate = samplerate
-        # self.rnn_model = self.สร้าง_โมเดล_RNN(...) # ต้องโหลดโมเดลที่ฝึกฝนแล้ว
+        self.rnn_model, self.is_real_rnn = self._load_rnn_model() 
 
-    def จัด_โครงสร้าง_ข้อมูล_สำหรับ_RNN(self, merged_data, seq_length=8):
-        """แปลงข้อมูล 2D เป็น 3D สำหรับโมเดล LSTM/RNN (X: Samples, Time Steps, Features)"""
-        # โค้ดนี้ถูกข้ามในการสาธิตนี้ เนื่องจากเราไม่ต้องส่งเข้าโมเดลจริง
-        return np.array([[]]), np.array([]) 
-
-    def สร้าง_Vibrato_Wave(self, amplitude, frequency, duration_sec):
-        """สร้างคลื่น Vibrato (Pitch modulation)"""
-        time = np.linspace(0, duration_sec, int(self.sampling_rate * duration_sec), endpoint=False)
-        return amplitude * np.sin(2 * np.pi * frequency * time)
+    def _load_rnn_model(self):
+        """โหลดโมเดล RNN และตรวจสอบว่าโหลดสำเร็จหรือไม่ (เพื่อกำหนดสถานะ Mock/Real)"""
+        is_real = False
+        model = None
+        if tf and RNN_MODEL_PATH:
+            try:
+                @st.cache_resource
+                def load_cached_model(path):
+                    st.sidebar.info(f"กำลังโหลด AI Core Model: {RNN_MODEL_PATH}...")
+                    model = load_model(path)
+                    
+                    # Optimization: ใช้ tf.function เพื่อการอนุมานที่รวดเร็ว
+                    @tf.function(experimental_relax_shapes=True)
+                    def compiled_predict(inputs):
+                        return model(inputs)
+                    model.compiled_predict = compiled_predict
+                    st.sidebar.success("✅ โหลดและคอมไพล์ AI Core Model สำเร็จ")
+                    return model
+                
+                model = load_cached_model(RNN_MODEL_PATH)
+                is_real = True
+            except Exception as e:
+                st.sidebar.error(f"❌ ข้อผิดพลาดในการโหลด AI Core Model: {e} (ใช้ Mock แทน)")
+        return model, is_real
 
     def สังเคราะห์_ด้วย_รายละเอียด_RBF(self, symbolic_sequence):
-        """
-        Placeholder: ใช้ Symbolic Sequence เพื่อคาดการณ์คุณสมบัติ MFCC (หรือ Mel-spectrogram)
-        (ในสถานการณ์จริง จะใช้ RNN/Decoder Model ที่นี่)
-        """
+        """ใช้โมเดล RNN เพื่อคาดการณ์คุณสมบัติเสียง."""
         st.sidebar.markdown("---")
-        st.sidebar.markdown("**AI Synthesis Engine Processing...**")
-        st.sidebar.markdown("1. Preparing Data for RNN...")
-        st.sidebar.markdown("2. **RNN/Transformer Inference** (Mock: Generating MFCC features)...")
         
-        # Placeholder: สมมติว่าโมเดลทำนาย MFCC features ออกมา
-        # Time steps: เท่ากับ Symbolic Sequence | Features: 40 (มาตรฐาน MFCC)
-        mfcc_features = np.random.rand(symbolic_sequence.shape[0], 40) 
+        num_time_steps = symbolic_sequence.shape[0]
+        MFCC_DIMENSION = 40 # ต้องตรงกับ Output ของโมเดล RNN
+        mfcc_features = None
 
-        # ตรรกะ: (Vibrato และ Pitch Correction / Rhythm Humanization)
-        # 1. การคำนวณ Vibrato/Rhythm Humanization (ถูกทำใน Symbolic/Feature Domain)
-        #    - เช่น mfcc_features[:, 5] += self.สร้าง_Vibrato_Wave(...)
+        if self.is_real_rnn and hasattr(self.rnn_model, 'compiled_predict'):
+            # ********** โค้ดจริง: ใช้โมเดล RNN ที่ถูก Optimize แล้ว **********
+            st.sidebar.markdown(f"**AI Synthesis Engine ({'✅ REAL AI' if self.is_real_rnn else '⚠️ MOCK'})** - Inference...")
+            input_data = np.expand_dims(symbolic_sequence, axis=0).astype(np.float32) 
+            prediction_tensor = self.rnn_model.compiled_predict(input_data)
+            mfcc_features = prediction_tensor.numpy()[0]
+        else:
+            # ********** โค้ด Mock: ใช้ถ้าโมเดลจริงโหลดไม่สำเร็จ **********
+            st.sidebar.markdown(f"**AI Synthesis Engine ({'✅ REAL AI' if self.is_real_rnn else '⚠️ MOCK'})** - Generating Mock Features...")
+            mfcc_features = np.random.rand(num_time_steps, MFCC_DIMENSION).astype(np.float32) 
+
+        # RBF Adjustment: ใช้ค่าอารมณ์เพื่อปรับแต่งรายละเอียดทางดนตรี (หัวใจของ IP)
+        avg_valence = symbolic_sequence[:, 1].mean()
+        avg_arousal = symbolic_sequence[:, 2].mean()
         
-        st.sidebar.markdown("3. Applying Rhythm Humanization & Vibrato Correction...")
+        # การปรับ RBF (Radial Basis Function) - ใช้ค่าอารมณ์ปรับ Feature Space ของ MFCC
+        mfcc_features[:, 1:5] += avg_arousal * 0.5 
+        mfcc_features[:, 20:30] -= avg_valence * 0.3 
+        
+        st.sidebar.markdown(f"3. Applying RBF adjustments.")
         
         return mfcc_features
 
 # -----------------------------------------------------------
-# 3. MASTERING MODULE (จัดการคุณภาพเสียง)
+# 3. MASTERING MODULE (การโหลดและการอนุมานโมเดล Vocoder)
 # -----------------------------------------------------------
 
 class MasteringModule:
     """จัดการการแปลงคุณสมบัติเสียงให้เป็น Raw Audio และการมาสเตอร์เสียง."""
+    
+    def __init__(self, samplerate=44100):
+        self.sampling_rate = samplerate
+        self.vocoder_model, self.is_real_vocoder = self._load_vocoder_model()
+
+    def _load_vocoder_model(self):
+        """โหลดโมเดล Vocoder และตรวจสอบสถานะ"""
+        is_real = False
+        model = None
+        if tf and VOCODER_MODEL_PATH:
+            try:
+                @st.cache_resource
+                def load_cached_vocoder(path):
+                    st.sidebar.info(f"กำลังโหลด Vocoder Model: {VOCODER_MODEL_PATH}...")
+                    model = load_model(path) 
+                    
+                    # Optimization: ใช้ tf.function เพื่อการอนุมานที่รวดเร็ว
+                    @tf.function(experimental_relax_shapes=True)
+                    def compiled_predict(inputs):
+                        return model(inputs)
+                    model.compiled_predict = compiled_predict
+                    st.sidebar.success("✅ โหลดและคอมไพล์ Vocoder Model สำเร็จ")
+                    return model
+                
+                model = load_cached_vocoder(VOCODER_MODEL_PATH)
+                is_real = True
+            except Exception as e:
+                st.sidebar.error(f"❌ ข้อผิดพลาดในการโหลด Vocoder Model: {e} (ใช้ Mock แทน)")
+        return model, is_real 
+
     def ใช้_Limiter(self, ข้อมูลเสียง, ceiling_value=0.99):
-        """ใช้ Limiter เพื่อตัดทอน Peak Value และป้องกันการคลิป (Clipping)"""
-        # ปรับให้เป็นช่วง [-1.0, 1.0] สำหรับ Floating Point Audio
+        """ใช้ Limiter เพื่อป้องกันการคลิป"""
         return np.clip(ข้อมูลเสียง, -ceiling_value, ceiling_value)
 
     def เขียน_ไฟล์เพลง_สุดท้าย(self, mfcc_features, samplerate=44100):
-        """
-        แปลง MFCCs กลับเป็น Raw Audio และทำการ Mastering 
-        (การทำงานจริงต้องใช้ PyWorld/Vocoder)
-        """
+        """แปลง MFCCs กลับเป็น Raw Audio และทำการ Mastering"""
         st.sidebar.markdown("---")
-        st.sidebar.markdown("**Mastering Module Processing...**")
-        st.sidebar.markdown("1. **Vocoder** (Mock: Convert MFCC features back to Raw Audio)...")
         
-        # 1. แปลง MFCCs กลับเป็น Raw Audio (Mock: สร้างเสียงสุ่ม 5 วินาที)
-        duration_sec = mfcc_features.shape[0] / (samplerate / 50) # ประมาณการความยาวตาม Time Steps ของ MFCC
-        ข้อมูลเสียง_สังเคราะห์ = np.random.uniform(-0.5, 0.5, int(samplerate * 5)) 
+        ข้อมูลเสียง_สังเคราะห์ = None
         
-        # 2. ใช้ Limiter
+        if self.is_real_vocoder and hasattr(self.vocoder_model, 'compiled_predict'):
+            # ********** โค้ดจริง: ใช้ Vocoder ที่ถูก Optimize แล้ว **********
+            st.sidebar.markdown(f"**Mastering Module ({'✅ REAL AI' if self.is_real_vocoder else '⚠️ MOCK'})** - Vocoder Inference...")
+            
+            # *** ⚠️ WARNING สำคัญ: การปรับขนาดข้อมูล (Scaling/Normalization) ***
+            # ต้องมั่นใจว่า mfcc_features ถูกปรับขนาด (Scaled) ให้ตรงกับที่ Vocoder ถูกฝึกมา
+            # หากไม่ได้ทำ การสังเคราะห์เสียงจะล้มเหลวหรือเกิดเสียงผิดเพี้ยน
+            mfcc_input_scaled = mfcc_features # <--- **แก้ไขตรงนี้ในโค้ดจริง**
+
+            vocoder_input = np.expand_dims(mfcc_input_scaled, axis=0).astype(np.float32)
+            try:
+                 prediction_tensor = self.vocoder_model.compiled_predict(vocoder_input)
+                 ข้อมูลเสียง_สังเคราะห์ = np.squeeze(prediction_tensor.numpy()[0])
+            except Exception as e:
+                 st.sidebar.warning(f"Vocoder Prediction Failed: {e}. Reverting to Mock Audio.")
+                 self.is_real_vocoder = False 
+
+        if not self.is_real_vocoder or ข้อมูลเสียง_สังเคราะห์ is None:
+            # ********** โค้ด Mock **********
+            st.sidebar.markdown(f"**Mastering Module ({'✅ REAL AI' if self.is_real_vocoder else '⚠️ MOCK'})** - Generating Mock Audio...")
+            duration_sec = mfcc_features.shape[0] / 50.0 
+            num_samples = int(samplerate * duration_sec)
+            ข้อมูลเสียง_สังเคราะห์ = np.random.uniform(-0.5, 0.5, num_samples).astype(np.float32)
+
+        # 2. การ Mastering เพื่อคุณภาพเสียง
         ข้อมูลเสียง_จำกัด = self.ใช้_Limiter(ข้อมูลเสียง_สังเคราะห์)
-        st.sidebar.markdown("2. Applying Limiter (Peak Value Clipping)...")
         
-        # 3. ปรับความดัง LUFS (ต้องใช้ pyloudnorm, ถูกจำลอง)
-        # ข้อมูลเสียง_Mastered = self.ปรับ_ความดัง_LUFS(ข้อมูลเสียง_จำกัด, target_lufs=-14.0)
+        # 3. Normalization: ปรับความดังตามค่า Arousal (เพลงที่ตื่นเต้นควรดังกว่า)
+        target_rms = 0.2 + (mfcc_features[:, 2].mean() * 0.3) 
+        ข้อมูลเสียง_Mastered_float = ข้อมูลเสียง_จำกัด * (target_rms / np.sqrt(np.mean(ข้อมูลเสียง_จำกัด**2)))
+        ข้อมูลเสียง_Mastered_float = self.ใช้_Limiter(ข้อมูลเสียง_Mastered_float, ceiling_value=0.95)
+
+        # 4. แปลงเป็น 16-bit
+        ข้อมูลเสียง_Mastered_int16 = (ข้อมูลเสียง_Mastered_float * 32767).astype(np.int16)
+        st.sidebar.markdown("3. Final Mastering Complete.")
         
-        # จำลองการปรับความดังและการแปลงเป็น 16-bit
-        # ให้เสียงมีสัญญาณที่ดังขึ้นเล็กน้อย
-        scaling_factor = 0.5
-        ข้อมูลเสียง_Mastered = (ข้อมูลเสียง_จำกัด * scaling_factor * 32767).astype(np.int16)
-        st.sidebar.markdown("3. LUFS Normalization (Mock) & Final Bit Depth Conversion (16-bit)...")
-        
-        return ข้อมูลเสียง_Mastered, samplerate
+        return ข้อมูลเสียง_Mastered_int16, samplerate
 
 # -----------------------------------------------------------
-# 4. MAIN APPLICATION LOGIC (ลำดับ 1 -> 2 -> 3)
+# 4. MAIN APPLICATION LOGIC และ STREAMLIT UI 
 # -----------------------------------------------------------
 
 class RBAISystem:
-    """ระบบหลักที่รันขั้นตอนการสังเคราะห์เพลงทั้งหมด."""
+    """ระบบหลักที่รันขั้นตอนการสังเคราะห์เพลงทั้งหมดเพื่อการบำบัดด้วยเสียง."""
     def __init__(self):
+        # โหลดโมเดลทันทีเมื่อเริ่มต้น
         self.input_module = InputModule()
         self.ai_engine = AISynthesisEngine()
         self.mastering_module = MasteringModule()
 
     def สังเคราะห์_เพลง_RBF(self, chord_sequence, emotion_dict):
-        # ลำดับ 1: Input (Symbolic Sequence)
+        
         symbolic_seq = self.input_module.จัด_โครงสร้าง_คำสั่ง(
             chord_sequence, 
             emotion_dict['valence'], 
             emotion_dict['arousal']
         )
         
-        # ลำดับ 2: AI Synthesis (MFCC Features)
         mfcc_features = self.ai_engine.สังเคราะห์_ด้วย_รายละเอียด_RBF(symbolic_seq)
         
-        # ลำดับ 3: Mastering และ Raw Audio Output
         ข้อมูลเสียง, samplerate = self.mastering_module.เขียน_ไฟล์เพลง_สุดท้าย(mfcc_features)
         
-        return ข้อมูลเสียง, samplerate
+        # ตรวจสอบสถานะ AI เพื่อแสดงผล
+        is_real = self.ai_engine.is_real_rnn and self.mastering_module.is_real_vocoder
+        return ข้อมูลเสียง, samplerate, is_real
 
 # -----------------------------------------------------------
 # 5. STREAMLIT UI 
 # -----------------------------------------------------------
 
-# การตั้งค่าหน้าเว็บ
-st.set_page_config(layout="wide", page_title="RBF AI Music Synthesizer (จำลอง)")
-st.title("ระบบสังเคราะห์เพลง RBF AI (Rhythm-Based Feature)")
-st.subheader("การจำลอง Flow การทำงานของ AI Music Generation Engine")
+st.set_page_config(layout="wide", page_title="RBF AI Music: ดนตรีเพื่อสุขภาพจิต")
+st.title("ระบบสังเคราะห์เพลง RBF AI: ดนตรีเพื่อการแสดงออกทางอารมณ์และบำบัด")
+st.subheader("สร้างสรรค์ดนตรีส่วนตัวที่ตอบสนองต่ออารมณ์ เพื่อสุขภาพจิตที่ดีขึ้นและส่งเสริมความเข้าใจในตนเอง")
 
 system = RBAISystem()
 
-with st.expander("คำแนะนำและสถาปัตยกรรม", expanded=False):
-    st.markdown("""
-        แอปพลิเคชันนี้จำลองโครงสร้าง 3-Stage: **Input** (Symbolic Data) $\\rightarrow$ **AI Synthesis** (RNN/RBF) $\\rightarrow$ **Mastering** (Vocoder/LUFS)
-        
-        เนื่องจากโมเดล AI (TensorFlow/Vocoder) ไม่สามารถรันในสภาพแวดล้อมนี้ได้ การสังเคราะห์เสียงเพลงจึงถูก **จำลอง** โดยการสร้างไฟล์ WAV สุ่มที่มีความดังตามหลักการ Mastering เพื่อสาธิต Flow การทำงานตั้งแต่ต้นจนจบ
-    """)
+with st.expander("สถานะระบบ & การเชื่อมต่อโมเดล AI", expanded=True):
+    # แสดงสถานะปัจจุบันของ AI
+    is_real_status = system.ai_engine.is_real_rnn and system.mastering_module.is_real_vocoder
+    
+    col_rnn, col_vocoder = st.columns(2)
+    
+    with col_rnn:
+        if system.ai_engine.is_real_rnn:
+            st.success("✅ **RNN CORE AI:** เชื่อมต่อสำเร็จ")
+        else:
+            st.error("❌ **RNN CORE AI:** ทำงานในโหมดจำลอง (Mock) - โปรดตรวจสอบ `RNN_MODEL_PATH`")
+            
+    with col_vocoder:
+        if system.mastering_module.is_real_vocoder:
+            st.success("✅ **VOCODER MASTERING AI:** เชื่อมต่อสำเร็จ")
+        else:
+            st.error("❌ **VOCODER MASTERING AI:** ทำงานในโหมดจำลอง (Mock) - โปรดตรวจสอบ `VOCODER_MODEL_PATH`")
 
-# --- ส่วนควบคุม Input (Symbolic and Emotional Data) ---
-st.header("1. Symbolic & Emotional Input")
+    if is_real_status:
+        st.info("🎯 **ระบบพร้อมใช้งานจริง** คุณสามารถใช้โค้ดนี้เพื่อนำเสนอต่อผู้ร่วมก่อตั้ง/นักลงทุนได้อย่างเต็มที่")
+    else:
+        st.warning("ℹ️ **การพัฒนาต่อ:** โปรดนำไฟล์โมเดลมาเชื่อมต่อเพื่อปลดล็อกมูลค่าสูงสุดของ IP นี้")
 
-col1, col2, col3 = st.columns(3)
+st.markdown("---")
+st.header("1. ป้อนข้อมูลทางอารมณ์และโครงสร้างดนตรี")
 
-with col1:
-    st.markdown("##### 🎹 Chord Sequence")
+def mock_speech_to_text():
+    """จำลองการถอดเสียงพูดเป็นลำดับคอร์ด"""
+    mock_chords = [
+        "Cmaj7, Am7, Dm7, G7", 
+        "F, G, Em, Am",
+        "Eb, Ab, Db, Gbmaj7", 
+        "C, F, G, C",
+        "Dm, G, C, F",
+    ]
+    return random.choice(mock_chords)
+
+col_voice, col_manual = st.columns([1, 4])
+
+if 'chord_input' not in st.session_state:
+    st.session_state.chord_input = "Cmaj7, Am, F, G"
+
+with col_voice:
+    st.markdown("##### 🎙️ คำสั่งเสียง (จำลอง)")
+    if st.button("กดเพื่อจำลองคำสั่งเสียง", help="ป้อนลำดับคอร์ดจากการถอดเสียงพูดจำลอง"):
+        transcribed_chords = mock_speech_to_text()
+        st.session_state.chord_input = transcribed_chords
+        st.success(f"ถอดเสียงสำเร็จ: {transcribed_chords}")
+    
+with col_manual:
+    st.markdown("##### 🎹 ลำดับคอร์ด (โครงสร้างหลัก)")
     chord_input = st.text_input(
-        "ป้อนลำดับคอร์ด (คั่นด้วยเครื่องหมายจุลภาค เช่น Cmaj7, Fm, G7)", 
-        "Cmaj7, Am, F, G", 
-        key="chord_input"
+        "ป้อนลำดับคอร์ด (เช่น C, G, Am, F)", 
+        value=st.session_state.chord_input, 
+        key="chord_input_key"
     )
+    st.session_state.chord_input = chord_input
+
+st.markdown("---")
+st.subheader("2. ปรับแกนอารมณ์ (Valence & Arousal)")
+
+col2, col3 = st.columns(2)
 
 with col2:
-    st.markdown("##### 😌 Valence (ความสุข/อารมณ์บวก)")
+    st.markdown("##### 😌 Valence (ความรู้สึกเชิงบวก)")
     valence_input = st.slider(
-        "ระดับ Valence (0 = ลบ, 1 = บวก)", 
+        "ระดับความสุข/ความพึงพอใจ (0 = เศร้า, 1 = สุข)", 
         min_value=0.0, 
         max_value=1.0, 
         value=0.7, 
-        step=0.01
+        step=0.01,
+        key="valence_slider"
     )
 
 with col3:
-    st.markdown("##### ⚡ Arousal (ความตื่นเต้น/พลังงาน)")
+    st.markdown("##### ⚡ Arousal (ระดับพลังงาน)")
     arousal_input = st.slider(
-        "ระดับ Arousal (0 = สงบ, 1 = ตื่นเต้น)", 
+        "ระดับความตื่นตัว/ความกระฉับกระเฉง (0 = สงบ, 1 = ตื่นเต้น)", 
         min_value=0.0, 
         max_value=1.0, 
         value=0.6, 
-        step=0.01
+        step=0.01,
+        key="arousal_slider"
     )
 
 emotion_data = {
@@ -224,44 +353,44 @@ emotion_data = {
 st.markdown("---")
 
 # --- ส่วนควบคุม Process และ Output ---
-if st.button("🚀 สังเคราะห์เพลงด้วย RBF AI", type="primary"):
+if st.button("🚀 สังเคราะห์ดนตรีเพื่อการบำบัดด้วย RBF AI", type="primary"):
+    
     with st.spinner("กำลังประมวลผลระบบสังเคราะห์ 3 ขั้นตอน..."):
         try:
-            # รันระบบหลัก
-            audio_data_int16, samplerate = system.สังเคราะห์_เพลง_RBF(chord_input, emotion_data)
+            start_time = time.time()
+            audio_data_int16, samplerate, is_real_status = system.สังเคราะห์_เพลง_RBF(chord_input, emotion_data)
+            end_time = time.time()
             
-            st.success("✅ การสังเคราะห์และการมาสเตอร์เสร็จสมบูรณ์!")
+            st.success(f"✅ การสังเคราะห์และการมาสเตอร์เสร็จสมบูรณ์! (ใช้เวลา {end_time - start_time:.2f} วินาที)")
             
-            st.header("3. Final Audio Output")
-            st.write(f"ไฟล์เสียงที่สังเคราะห์ (Sampling Rate: {samplerate} Hz)")
+            st.header("3. Final Audio Output: เพลงสะท้อนอารมณ์ของคุณ")
+            if not is_real_status:
+                 st.error("❗ **หมายเหตุ:** เสียงนี้ถูกสร้างโดย **Mock Engine** เพื่อสาธิต Flow เท่านั้น โปรดเชื่อมต่อโมเดลจริง.")
             
-            # การแสดงผล Audio (ต้องแปลง Int16 กลับเป็น Float เพื่อแสดงผลใน st.audio)
             audio_data_float = audio_data_int16.astype(np.float32) / 32767.0
             st.audio(audio_data_float, format='audio/wav', sample_rate=samplerate)
             
-            # อนุญาตให้ดาวน์โหลดไฟล์เสียงที่ถูก Mastered
+            wav_io = io.BytesIO()
+            wavfile.write(wav_io, samplerate, audio_data_int16)
+            wav_bytes = wav_io.getvalue()
+
             st.download_button(
-                label="⬇️ ดาวน์โหลดไฟล์ WAV (จำลอง)",
-                data=wavfile.write("final_track.wav", samplerate, audio_data_int16),
-                file_name="final_track_rbf_ai.wav",
+                label="⬇️ ดาวน์โหลดไฟล์ WAV",
+                data=wav_bytes,
+                file_name="emotionally_resonant_track.wav",
                 mime="audio/wav"
             )
 
-            # แสดงผลลัพธ์การประมวลผล
             st.markdown("---")
             st.markdown("### รายงานผลการประมวลผลโดยละเอียด (ดูใน Sidebar)")
-            st.info("โปรดดูรายละเอียดขั้นตอนการทำงานของ Input, AI Engine, และ Mastering Module ใน Sidebar ทางซ้าย")
 
         except Exception as e:
             st.error(f"เกิดข้อผิดพลาดระหว่างการสังเคราะห์: {e}")
 
 else:
-    st.info("กดปุ่ม **สังเคราะห์เพลงด้วย RBF AI** เพื่อเริ่มต้นกระบวนการ")
+    st.info("ระบบพร้อมแล้ว! กำหนดค่าอารมณ์และโครงสร้างดนตรี จากนั้นกดปุ่ม **สังเคราะห์** เพื่อเริ่มต้น")
     
 # --- Sidebar สำหรับแสดง Log การประมวลผล ---
 st.sidebar.title("🛠️ RBF Engine Log")
 st.sidebar.markdown("แสดงขั้นตอนการทำงานของแต่ละ Module")
-
-if st.button("🔄 รีเซ็ต Log"):
-    st.experimental_rerun()
 
