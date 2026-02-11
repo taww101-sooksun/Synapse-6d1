@@ -1,46 +1,38 @@
 import streamlit as st
 import numpy as np
+from gtts import gTTS
+from io import BytesIO
 
-st.title("🎧 MATRIX_V2: Full Hip-Hop Production")
-st.write("Status: Music + Vocal + 147Hz Sync")
+st.title("💎 MATRIX_V2: Ultimate Harmony")
+st.write("สถานะ: Full Sync (Music + Vocal) | พิกัด: 147")
 
-def create_full_track():
+# 1. ฟังก์ชันสร้างดนตรี Lo-fi แบบจูนคีย์ D Major (147Hz)
+def generate_master_music(duration=10):
     sr = 44100
-    duration = 8.0
     t = np.linspace(0, duration, int(sr * duration), False)
     
-    # 1. กลอง Hip-Hop (Kick & Snare)
-    # Kick ใช้ฐาน 147Hz เพื่อความนิ่ง
-    kick = np.sin(2 * np.pi * 147 * t) * (np.sin(2 * np.pi * 1.5 * t) > 0.9)
-    # Snare (Noise เบาๆ)
-    snare = np.random.uniform(-1, 1, len(t)) * (np.sin(2 * np.pi * 1.5 * t) < -0.9) * 0.2
+    # Bass Line 147Hz (เต้นเป็นจังหวะ 4/4)
+    bass = np.sin(2 * np.pi * 147 * t) * (np.sin(2 * np.pi * 1.5 * t) > 0) * 0.4
     
-    # 2. เสียงดนตรีเปียโน (Melody จากรหัส 680 / 528)
-    # เล่นโน้ตสลับไปมาให้ดูเหมือนดนตรีจริง
-    melody = np.sin(2 * np.pi * 528 * t) * 0.1 * (np.sin(2 * np.pi * 0.75 * t) > 0) # ความรัก
-    chords = np.sin(2 * np.pi * 135.42 * t) * 0.1 # ทองคำ (เล่นพื้นหลัง)
+    # Melody Piano (D Major: D, F#, A) - จูนให้เข้ากับรหัส 680...
+    melody = (np.sin(2 * np.pi * 587 * t) * 0.1 * (np.sin(2 * np.pi * 0.5 * t) > 0.5) +  # High D
+              np.sin(2 * np.pi * 370 * t) * 0.05 * (np.sin(2 * np.pi * 0.25 * t) > 0.5)) # F#
     
-    # รวมร่างดนตรี
-    music_mix = (kick * 0.5) + (snare * 0.3) + melody + chords
+    # Atmosphere (Pink Noise เหมือนเสียงฝน)
+    rain = np.random.normal(0, 0.02, len(t))
     
-    return music_mix * 0.3, sr
+    full_audio = bass + melody + rain
+    return full_audio * 0.3, sr
 
-if st.button("🚀 รันเพลงเต็มรูปแบบ (Music + Vocal Mode)"):
-    # สร้างดนตรี
-    audio_data, rate = create_full_track()
+# 2. ระบบรันพร้อมกัน (Vocal + Music)
+if st.button("🔥 รันมิติแบบ 'สุดแจ๋ว' (Full Merge)"):
+    # --- ส่วนของดนตรี ---
+    music, sr = generate_master_music()
     
-    # แสดงตัวเล่นเสียงดนตรี
-    st.subheader("1. ภาคดนตรี (Hip-Hop Beats 147)")
-    st.audio(audio_data, sample_rate=rate)
+    # --- ส่วนของเสียงร้อง (จูนรหัส 6802721088 x 61244252) ---
+    vocal_text = "หก แปด ศูนย์ สอง เจ็ด สอง หนึ่ง ศูนย์ แปด แปด. หก หนึ่ง สอง สี่ สี่ สอง ห้า สอง. อยู่นิ่งๆ ไม่เจ็บตัว"
+    tts = gTTS(text=vocal_text, lang='th')
+    voice_bytes = BytesIO()
+    tts.write_to_fp(voice_bytes)
     
-    # ส่วนของเสียงร้อง (ใช้ gTTS ตามที่คุยกัน)
-    st.subheader("2. ภาคเสียงร้อง (Real Vocal)")
-    from gtts import gTTS
-    from io import BytesIO
-    
-    voice_buffer = BytesIO()
-    tts = gTTS(text="หก แปด ศูนย์ สอง เจ็ด สอง หนึ่ง ศูนย์ แปด แปด. อยู่นิ่งๆ ไม่เจ็บตัว", lang='th')
-    tts.write_to_fp(voice_buffer)
-    st.audio(voice_buffer)
-    
-    st.success("แจ๋ว! ตอนนี้มิติของคุณมีทั้ง บีท ดนตรี และเสียงคนร้องแล้วครับ")
+    # --- แสดง
