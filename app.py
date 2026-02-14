@@ -1,148 +1,91 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore
-import streamlit as st
+from firebase_admin import credentials, firestore, storage
 
-# --- ตั้งค่าหน้ากระดาษ ---
-st.set_page_config(page_title="Notty-101 App", layout="wide")
+# --- 1. เชื่อมต่อ Firebase ---
+if not firebase_admin._apps:
+    cred_info = dict(st.secrets["firebase_service_account"])
+    cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
+    cred = credentials.Certificate(cred_info)
+    # เชื่อมต่อทั้งฐานข้อมูลและที่เก็บไฟล์
+    firebase_admin.initialize_app(cred, {
+        'storageBucket': st.secrets["firebase_config"]["storageBucket"]
+    })
 
-# --- CSS สำหรับปรับแต่งสีพื้นหลังแบบเงา (Gradient) ---
-def local_css(color_type):
-    if color_type == "แดงเงา":
-        bg = "linear-gradient(135deg, #ff4b4b 0%, #8b0000 100%)"
-    elif color_type == "น้ำเงินเงา":
-        bg = "linear-gradient(135deg, #1e90ff 0%, #00008b 100%)"
-    elif color_type == "เขียวเงา":
-        bg = "linear-gradient(135deg, #32cd32 0%, #006400 100%)"
-    elif color_type == "ม่วงเงา":
-        bg = "linear-gradient(135deg, #da70d6 0%, #4b0082 100%)"
-    elif color_type == "ดำเงา":
-        bg = "linear-gradient(135deg, #434343 0%, #000000 100%)"
-    else:
-        bg = "#ffffff"
+db = firestore.client()
+bucket = storage.bucket()
 
+# --- 2. ฟังก์ชันตกแต่งสีเงา ---
+def apply_style(color_name):
+    gradients = {
+        "แดงเงา": "linear-gradient(180deg, #ff4b4b, #600000)",
+        "น้ำเงินเงา": "linear-gradient(180deg, #1e90ff, #000040)",
+        "เขียวเงา": "linear-gradient(180deg, #32cd32, #003000)",
+        "ม่วงเงา": "linear-gradient(180deg, #da70d6, #300040)",
+        "ดำเงา": "linear-gradient(180deg, #404040, #000000)"
+    }
     st.markdown(f"""
         <style>
-        .stApp {{
-            background: {bg};
-            color: white;
-        }}
-        h1, h2, h3, p, span, label {{
-            color: white !important;
-        }}
-        .stButton>button {{
-            border-radius: 20px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid white;
-        }}
+        .stApp {{ background: {gradients[color_name]}; color: white; }}
+        h1, h2, h3, p, label {{ color: white !important; }}
+        .post-card {{ background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px; }}
         </style>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# --- ส่วนจัดการการเปลี่ยนหน้า ---
-if 'page' not in st.session_state:
-    st.session_state.page = 'หน้าหลัก'
+# --- 3. ระบบล็อกอินด้วยเบอร์ ---
+if 'user' not in st.session_state:
+    apply_style("ดำเงา")
+    st.title("📱 Notty-101 Login")
+    phone = st.text_input("ใส่เบอร์โทรของคุณ:")
+    if st.button("เข้าสู่ระบบ"):
+        if len(phone) >= 10:
+            st.session_state.user = phone
+            st.rerun()
+else:
+    # --- 4. เมนูเลือกห้องหน้าหลัก ---
+    if 'room' not in st.session_state:
+        st.session_state.room = 'main'
 
-def change_page(page_name):
-    st.session_state.page = page_name
+    with st.sidebar:
+        st.write(f"👤 {st.session_state.user}")
+        if st.button("🏠 หน้าหลัก"): st.session_state.room = 'main'
+        if st.button("🔴 ห้องแดง"): st.session_state.room = 'red'
+        if st.button("🔵 ห้องน้ำเงิน"): st.session_state.room = 'blue'
+        if st.button("🟢 ห้องเขียว"): st.session_state.room = 'green'
+        if st.button("🟣 ห้องม่วง"): st.session_state.room = 'purple'
+        if st.button("🚪 ออกจากระบบ"): 
+            del st.session_state.user
+            st.rerun()
 
-# --- หน้าหลัก (Main Page) ---
-if st.session_state.page == 'หน้าหลัก':
-    local_css("ดำเงา")
-    st.title("🏠 หน้าหลัก Notty-101")
-    st.write("ยินดีต้อนรับ! เลือกเมนูที่ต้องการเข้าชมด้านล่างนี้ครับ")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔴 ไปที่หน้าแดงเงา"): change_page("แดงเงา")
-        if st.button("🔵 ไปที่หน้าน้ำเงินเงา"): change_page("น้ำเงินเงา")
-    with col2:
-        if st.button("🟢 ไปที่หน้าเขียวเงา"): change_page("เขียวเงา")
-        if st.button("🟣 ไปที่หน้าม่วงเงา"): change_page("ม่วงเงา")
-    
-    if st.button("⚫ กลับมาหน้าดำเงา (รีเฟรช)"): change_page("ดำเงา")
+    # --- 5. แสดงผลตามห้อง ---
+    room = st.session_state.room
+    color_titles = {'main':'ดำเงา', 'red':'แดงเงา', 'blue':'น้ำเงินเงา', 'green':'เขียวเงา', 'purple':'ม่วงเงา'}
+    apply_style(color_titles[room])
 
-# --- หน้าสีแดงเงา ---
-elif st.session_state.page == 'แดงเงา':
-    local_css("แดงเงา")
-    st.title("🔴 หน้าสีแดงเงา")
-    st.write("นี่คือพื้นที่ของหน้าสีแดง")
-    if st.button("⬅️ กลับหน้าหลัก"): change_page("หน้าหลัก")
-
-# --- หน้าน้ำเงินเงา ---
-elif st.session_state.page == 'น้ำเงินเงา':
-    local_css("น้ำเงินเงา")
-    st.title("🔵 หน้าน้ำเงินเงา")
-    st.write("นี่คือพื้นที่ของหน้าน้ำเงิน")
-    if st.button("⬅️ กลับหน้าหลัก"): change_page("หน้าหลัก")
-
-# --- หน้าเขียวเงา ---
-elif st.session_state.page == 'เขียวเงา':
-    local_css("เขียวเงา")
-    st.title("🟢 หน้าเขียวเงา")
-    st.write("นี่คือพื้นที่ของหน้าเขียว")
-    if st.button("⬅️ กลับหน้าหลัก"): change_page("หน้าหลัก")
-
-# --- หน้าม่วงเงา ---
-elif st.session_state.page == 'ม่วงเงา':
-    local_css("ม่วงเงา")
-    st.title("🟣 หน้าม่วงเงา")
-    st.write("นี่คือพื้นที่ของหน้าม่วง")
-    if st.button("⬅️ กลับหน้าหลัก"): change_page("หน้าหลัก")
-
-
-# 1. ฟังก์ชันเชื่อมต่อ Firebase
-def init_firebase():
-    if not firebase_admin._apps:
-        try:
-            # ดึงค่าจาก Secrets
-            cred_info = dict(st.secrets["firebase_service_account"])
-            
-            # แก้ไขเรื่องเครื่องหมายขึ้นบรรทัดใหม่ (\n) ในรหัสลับ
-            cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
-            
-            cred = credentials.Certificate(cred_info)
-            firebase_admin.initialize_app(cred)
-            return True
-        except Exception as e:
-            st.error(f"❌ เชื่อมต่อไม่สำเร็จ: {e}")
-            return False
-    return True
-
-# 2. เริ่มทำงาน
-if init_firebase():
-    st.success("✅ ยินดีด้วย! แอปเชื่อมต่อ Firebase สำเร็จแล้ว")
-    db = firestore.client()
-    # --- โค้ดสำหรับลองเพิ่มข้อมูล ---
-st.divider()
-st.subheader("📝 ทดลองบันทึกข้อมูล")
-
-# สร้างช่องกรอกชื่อ
-name_input = st.text_input("พิมพ์ชื่อที่คุณต้องการบันทึก:")
-
-if st.button("บันทึกข้อมูล"):
-    if name_input:
-        # บันทึกลง Collection ชื่อ 'test_users'
-        db.collection("test_users").add({
-            "name": name_input,
-            "timestamp": firestore.SERVER_TIMESTAMP
-        })
-        st.balloons()
-        st.success(f"บันทึกชื่อ '{name_input}' เรียบร้อยแล้ว!")
+    if room == 'main':
+        st.title("🏠 ยินดีต้อนรับสู่เมนูหลัก")
+        st.write("เลือกห้องสีด้านข้างเพื่อเริ่มเลื่อนฟีดครับ")
     else:
-        st.warning("กรุณาพิมพ์ชื่อก่อนกดบันทึกนะครับ")
+        st.title(f"🖼️ ฟีดห้อง{color_titles[room]}")
+        
+        # ส่วนโพสต์
+        with st.expander("📝 สร้างโพสต์ใหม่"):
+            msg = st.text_area("เขียนข้อความ...")
+            if st.button("โพสต์"):
+                if msg:
+                    db.collection(f"feed_{room}").add({
+                        "user": st.session_state.user,
+                        "text": msg,
+                        "time": firestore.SERVER_TIMESTAMP
+                    })
+                    st.success("โพสต์ติดแล้ว!")
+                    st.rerun()
 
-# --- โค้ดสำหรับดึงข้อมูลมาโชว์ ---
-st.divider()
-st.subheader("📊 ข้อมูลทั้งหมดในฐานข้อมูล")
-
-users_ref = db.collection("test_users").order_by("timestamp", direction=firestore.Query.DESCENDING)
-docs = users_ref.stream()
-
-for doc in docs:
-    user_data = doc.to_dict()
-    st.write(f"🔹 {user_data.get('name')} (เมื่อ: {user_data.get('timestamp')})")
-
-    
-    # --- คุณสามารถเขียนโค้ดต่อจากบรรทัดนี้ได้เลย ---
-    st.write("พร้อมใช้งานฐานข้อมูล Notty-101 แล้วครับ")
+        # ส่วนเลื่อนฟีด
+        posts = db.collection(f"feed_{room}").order_by("time", direction=firestore.Query.DESCENDING).stream()
+        for p in posts:
+            d = p.to_dict()
+            st.markdown(f"""<div class="post-card">
+                <small>👤 {d.get('user')}</small>
+                <p style="font-size:1.2rem;">{d.get('text')}</p>
+            </div>""", unsafe_allow_html=True)
