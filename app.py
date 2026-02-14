@@ -1,13 +1,21 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
+from firebase_admin import credentials, firestore
 
-# ดึงข้อมูลจาก "ตู้เซฟ" (Secrets) ที่คุณใส่ไฟล์ JSON ลงไป
+# ป้องกันการ Initialize ซ้ำ
 if not firebase_admin._apps:
-    cred_dict = dict(st.secrets["firebase_service_account"]) # ชื่อต้องตรงกับที่คุณตั้งใน Secrets
-    cred = credentials.Certificate(cred_dict)
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': f"{cred_dict['project_id']}.appspot.com"
-    })
+    try:
+        # ดึงค่าจาก Secrets
+        cred_info = dict(st.secrets["firebase_service_account"])
+        
+        # จัดการ Newline (\n) ให้ Firebase SDK อ่านเข้าใจ
+        cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
+        
+        cred = credentials.Certificate(cred_info)
+        firebase_admin.initialize_app(cred)
+        st.success("🔥 เชื่อมต่อ Firebase สำเร็จ! สบายตัวแล้วครับ")
+    except Exception as e:
+        st.error(f"❌ โอ๊ะ! ยังติดปัญหาอยู่นิดหน่อย: {e}")
 
+# ตัวแปรสำหรับใช้งานฐานข้อมูล
 db = firestore.client()
