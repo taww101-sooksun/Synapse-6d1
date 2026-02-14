@@ -10,3 +10,5 @@ streamlit-player
 streamlit-js-eval
 torch
 gTTS
+streamlit
+firebase-admin
