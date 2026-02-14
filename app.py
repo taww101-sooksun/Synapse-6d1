@@ -1,3 +1,10 @@
+import streamlit as st
+import firebase_admin  # <--- ต้องมีบรรทัดนี้แบบเต็มๆ ด้วย
+from firebase_admin import credentials, firestore, storage
+
+# --- 1. เชื่อมต่อ Firebase ---
+if not firebase_admin._apps:  # บรรทัดนี้จะเลิก Error ทันที
+    # ... code ส่วนที่เหลือ ...
 # --- 1. เชื่อมต่อ Firebase ---
 if not firebase_admin._apps:
     # ดึงค่าจาก Secrets
