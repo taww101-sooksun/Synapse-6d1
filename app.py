@@ -1,28 +1,19 @@
 import streamlit as st
-import firebase_admin  # <--- ต้องมีบรรทัดนี้แบบเต็มๆ ด้วย
+import firebase_admin
 from firebase_admin import credentials, firestore, storage
 
 # --- 1. เชื่อมต่อ Firebase ---
-if not firebase_admin._apps:  # บรรทัดนี้จะเลิก Error ทันที
-    # ... code ส่วนที่เหลือ ...
-# --- 1. เชื่อมต่อ Firebase ---
 if not firebase_admin._apps:
-    # ดึงค่าจาก Secrets
-    service_account_info = st.secrets["firebase_service_account"]
+    # ทุกบรรทัดที่อยู่ภายใต้ 'if' ต้องมีย่อหน้าเข้าไปเท่ากันทั้งหมด
+    cred_info = dict(st.secrets["firebase_service_account"])
+    cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
+    cred = credentials.Certificate(cred_info)
     
-    # สร้าง Credentials โดยตรงจาก Dictionary (Streamlit จัดการเรื่อง \n ให้เองในระดับหนึ่ง)
-    # แต่ถ้ายังมีปัญหาเรื่องคีย์ ให้ใช้ dict() ครอบตามเดิมได้ครับ
-    cred = credentials.Certificate(dict(service_account_info))
-    
-    # ดึงชื่อ Bucket มาเตรียมไว้
-    bucket_name = st.secrets["firebase_config"]["storageBucket"]
-    
-    # เชื่อมต่อแอป
+    # เชื่อมต่อทั้งฐานข้อมูลและที่เก็บไฟล์
     firebase_admin.initialize_app(cred, {
-        'storageBucket': bucket_name
+        'storageBucket': st.secrets["firebase_config"]["storageBucket"]
     })
 
-# ประกาศตัวแปรใช้งาน
+# บรรทัดที่ออกมาอยู่นอก 'if' ต้องกลับมาชิดซ้ายสุด
 db = firestore.client()
-# ระบุชื่อ bucket ย้ำลงไปในฟังก์ชันเพื่อความชัวร์
 bucket = storage.bucket(st.secrets["firebase_config"]["storageBucket"])
