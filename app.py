@@ -2,8 +2,13 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from datetime import datetime
+import uuid
 
-# --- 1. เชื่อมต่อ Firebase ---
+# --- 1. ตั้งค่าและเชื่อมต่อ Firebase ---
+if "firebase_service_account" not in st.secrets:
+    st.error("ไม่พบการตั้งค่า Secrets! กรุณาสร้างไฟล์ .streamlit/secrets.toml")
+    st.stop()
+
 if not firebase_admin._apps:
     try:
         cred_info = dict(st.secrets["firebase_service_account"])
@@ -15,106 +20,171 @@ if not firebase_admin._apps:
             'storageBucket': st.secrets["firebase_config"]["storageBucket"]
         })
     except Exception as e:
-        st.error(f"การเชื่อมต่อล้มเหลว: {e}")
+        st.error(f"เชื่อมต่อ Firebase ไม่ได้: {e}")
+        st.stop()
 
 db = firestore.client()
-bucket = storage.bucket(st.secrets["firebase_config"]["storageBucket"])
+try:
+    bucket = storage.bucket()
+except:
+    st.error("ไม่พบ Storage Bucket")
 
-# --- 2. ฟังก์ชันตกแต่งสีเงา ---
-def apply_style(color_name):
-    gradients = {
-        "แดงเงา": "linear-gradient(180deg, #ff4b4b, #600000)",
-        "น้ำเงินเงา": "linear-gradient(180deg, #1e90ff, #000040)",
-        "เขียวเงา": "linear-gradient(180deg, #32cd32, #003000)",
-        "ม่วงเงา": "linear-gradient(180deg, #da70d6, #300040)",
-        "ดำเงา": "linear-gradient(180deg, #404040, #000000)"
+# --- 2. จัดการ State (หน้าและ User) ---
+if 'page' not in st.session_state: st.session_state.page = 'home'
+if 'user' not in st.session_state: st.session_state.user = ''
+
+# --- 3. ฟังก์ชันตกแต่ง CSS (เปลี่ยนสีตามห้อง) ---
+def set_theme(room_color):
+    themes = {
+        "home": ("#ffffff", "#000000"), # พื้นขาว ตัวดำ
+        "red": ("#800000", "#ffffff"),  # พื้นแดงเลือดหมู ตัวขาว
+        "blue": ("#000080", "#ffffff"), # พื้นน้ำเงินเข้ม ตัวขาว
+        "green": ("#006400", "#ffffff"),# พื้นเขียวแก่ ตัวขาว
+        "black": ("#000000", "#ffffff") # พื้นดำ ตัวขาว
     }
+    bg, text = themes.get(room_color, ("#ffffff", "#000000"))
+    
     st.markdown(f"""
         <style>
-        .stApp {{ background: {gradients[color_name]}; color: white; }}
-        h1, h2, h3, p, label {{ color: white !important; }}
-        .post-card {{ 
-            background: rgba(255,255,255,0.1); 
-            padding: 20px; 
-            border-radius: 15px; 
-            border: 1px solid rgba(255,255,255,0.2); 
-            margin-bottom: 20px; 
+        .stApp {{ background-color: {bg}; }}
+        h1, h2, h3, p, span, div, label {{ color: {text} !important; }}
+        .stButton>button {{
+            border-radius: 20px;
+            background-color: white;
+            color: black;
+            border: 1px solid #ccc;
         }}
-        img {{ border-radius: 10px; margin-top: 10px; }}
+        .post-box {{
+            border: 1px solid {text};
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background-color: rgba(255,255,255,0.1);
+        }}
         </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ระบบล็อกอิน ---
-if 'user' not in st.session_state:
-    apply_style("ดำเงา")
-    st.title("📱 Notty-101 Login")
-    phone = st.text_input("ใส่เบอร์โทรของคุณ:")
-    if st.button("เข้าสู่ระบบ"):
-        if len(phone) >= 10:
-            st.session_state.user = phone
-            st.rerun()
-else:
-    # --- 4. เมนูเลือกห้อง ---
-    if 'room' not in st.session_state:
-        st.session_state.room = 'main'
+# --- 4. ฟังก์ชันสำหรับห้องแชท (Reusable) ---
+def render_room(room_id, room_name_th):
+    st.title(f"ห้อง{room_name_th}")
+    
+    if st.button("⬅️ กลับหน้าหลัก"):
+        st.session_state.page = 'home'
+        st.rerun()
 
-    with st.sidebar:
-        st.write(f"👤 {st.session_state.user}")
-        if st.button("🏠 หน้าหลัก"): st.session_state.room = 'main'
-        if st.button("🔴 ห้องแดง"): st.session_state.room = 'red'
-        if st.button("🔵 ห้องน้ำเงิน"): st.session_state.room = 'blue'
-        if st.button("🟢 ห้องเขียว"): st.session_state.room = 'green'
-        if st.button("🟣 ห้องม่วง"): st.session_state.room = 'purple'
-        if st.button("🚪 ออกจากระบบ"): 
-            del st.session_state.user
-            st.rerun()
-
-    room = st.session_state.room
-    color_map = {'main':'ดำเงา', 'red':'แดงเงา', 'blue':'น้ำเงินเงา', 'green':'เขียวเงา', 'purple':'ม่วงเงา'}
-    apply_style(color_map[room])
-
-    if room == 'main':
-        st.title("🏠 หน้าหลัก")
-        st.write("เลือกห้องสีด้านข้างเพื่อดูฟีด")
-    else:
-        st.title(f"🖼️ ฟีดห้อง{color_map[room]}")
-        
-        # --- 5. ส่วนโพสต์ (ข้อความ + รูปภาพ) ---
-        with st.expander("📝 สร้างโพสต์ใหม่ (ใส่รูปได้)"):
-            msg = st.text_area("เขียนข้อความ...")
-            uploaded_file = st.file_uploader("เลือกรูปภาพ...", type=["jpg", "jpeg", "png"])
+    # --- ส่วนโพสต์ ---
+    with st.expander("vb เขียนโพสต์ใหม่ / อัปโหลดรูป", expanded=True):
+        with st.form(f"post_form_{room_id}"):
+            msg = st.text_area("คุยอะไรกันดี...")
+            media = st.file_uploader("รูป/วิดีโอ", type=['png','jpg','mp4','mov'])
+            submitted = st.form_submit_button("โพสต์เลย")
             
-            if st.button("โพสต์"):
-                if msg or uploaded_file:
-                    image_url = None
-                    # ถ้ามีการอัปโหลดรูป
-                    if uploaded_file:
-                        with st.spinner('กำลังอัปโหลดรูปภาพ...'):
-                            file_path = f"posts/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uploaded_file.name}"
-                            blob = bucket.blob(file_path)
-                            blob.upload_from_string(uploaded_file.read(), content_type=uploaded_file.type)
-                            blob.make_public()
-                            image_url = blob.public_url
-                    
-                    # บันทึกข้อมูลลง Firestore
-                    db.collection(f"feed_{room}").add({
-                        "user": st.session_state.user,
-                        "text": msg,
-                        "image": image_url,
-                        "time": firestore.SERVER_TIMESTAMP
-                    })
-                    st.success("โพสต์เรียบร้อย!")
-                    st.rerun()
+            if submitted and (msg or media):
+                media_url, media_type = None, None
+                if media:
+                    with st.spinner("กำลังอัปโหลด..."):
+                        ext = media.name.split('.')[-1]
+                        fname = f"{room_id}/{uuid.uuid4()}.{ext}"
+                        blob = bucket.blob(fname)
+                        blob.upload_from_string(media.getvalue(), content_type=media.type)
+                        blob.make_public()
+                        media_url = blob.public_url
+                        media_type = 'video' if 'video' in media.type else 'image'
+                
+                db.collection(f'posts_{room_id}').add({
+                    'user': st.session_state.user,
+                    'text': msg,
+                    'media_url': media_url,
+                    'media_type': media_type,
+                    'likes': [], # เก็บรายชื่อคนกดไลค์
+                    'timestamp': firestore.SERVER_TIMESTAMP
+                })
+                st.success("โพสต์แล้ว!")
+                st.rerun()
 
-        # --- 6. ส่วนแสดงฟีด ---
-        posts = db.collection(f"feed_{room}").order_by("time", direction=firestore.Query.DESCENDING).stream()
-        for p in posts:
-            d = p.to_dict()
-            with st.container():
-                st.markdown(f'<div class="post-card">', unsafe_allow_html=True)
-                st.write(f"👤 **{d.get('user')}**")
-                if d.get('text'):
-                    st.write(d.get('text'))
-                if d.get('image'):
-                    st.image(d.get('image'), use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+    # --- ส่วนแสดงฟีด ---
+    docs = db.collection(f'posts_{room_id}').order_by('timestamp', direction='DESCENDING').stream()
+    
+    for doc in docs:
+        d = doc.to_dict()
+        did = doc.id
+        likes = d.get('likes', [])
+        is_liked = st.session_state.user in likes
+        
+        st.markdown(f'<div class="post-box">', unsafe_allow_html=True)
+        st.caption(f"👤 {d.get('user')} • {d.get('timestamp', '')}")
+        st.write(d.get('text'))
+        
+        if d.get('media_url'):
+            if d.get('media_type') == 'video':
+                st.video(d.get('media_url'))
+            else:
+                st.image(d.get('media_url'))
+        
+        # ปุ่ม Like & Share
+        c1, c2, c3 = st.columns([1, 1, 4])
+        with c1:
+            like_label = f"❤️ {len(likes)}" if is_liked else f"🤍 {len(likes)}"
+            if st.button(like_label, key=f"like_{did}"):
+                ref = db.collection(f'posts_{room_id}').document(did)
+                if is_liked:
+                    ref.update({'likes': firestore.ArrayRemove([st.session_state.user])})
+                else:
+                    ref.update({'likes': firestore.ArrayUnion([st.session_state.user])})
+                st.rerun()
+        with c2:
+            if st.button("🔗 แชร์", key=f"share_{did}"):
+                st.toast("จำลอง: คัดลอกลิงก์เรียบร้อย!")
+                
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- 5. ส่วนควบคุมหลัก (Main Controller) ---
+
+# หน้า Login
+if st.session_state.user == '':
+    set_theme("home")
+    st.title("🔐 เข้าสู่ระบบ")
+    name = st.text_input("ตั้งชื่อเล่นของคุณ:")
+    if st.button("เริ่มเล่น") and name:
+        st.session_state.user = name
+        st.rerun()
+
+# หน้าหลัก (เลือกห้อง)
+elif st.session_state.page == 'home':
+    set_theme("home")
+    st.title(f"สวัสดี {st.session_state.user} 👋")
+    st.subheader("เลือกห้องที่ต้องการเข้า:")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🔴 ห้องสีแดง", use_container_width=True): 
+            st.session_state.page = 'red'
+            st.rerun()
+        if st.button("🔵 ห้องสีน้ำเงิน", use_container_width=True): 
+            st.session_state.page = 'blue'
+            st.rerun()
+    with c2:
+        if st.button("🟢 ห้องสีเขียว", use_container_width=True): 
+            st.session_state.page = 'green'
+            st.rerun()
+        if st.button("⚫ ห้องสีดำ", use_container_width=True): 
+            st.session_state.page = 'black'
+            st.rerun()
+            
+    if st.button("ออกจากระบบ"):
+        st.session_state.user = ''
+        st.rerun()
+
+# หน้าห้องต่างๆ
+elif st.session_state.page == 'red':
+    set_theme("red")
+    render_room('red', 'สีแดง')
+elif st.session_state.page == 'blue':
+    set_theme("blue")
+    render_room('blue', 'สีน้ำเงิน')
+elif st.session_state.page == 'green':
+    set_theme("green")
+    render_room('green', 'สีเขียว')
+elif st.session_state.page == 'black':
+    set_theme("black")
+    render_room('black', 'สีดำ')
