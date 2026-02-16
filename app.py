@@ -69,22 +69,9 @@ else:
         st.image("logo.jpg", use_container_width=True) #
         st.title("ยินดีต้อนรับสู่ Synapse")
         
-                # --- ส่วนฝัง Playlist YouTube แบบใหม่ (ติดแน่นอน!) ---
-        st.subheader("🎵 ฟังเพลงไป แชทไป (Synapse Playlist)")
-        
-        # รหัส Playlist ของคุณท่านคือ: PL6S211I3urvpt47sv8mhbexif2YOzs2gO
-        components.html(
-            """
-            <iframe width="100%" height="315" 
-                src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
-                title="YouTube video player" frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                allowfullscreen>
-            </iframe>
-            """,
-            height=350,
-        )
-
+        # เพลย์ลิสต์ YouTube
+        st.subheader("🎵 ฟังเพลงไป แชทไป")
+        st.video("https://youtube.com/playlist?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&si=BGiqmOiqhccE7538")
         
         st.markdown("---")
         # คำบรรยายแต่ละห้อง
