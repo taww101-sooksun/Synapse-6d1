@@ -1,320 +1,188 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
-import streamlit.components.v1 as components # เพิ่ม import สำหรับ YouTube
+import streamlit.components.v1 as components
 
-# --- 1. ตั้งค่าและเชื่อมต่อ Firebase ---
-
-if "firebase_service_account" not in st.secrets:
-    st.error("ไม่พบการตั้งค่า Secrets! กรุณาสร้างไฟล์ .streamlit/secrets.toml")
-    st.stop()
-
+# --- 1. การเชื่อมต่อ Firebase & ตั้งค่าพื้นฐาน ---
 if not firebase_admin._apps:
     try:
         cred_info = dict(st.secrets["firebase_service_account"])
-        # แก้ไข private_key ที่อาจมีการขึ้นบรรทัดใหม่
-        if "\n" in cred_info["private_key"]:
-            cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n") # แก้ไขการแทนที่ \n
-        
+        if "\\n" in cred_info["private_key"]:
+            cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
         cred = credentials.Certificate(cred_info)
         firebase_admin.initialize_app(cred, {
             'storageBucket': st.secrets["firebase_config"]["storageBucket"]
         })
     except Exception as e:
-        st.error(f"เชื่อมต่อ Firebase ไม่ได้: {e}")
+        st.error(f"Error connecting to Firebase: {e}")
         st.stop()
 
 db = firestore.client()
-try:
-    bucket = storage.bucket()
-except Exception as e:
-    st.error(f"ไม่พบ Storage Bucket หรือเกิดข้อผิดพลาดในการเชื่อมต่อ: {e}")
-    st.stop()
+bucket = storage.bucket()
 
-# --- 2. จัดการ State (หน้าและ User) ---
+# --- 2. ฟังก์ชันพิเศษ (Utility) ---
+def get_thai_time():
+    return datetime.utcnow() + timedelta(hours=7)
 
-if 'page' not in st.session_state:
-    st.session_state.page = 'home'
-if 'user' not in st.session_state:
-    st.session_state.user = ''
-
-# --- 3. ฟังก์ชันตกแต่ง CSS (เปลี่ยนสีตามห้อง) ---
-
-def set_theme(room_color):
+def set_room_theme(room_id):
     themes = {
-        "home": ("linear-gradient(to right, #FFC0CB, #ADD8E6, #90EE90, #FFD700, #FFA07A)", "#333333"), # หน้าแรก 5 สี + ตัวหนังสือสีเทาเข้ม
-        "red": ("#800000", "#ffffff"), # พื้นแดงเลือดหมู ตัวขาว
-        "blue": ("#000080", "#ffffff"), # พื้นน้ำเงินเข้ม ตัวขาว
-        "green": ("#006400", "#ffffff"),# พื้นเขียวแก่ ตัวขาว
-        "black": ("#000000", "#ffffff") # พื้นดำ ตัวขาว
+        "home":  {"bg": "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)", "text": "#1e3a5f", "accent": "#4a90e2"},
+        "red":   {"bg": "linear-gradient(180deg, #8b0000 0%, #ff4b4b 100%)", "text": "#ffffff", "accent": "#ffffff"},
+        "blue":  {"bg": "linear-gradient(180deg, #000046 0%, #1cb5e0 100%)", "text": "#ffffff", "accent": "#ffffff"},
+        "green": {"bg": "linear-gradient(180deg, #004d00 0%, #2ecc71 100%)", "text": "#ffffff", "accent": "#ffffff"},
+        "black": {"bg": "linear-gradient(180deg, #000000 0%, #434343 100%)", "text": "#ffffff", "accent": "#aaaaaa"}
     }
-    bg, text = themes.get(room_color, ("#ffffff", "#000000"))
-
+    cfg = themes.get(room_id, themes["home"])
     st.markdown(f"""
         <style>
-        .stApp {{ background: {bg}; }} /* ใช้ background แทน background-color สำหรับ linear-gradient */
-        h1, h2, h3, p, span, div, label, .stMarkdown, .stText, .stButton>button, .stTextArea>div>div>textarea, .stTextInput>div>div>input {{ color: {text} !important; }}
-        .stButton>button {{
-            border-radius: 20px;
-            background-color: white; /* ปุ่มยังคงเป็นสีขาวเพื่อให้เห็นชัด */
-            color: black;
-            border: 1px solid #ccc;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-        }}
+        .stApp {{ background: {cfg['bg']}; color: {cfg['text']}; }}
+        h1, h2, h3, p, span, label {{ color: {cfg['text']} !important; font-family: 'Kanit', sans-serif; }}
         .post-box {{
-            border: 1px solid {text};
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            background-color: rgba(255,255,255,0.2); /* ทำให้กล่องโพสต์โปร่งแสงเล็กน้อยเพื่อตัดกับพื้นหลัง */
-            color: {text}; /* กำหนดสีข้อความภายใน post-box ด้วย */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px; border-radius: 20px; margin-bottom: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
         }}
-        /* เพิ่มสไตล์สำหรับข้อความใน input fields เพื่อให้เห็นชัดเจน */
-        .stTextArea>div>div>textarea, .stTextInput>div>div>input {{
-            background-color: rgba(255, 255, 255, 0.1);
-            color: {text};
-            border: 1px solid {text};
+        .stButton>button {{
+            border-radius: 30px; border: none; font-weight: bold;
+            transition: 0.3s; background: {cfg['accent']}; color: white !important;
         }}
+        .stButton>button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }}
         </style>
     """, unsafe_allow_html=True)
 
-# --- 4. ฟังก์ชันสำหรับห้องแชท (Reusable) ---
+# --- 3. ส่วนระบบโทร (WebRTC) ---
+def render_call_feature(target_user):
+    if target_user:
+        st.info(f"🟢 พร้อมโทรหา: {target_user}")
+        components.html(f"""
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <div style="text-align:center; padding:10px; border-radius:15px; background:rgba(255,255,255,0.2);">
+                <button id="callBtn" style="padding:10px 20px; border-radius:20px; border:none; background:#28a745; color:white; cursor:pointer;">📞 กดโทรออก (Free)</button>
+                <p id="callStatus" style="color:white; font-size:12px; margin-top:5px;">สถานะ: พร้อม</p>
+                <audio id="remoteAudio" autoplay></audio>
+            </div>
+            <script>
+                const peer = new Peer('{st.session_state.user}');
+                const status = document.getElementById('callStatus');
+                peer.on('call', (call) => {{
+                    navigator.mediaDevices.getUserMedia({{audio: true}}).then((stream) => {{
+                        call.answer(stream);
+                        status.innerText = "กำลังรับสาย...";
+                        call.on('stream', (rms) => {{ document.getElementById('remoteAudio').srcObject = rms; }});
+                    }});
+                }});
+                document.getElementById('callBtn').onclick = () => {{
+                    navigator.mediaDevices.getUserMedia({{audio: true}}).then((stream) => {{
+                        const call = peer.call('{target_user}', stream);
+                        status.innerText = "กำลังโทรออก...";
+                        call.on('stream', (rms) => {{ document.getElementById('remoteAudio').srcObject = rms; }});
+                    }});
+                }};
+            </script>
+        """, height=120)
 
-def render_room(room_id, room_name_th):
-    # กำหนดธีมตามห้อง
-    set_theme(room_id)
-    st.title(f"ห้อง{room_name_th}")
+# --- 4. ฟังก์ชันจัดการห้อง (Unified Room Logic) ---
+def render_social_room(room_id, room_name):
+    set_room_theme(room_id)
+    st.title(f"{room_name} Room")
+    
+    if room_id == "blue":
+        st.subheader("📞 วิดีโอคอล/โทรฟรี")
+        friend_to_call = st.selectbox("เลือกเพื่อนในระบบ", [d.id for d in db.collection('users').stream() if d.id != st.session_state.user])
+        render_call_feature(friend_to_call)
+        st.markdown("---")
 
-    if st.button("⬅️ กลับหน้าหลัก"):
-        st.session_state.page = 'home'
-        st.rerun()
-
-    # --- ส่วนโพสต์ ---
-    with st.expander("📝 เขียนโพสต์ใหม่ / อัปโหลดรูป", expanded=False):
-        with st.form(f"post_form_{room_id}"):
-            msg = st.text_area("คุยอะไรกันดี...")
-            media = st.file_uploader("รูป/วิดีโอ", type=['png','jpg','mp4','mov'])
-            submitted = st.form_submit_button("โพสต์เลย")
-            
-            if submitted and (msg or media):
-                if not st.session_state.user:
-                    st.warning("กรุณากรอกชื่อผู้ใช้ในช่องด้านข้างก่อนโพสต์!")
-                    st.stop()
-
-                media_url, media_type = None, None
+    # ส่วนโพสต์ใหม่
+    with st.expander("📝 สร้างโพสต์ใหม่"):
+        with st.form(f"post_{room_id}"):
+            msg = st.text_area("คุณกำลังคิดอะไรอยู่?")
+            media = st.file_uploader("แนบรูปหรือวิดีโอ", type=['png','jpg','mp4'])
+            if st.form_submit_button("โพสต์"):
+                m_url, m_type = None, None
                 if media:
-                    with st.spinner("กำลังอัปโหลด..."):
-                        ext = media.name.split('.')[-1]
-                        # สร้าง path ใน Storage bucket: room_id/uuid.ext
-                        fname = f"{room_id}/{uuid.uuid4()}.{ext}" 
-                        blob = bucket.blob(fname)
-                        blob.upload_from_string(media.getvalue(), content_type=media.type)
-                        blob.make_public() # ทำให้ไฟล์สามารถเข้าถึงได้ผ่าน URL สาธารณะ
-                        media_url = blob.public_url
-                        media_type = 'video' if 'video' in media.type else 'image'
+                    path = f"{room_id}/{uuid.uuid4()}_{media.name}"
+                    blob = bucket.blob(path)
+                    blob.upload_from_string(media.getvalue(), content_type=media.type)
+                    blob.make_public()
+                    m_url = blob.public_url
+                    m_type = 'video' if 'video' in media.type else 'image'
                 
                 db.collection(f'posts_{room_id}').add({
                     'user': st.session_state.user,
-                    'text': msg,
-                    'media_url': media_url,
-                    'media_type': media_type,
-                    'likes': [], # เก็บรายชื่อคนกดไลค์
-                    'timestamp': firestore.SERVER_TIMESTAMP # ใช้ timestamp จากเซิร์ฟเวอร์ Firebase
+                    'text': msg, 'media_url': m_url, 'media_type': m_type,
+                    'likes': [], 'timestamp': get_thai_time()
                 })
-                st.success("โพสต์แล้ว!")
-                st.rerun() # รีโหลดหน้าเพื่อแสดงโพสต์ใหม่
-
-    # --- ส่วนแสดงฟีด ---
-    # ดึงโพสต์จาก Firestore เรียงตาม timestamp ล่าสุดอยู่บนสุด
-    docs = db.collection(f'posts_{room_id}').order_by('timestamp', direction='DESCENDING').stream()
-
-    for doc in docs:
-        d = doc.to_dict()
-        did = doc.id # Document ID ของโพสต์
-        likes = d.get('likes', [])
-        is_liked = st.session_state.user in likes # ตรวจสอบว่า user ปัจจุบันกดไลค์โพสต์นี้หรือไม่
-        
-        st.markdown(f'<div class="post-box">', unsafe_allow_html=True) # เริ่มกล่องโพสต์
-        
-        # แสดงชื่อผู้ใช้และเวลา
-        timestamp_obj = d.get('timestamp')
-        timestamp_str = timestamp_obj.strftime('%d %b %Y, %H:%M') if isinstance(timestamp_obj, datetime) else ''
-        st.caption(f"👤 {d.get('user')} • {timestamp_str}")
-        
-        st.write(d.get('text')) # แสดงข้อความโพสต์
-        
-        if d.get('media_url'): # ถ้ามีไฟล์มีเดีย
-            if d.get('media_type') == 'video':
-                st.video(d.get('media_url'))
-            else:
-                st.image(d.get('media_url'))
-        
-        # ปุ่ม Like & Share
-        c1, c2, c3 = st.columns([1, 1, 4])
-        with c1:
-            like_label = f"❤️ {len(likes)}" if is_liked else f"🤍 {len(likes)}"
-            if st.button(like_label, key=f"like_{did}"): # key ต้องไม่ซ้ำกันในแต่ละปุ่ม
-                if not st.session_state.user:
-                    st.warning("กรุณากรอกชื่อผู้ใช้ในช่องด้านข้างก่อนกดไลค์!")
-                else:
-                    ref = db.collection(f'posts_{room_id}').document(did)
-                    if is_liked: # ถ้าเคยไลค์แล้ว ให้ลบออกจาก array
-                        ref.update({'likes': firestore.ArrayRemove([st.session_state.user])})
-                    else: # ถ้ายังไม่ไลค์ ให้เพิ่มเข้าใน array
-                        ref.update({'likes': firestore.ArrayUnion([st.session_state.user])})
-                    st.rerun() # รีโหลดหน้าเพื่อแสดงผลการไลค์
-        with c2:
-            if st.button("🔗 แชร์", key=f"share_{did}"):
-                st.toast("จำลอง: คัดลอกลิงก์เรียบร้อย!") # แสดงข้อความชั่วคราว
-        
-        # --- เพิ่มส่วนคอมเมนต์ตรงนี้ ---
-        # **จะแสดงเฉพาะห้องสีแดง (YouTube) เป็นตัวอย่าง**
-        if room_id == 'red':
-            st.markdown("---") # เส้นคั่น
-            st.subheader("ความคิดเห็น")
-
-            # แสดงคอมเมนต์ที่มีอยู่
-            comments_ref = db.collection(f'posts_{room_id}').document(did).collection('comments').order_by('timestamp', direction='ASCENDING')
-            comments_docs = comments_ref.stream()
-            for comment_doc in comments_docs:
-                comment_data = comment_doc.to_dict()
-                comment_timestamp_obj = comment_data.get('timestamp')
-                comment_timestamp_str = comment_timestamp_obj.strftime('%d %b %Y, %H:%M') if isinstance(comment_timestamp_obj, datetime) else ''
-                st.write(f"**{comment_data.get('user')}**: {comment_data.get('comment_text')}")
-                st.caption(f"เมื่อ: {comment_timestamp_str}")
-
-            # ฟอร์มสำหรับเพิ่มคอมเมนต์ใหม่
-            with st.form(f"comment_form_{did}", clear_on_submit=True): # clear_on_submit ล้างฟอร์มหลังจากส่ง
-                comment_text = st.text_area("เพิ่มความคิดเห็น...", key=f"comment_input_{did}") # key สำหรับ text_area
-                comment_submitted = st.form_submit_button("แสดงความคิดเห็น")
-                if comment_submitted and comment_text:
-                    if not st.session_state.user:
-                        st.warning("กรุณากรอกชื่อผู้ใช้ในช่องด้านข้างก่อนแสดงความคิดเห็น!")
-                    else:
-                        db.collection(f'posts_{room_id}').document(did).collection('comments').add({
-                            'user': st.session_state.user,
-                            'comment_text': comment_text,
-                            'timestamp': firestore.SERVER_TIMESTAMP
-                        })
-                        st.success("แสดงความคิดเห็นแล้ว!")
-                        st.rerun() # รีโหลดหน้าเพื่อแสดงคอมเมนต์ใหม่
-        
-        st.markdown('</div>', unsafe_allow_html=True) # ปิดกล่องโพสต์
-
-# --- 5. การจัดการหน้าและ User ใน Main App ---
-
-# ส่วน sidebar สำหรับตั้งชื่อ user และเพิ่มเพื่อน
-with st.sidebar:
-    st.header("ตั้งค่า")
-    user_input = st.text_input("ชื่อผู้ใช้ของคุณ:", value=st.session_state.user)
-    if user_input:
-        st.session_state.user = user_input
-        st.success(f"สวัสดี, {st.session_state.user}!")
-    else:
-        st.warning("กรุณากรอกชื่อผู้ใช้!")
-    
-    st.markdown("---")
-    st.subheader("จัดการเพื่อน")
-
-    if st.session_state.user:
-        friend_to_add = st.text_input("ชื่อเพื่อนที่ต้องการเพิ่ม:", key="friend_input")
-        if st.button("เพิ่มเพื่อน", key="add_friend_button"):
-            if friend_to_add and friend_to_add != st.session_state.user:
-                # ตรวจสอบว่าเพื่อนคนนั้นมีอยู่ในระบบหรือไม่ (optional)
-                # เพื่อความสมจริง ควรมีระบบลงทะเบียนผู้ใช้และตรวจสอบ ID จริง
-                # ในที่นี้ จะถือว่าชื่อที่กรอกเป็นชื่อผู้ใช้ที่ถูกต้อง
-                
-                user_ref = db.collection('users').document(st.session_state.user)
-                user_doc = user_ref.get()
-
-                if user_doc.exists:
-                    user_ref.update({'friends': firestore.ArrayUnion([friend_to_add])})
-                else:
-                    user_ref.set({'friends': [friend_to_add]})
-                
-                st.success(f"เพิ่ม {friend_to_add} เป็นเพื่อนแล้ว!")
                 st.rerun()
-            elif friend_to_add == st.session_state.user:
-                st.warning("คุณไม่สามารถเพิ่มตัวเองเป็นเพื่อนได้!")
-            else:
-                st.warning("กรุณากรอกชื่อเพื่อนที่ต้องการเพิ่ม")
+
+    # ส่วนแสดงโพสต์
+    posts = db.collection(f'posts_{room_id}').order_by('timestamp', direction='DESCENDING').stream()
+    for post in posts:
+        p = post.to_dict()
+        pid = post.id
+        st.markdown(f'<div class="post-box">', unsafe_allow_html=True)
+        st.write(f"**👤 {p['user']}**")
+        st.caption(f"🕒 {p['timestamp'].strftime('%H:%M | %d/%m/%Y')}")
+        st.write(p['text'])
+        if p.get('media_url'):
+            if p['media_type'] == 'video': st.video(p['media_url'])
+            else: st.image(p['media_url'])
         
-        st.markdown("---")
-        st.subheader("เพื่อนของคุณ")
-        user_doc_friends = db.collection('users').document(st.session_state.user).get()
-        if user_doc_friends.exists:
-            friends_list = user_doc_friends.to_dict().get('friends', [])
-            if friends_list:
-                for friend in friends_list:
-                    st.write(f"- {friend}")
+        # Like & Comment Section
+        likes = p.get('likes', [])
+        c1, c2 = st.columns([1, 5])
+        if c1.button(f"❤️ {len(likes)}", key=f"lk_{pid}"):
+            if st.session_state.user in likes:
+                db.collection(f'posts_{room_id}').document(pid).update({'likes': firestore.ArrayRemove([st.session_state.user])})
             else:
-                st.info("คุณยังไม่มีเพื่อน")
-        else:
-            st.info("คุณยังไม่มีเพื่อน")
+                db.collection(f'posts_{room_id}').document(pid).update({'likes': firestore.ArrayUnion([st.session_state.user])})
+            st.rerun()
+        
+        # ส่วนคอมเมนต์ (มีทุกห้องเพื่อความเท่าเทียม)
+        with st.expander("💬 ดูความคิดเห็น"):
+            for cm in db.collection(f'posts_{room_id}').document(pid).collection('comments').order_by('timestamp').stream():
+                c = cm.to_dict()
+                st.write(f"**{c['user']}**: {c['text']}")
+            with st.form(f"cm_form_{pid}"):
+                c_text = st.text_input("พิมพ์คอมเมนต์...")
+                if st.form_submit_button("ส่ง"):
+                    db.collection(f'posts_{room_id}').document(pid).collection('comments').add({
+                        'user': st.session_state.user, 'text': c_text, 'timestamp': get_thai_time()
+                    })
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- 5. โครงสร้างหลัก (Main Execution) ---
+if 'user' not in st.session_state:
+    set_room_theme("home")
+    st.title("🚀 Firebase Social 2026")
+    u_name = st.text_input("กรุณาระบุชื่อผู้ใช้")
+    if st.button("เข้าสู่ระบบ"):
+        if u_name:
+            st.session_state.user = u_name
+            db.collection('users').document(u_name).set({'last_active': get_thai_time()}, merge=True)
+            st.rerun()
+else:
+    with st.sidebar:
+        st.title(f"สวัสดี, {st.session_state.user}")
+        menu = st.selectbox("เลือกหน้า", ["หน้าหลัก", "YouTube (Red)", "Facebook (Blue)", "Line (Green)", "X (Black)"])
+        if st.button("ออกจากระบบ"):
+            del st.session_state.user
+            st.rerun()
+        st.markdown("---")
+        st.subheader("👥 ใครอยู่บ้าง?")
+        for u in db.collection('users').limit(10).stream():
+            st.write(f"• {u.id}")
+
+    if menu == "หน้าหลัก":
+        set_room_theme("home")
+        st.header("🏠 ยินดีต้อนรับสู่สังคมออนไลน์")
+        st.write("เลือกห้องทางด้านซ้ายเพื่อเริ่มพูดคุยและโทรหาเพื่อนฟรี!")
     else:
-        st.info("กรุณากรอกชื่อผู้ใช้ในช่องด้านบนเพื่อดูหรือเพิ่มเพื่อน")
-
-    st.markdown("---")
-    st.caption("เลือกห้องที่คุณต้องการเข้า:")
-    if st.session_state.user: # ถ้ามีชื่อผู้ใช้แล้วถึงจะแสดงปุ่มห้อง
-        if st.button("ห้อง YouTube (แดง)"):
-            st.session_state.page = 'red'
-            st.rerun()
-        if st.button("ห้อง Facebook (น้ำเงิน)"):
-            st.session_state.page = 'blue'
-            st.rerun()
-        if st.button("ห้อง Line (เขียว)"):
-            st.session_state.page = 'green'
-            st.rerun()
-        if st.button("ห้อง X (ดำ)"):
-            st.session_state.page = 'black'
-            st.rerun()
-    else:
-        st.info("กรุณากรอกชื่อผู้ใช้ในช่องด้านบนเพื่อเลือกห้อง")
-
-# แสดงผลหน้าตาม st.session_state.page
-if st.session_state.page == 'home':
-    set_theme('home') # กำหนดธีมสีขาวสำหรับหน้าหลัก
-    st.title("ยินดีต้อนรับสู่ อยู่นิ้งๆไม่เจ็บตัว Social App!")
-    st.markdown("---")
-
-    # เพิ่มโลโก้
-    try:
-        st.image("logo.jpg", width=400) # แสดงโลโก้
-    except FileNotFoundError:
-        st.warning("ไม่พบไฟล์ 'logo.jpg' โปรดตรวจสอบพาธหรือวางไฟล์ในไดเรกทอรีเดียวกัน.")
-
-    st.write("เลือกชื่อผู้ใช้ของคุณทางซ้ายมือ แล้วเลือกห้องที่คุณต้องการจะเข้าร่วม")
-    st.write("แอปพลิเคชันนี้สาธิตการใช้งาน Firebase Firestore และ Firebase Storage ร่วมกับ Streamlit")
-    st.markdown("---")
-    
-    # เพิ่มส่วนฟังเพลง YouTube
-    st.subheader("ฟังเพลงเพลิน ๆ")
-    components.html(
-        f"""
-        <iframe width="100%" height="300" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&autoplay=1&loop=1&mute=0"
-        frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen></iframe>
-        """,
-        height=315,
-    )
-    st.markdown("---")
-
-
-    st.subheader("คุณสมบัติ:")
-    st.markdown("- โพสต์ข้อความและอัปโหลดรูป/วิดีโอ")
-    st.markdown("- กดไลค์โพสต์")
-    st.markdown("- แสดงความคิดเห็น (เฉพาะห้อง YouTube)")
-    st.markdown("- เพิ่มเพื่อนและดูรายชื่อเพื่อน")
-
-elif st.session_state.page == 'red':
-    render_room('red', 'YouTube')
-elif st.session_state.page == 'blue':
-    render_room('blue', 'Facebook')
-elif st.session_state.page == 'green':
-    render_room('green', 'Line')
-elif st.session_state.page == 'black':
-    render_room('black', 'X')
+        room_data = {"YouTube (Red)": ("red", "YouTube"), "Facebook (Blue)": ("blue", "Facebook"), 
+                     "Line (Green)": ("green", "Line"), "X (Black)": ("black", "X")}
+        r_id, r_name = room_data[menu]
+        render_social_room(r_id, r_name)
