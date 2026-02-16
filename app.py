@@ -266,6 +266,37 @@ else:
                         console.error("PeerJS Error:", err);
                         status.textContent = `เกิดข้อผิดพลาด: ${err.type}`;
                     });
+                            # --- ระบบโทรฟรี PeerJS (ฉบับแก้ไข SyntaxError) ---
+        target_peer_id = target # ดึงค่าเพื่อนที่จะโทรหา
+        current_user_id = st.session_state.user
+        
+        components.html('''
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <div style="background: rgba(255,255,255,0.05); padding:10px; border-radius:10px; color:white;">
+                <p>สถานะ: <span id="status">กำลังรอ...</span></p>
+                <button id="call" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:8px; font-weight:bold;">🟢 โทรหาเพื่อน</button>
+                <audio id="remoteAudio" autoplay></audio>
+            </div>
+            <script>
+                const peer = new Peer("''' + current_user_id + '''");
+                peer.on('open', id => { document.getElementById('status').textContent = "พร้อมใช้งาน"; });
+                
+                peer.on('call', call => {
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                        call.answer(stream);
+                        call.on('stream', remStream => { document.getElementById('remoteAudio').srcObject = remStream; });
+                    });
+                });
+
+                document.getElementById('call').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                        const call = peer.call("''' + target_peer_id + '''", stream);
+                        call.on('stream', remStream => { document.getElementById('remoteAudio').srcObject = remStream; });
+                    });
+                };
+            </script>
+        ''', height=200)
+
 
                     document.getElementById('call').onclick = () => {{
                         const targetPeerId = '{target}';
