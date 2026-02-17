@@ -3,178 +3,111 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 
-# --- 1. ตั้งค่าพื้นฐาน (ต้องอยู่บรรทัดแรกสุด) ---
+# --- 1. Setup ---
 st.set_page_config(page_title="Synapse System", layout="wide")
 
-# --- 2. การเชื่อมต่อ Firebase (แบบปลอดภัย) ---
+# --- 2. Firebase Connection (Singleton) ---
 @st.cache_resource
-def init_firebase():
+def get_db():
     if not firebase_admin._apps:
         try:
             cred_dict = dict(st.secrets["firebase_service_account"])
             cred = credentials.Certificate(cred_dict)
-            return firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"การเชื่อมต่อ Firebase ขัดข้อง: {e}")
+            st.error(f"Error connecting to Firebase: {e}")
             return None
-    return None
+    return firestore.client()
 
-init_firebase()
-try:
-    db = firestore.client()
-except Exception:
-    db = None
+db = get_db()
 
-# --- 3. จัดการ Session State ---
+# --- 3. Session State Management ---
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 if 'user' not in st.session_state:
     st.session_state.user = "Synapse_User"
 
-# --- 4. ฟังก์ชันเปลี่ยนหน้าจอ ---
 def go_to(page_name):
     st.session_state.page = page_name
     st.rerun()
 
-# --- 5. หน้าหลัก (Home) ---
+# --- 4. CSS Center ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #000000; color: white; }
+    .stButton>button { width: 100%; border-radius: 10px; font-weight: bold; transition: 0.3s; }
+    .chat-card { background: rgba(0, 255, 136, 0.1); border-left: 5px solid #00ff88; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 5. Home Page ---
 def render_home():
     col_l, col_m, col_r = st.columns([1, 2, 1])
     with col_m:
         logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Synapse-6d1/main/logo.jpg"
         st.image(logo_url, use_container_width=True)
-        st.markdown("<h2 style='text-align:center; color:#FFD700;'>COMMAND CENTER</h2>", unsafe_allow_html=True)
-
+    
     st.divider()
     st.video("https://www.youtube.com/watch?v=videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO")
-
-    st.write("### 📂 เลือกเข้าสู่มิติ")
+    
+    st.subheader("🌐 เลือกมิติการเข้าถึง")
     cols = st.columns(5)
-    rooms = [("🔴 RED", "red"), ("🔵 BLUE", "blue"), ("🟢 GREEN", "green"), ("⚫ BLACK", "black"), ("🟣 PURPLE", "purple")]
+    labels = ["🔴 RED", "🔵 BLUE", "🟢 GREEN", "⚫ BLACK", "🟣 PURPLE"]
+    targets = ["red", "blue", "green", "black", "purple"]
     
-    for i, (label, target) in enumerate(rooms):
-        if cols[i].button(label, key=f"btn_{target}", use_container_width=True):
-            go_to(target)
+    for i in range(5):
+        if cols[i].button(labels[i], key=f"nav_{targets[i]}"):
+            go_to(targets[i])
 
-# --- 6. ห้องสีแดง (Red Room) ---
-def render_red_room():
-    st.markdown("<h1 style='color:#FF4D4D;'>🔴 RED MEDIA HUB</h1>", unsafe_allow_html=True)
-    if st.button("⬅️ กลับหน้าหลัก", key="back_red"): 
-        go_to("home")
-
-    st.info("ยินดีต้อนรับสู่พื้นที่สาธารณะ ทุกโพสต์มีความเท่าเทียมกัน")
-
-    with st.expander("📝 สร้างโพสต์ใหม่"):
-        with st.form("post_form_red", clear_on_submit=True):
-            msg = st.text_area("เขียนข้อความ...")
-            url = st.text_input("ลิงก์ YouTube หรือ รูปภาพ")
-            if st.form_submit_button("🚀 ปล่อยโพสต์"):
-                if db and (msg or url):
-                    db.collection('posts_red').add({
-                        'user': st.session_state.user,
-                        'text': msg,
-                        'media': url,
-                        'time': datetime.now()
-                    })
-                    st.toast("โพสต์ออนไลน์แล้ว!")
-                    st.rerun()
-
-    st.divider()
-    if db:
-        try:
-            posts = db.collection('posts_red').limit(15).stream()
-            for doc in posts:
-                p = doc.to_dict()
-                with st.container(border=True):
-                    st.markdown(f"**👤 {p.get('user')}**")
-                    st.write(p.get('text'))
-                    if p.get('media'):
-                        m = p.get('media')
-                        if "youtube" in m or "youtu.be" in m: st.video(m)
-                        else: st.image(m, use_container_width=True)
-                    st.button(f"❤️ Like", key=f"lk_{doc.id}")
-        except Exception:
-            st.write("กำลังรอการเชื่อมต่อฟีด...")
-
-# --- 7. ห้องสีน้ำเงิน (Blue Room) ---
-def render_blue_room():
-    st.markdown("""
-        <style>
-        .stApp { background: radial-gradient(circle, #001a33 0%, #000000 100%); }
-        .blue-title { color: #00d4ff; text-align: center; font-weight: bold; text-shadow: 0 0 15px rgba(0, 212, 255, 0.6); }
-        .contact-card { background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; }
-        .status-dot { height: 10px; width: 10px; background-color: #00ff00; border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 10px #00ff00; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<h1 class='blue-title'>🔵 BLUE VOICE HUB</h1>", unsafe_allow_html=True)
-    if st.button("⬅️ กลับหน้าหลัก", key="back_blue"): go_to("home")
-
-    st.divider()
-    st.subheader("👥 ผู้ติดต่อออนไลน์")
-    contacts = ["System Admin", "User_01", "Member_X"]
-    
-    for name in contacts:
-        col_name, col_call = st.columns([3, 1])
-        with col_name:
-            st.markdown(f'<div class="contact-card"><span class="status-dot"></span> {name}</div>', unsafe_allow_html=True)
-        with col_call:
-            if st.button(f"📞 CALL", key=f"call_{name}"):
-                st.toast(f"กำลังเชื่อมต่อสายไปยัง {name}...")
-                st.balloons()
-
-    st.divider()
-    st.subheader("🎵 Synapse Sound Therapy")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-
-# --- 8. ห้องสีเขียว (Green Room) ---
+# --- 6. Green Room (ฉบับแก้ "ไม่ติด") ---
 def render_green_room():
-    st.markdown("""
-        <style>
-        .stApp { background: radial-gradient(circle, #0a2910 0%, #000000 100%); }
-        .green-title { color: #00ff88; text-align: center; font-weight: bold; text-shadow: 0 0 15px rgba(0, 255, 136, 0.4); }
-        .chat-bubble { background: rgba(0, 255, 136, 0.1); border-left: 4px solid #00ff88; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: white; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<h1 class='green-title'>🟢 GREEN SECRET CHAT</h1>", unsafe_allow_html=True)
-    if st.button("⬅️ กลับหน้าหลัก", key="back_green"): go_to("home")
-
-    st.info("🤐 พื้นที่ส่งข้อความลับแบบส่วนตัว")
+    st.markdown("<h1 style='color:#00ff88; text-align:center;'>🟢 GREEN SECRET CHAT</h1>", unsafe_allow_html=True)
+    if st.button("⬅️ กลับศูนย์บัญชาการ", key="back_green"): go_to("home")
+    
+    st.info("🤐 ข้อความที่นี่จะถูกส่งเข้าสู่ฐานข้อมูล Synapse โดยตรง")
 
     if db:
-        with st.form("chat_form_green", clear_on_submit=True):
-            col_text, col_btn = st.columns([4, 1])
-            with col_text:
-                chat_msg = st.text_input("พิมพ์ข้อความลับ...")
-            with col_btn:
-                if st.form_submit_button("ส่ง"):
-                    if chat_msg:
+        # ส่วนส่งข้อความ
+        with st.container(border=True):
+            with st.form("green_msg_form", clear_on_submit=True):
+                msg_input = st.text_input("พิมพ์ข้อความลับ...", key="green_input")
+                if st.form_submit_button("🚀 ส่งสัญญาณ"):
+                    if msg_input:
                         db.collection('messages_green').add({
                             'user': st.session_state.user,
-                            'msg': chat_msg,
+                            'msg': msg_input,
                             'time': datetime.now()
                         })
                         st.rerun()
 
-        st.divider()
+        st.write("### 💬 บันทึกการสนทนา")
         try:
-            chats = db.collection('messages_green').order_by('time', direction='DESCENDING').limit(20).stream()
-            for chat in chats:
-                c = chat.to_dict()
-                st.markdown(f'<div class="chat-bubble"><b>{c.get("user")}</b>: {c.get("msg")}</div>', unsafe_allow_html=True)
+            docs = db.collection('messages_green').order_by('time', direction='DESCENDING').limit(15).stream()
+            for doc in docs:
+                data = doc.to_dict()
+                st.markdown(f"""
+                    <div class="chat-card">
+                        <b style="color:#00ff88;">{data.get('user')}</b>: {data.get('msg')}
+                    </div>
+                """, unsafe_allow_html=True)
         except:
-            st.write("ยังไม่มีข้อความลับ...")
+            st.caption("กำลังซิงค์ข้อมูลกับดาวเทียม...")
 
-# --- 9. ตัวควบคุมหลัก (Main Logic - แก้ไขจุดที่ปุ่มไม่ติด) ---
+# --- 7. Black Room (Matrix / Hacker Mode) ---
+def render_black_room():
+    st.markdown("<h1 style='color:#00ff00; font-family:monospace; text-align:center;'>⚫ SYSTEM TERMINAL</h1>", unsafe_allow_html=True)
+    if st.button("⬅️ EXIT TERMINAL", key="back_black"): go_to("home")
+    
+    st.code("""
+    [STATUS] : CONNECTED
+    [ENCRYPTION] : AES-256
+    [LOG] : User connected to Synapse Core...
+    [CMD] : Waiting for input_
+    """, language="bash")
+    
+    st.warning("ห้องนี้ใช้สำหรับผู้ดูแลระบบเท่านั้น (Under Construction)")
+
+# --- 8. Main Controller (หัวใจของการสลับหน้า) ---
 if st.session_state.page == "home":
     render_home()
-elif st.session_state.page == "red":
-    render_red_room()
-elif st.session_state.page == "blue":
-    render_blue_room()
-elif st.session_state.page == "green":
-    render_green_room()
-else:
-    st.title(f"มิติ {st.session_state.page} กำลังเปิดการเชื่อมต่อ...")
-    if st.button("กลับหน้าหลัก"): 
-        go_to("home")
+elif st.
