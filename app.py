@@ -81,11 +81,11 @@ def show_home():
     st.divider()
     st.write("### 🌐 เลือกมิติที่ต้องการเชื่อมต่อ")
     m1, m2, m3, m4, m5 = st.columns(5)
-    if m1.button("🔴 RED"): navigate_to("red")
-    if m2.button("🔵 BLUE"): navigate_to("blue")
-    if m3.button("🟢 GREEN"): navigate_to("green")
-    if m4.button("⚫ BLACK"): navigate_to("black")
-    if m5.button("🟣 PURPLE"): navigate_to("purple")
+    if m1.button("🔴 RED_มิติแดง"): navigate_to("red")
+    if m2.button("🔵 BLUE_มิติบูล"): navigate_to("blue")
+    if m3.button("🟢 GREEN_มิติเขียว"): navigate_to("green")
+    if m4.button("⚫ BLACK_มิติแบล็ค"): navigate_to("black")
+    if m5.button("🟣 PURPLE_มิติม่วง"): navigate_to("purple")
     st.video("https://www.youtube.com/watch?v=videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO")
 
 # --- 6. FUNCTION แชทส่วนกลาง (ใช้ได้ทุกมิติ) ---
