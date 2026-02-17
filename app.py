@@ -3,10 +3,10 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 
-# --- 1. ตั้งค่าพื้นฐาน ---
+# --- 1. ตั้งค่าพื้นฐาน (ต้องอยู่บรรทัดแรกสุด) ---
 st.set_page_config(page_title="Synapse System", layout="wide")
 
-# --- 2. การเชื่อมต่อ Firebase ---
+# --- 2. การเชื่อมต่อ Firebase (แบบปลอดภัย) ---
 @st.cache_resource
 def init_firebase():
     if not firebase_admin._apps:
@@ -64,7 +64,7 @@ def render_red_room():
     st.info("ยินดีต้อนรับสู่พื้นที่สาธารณะ ทุกโพสต์มีความเท่าเทียมกัน")
 
     with st.expander("📝 สร้างโพสต์ใหม่"):
-        with st.form("post_form", clear_on_submit=True):
+        with st.form("post_form_red", clear_on_submit=True):
             msg = st.text_area("เขียนข้อความ...")
             url = st.text_input("ลิงก์ YouTube หรือ รูปภาพ")
             if st.form_submit_button("🚀 ปล่อยโพสต์"):
@@ -126,68 +126,54 @@ def render_blue_room():
     st.subheader("🎵 Synapse Sound Therapy")
     st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
-# --- 8. ห้องสีเขียว (Green Room - Secret Chat) ---
+# --- 8. ห้องสีเขียว (Green Room) ---
 def render_green_room():
     st.markdown("""
         <style>
         .stApp { background: radial-gradient(circle, #0a2910 0%, #000000 100%); }
         .green-title { color: #00ff88; text-align: center; font-weight: bold; text-shadow: 0 0 15px rgba(0, 255, 136, 0.4); }
-        .chat-bubble { background: rgba(0, 255, 136, 0.1); border-left: 4px solid #00ff88; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        .chat-bubble { background: rgba(0, 255, 136, 0.1); border-left: 4px solid #00ff88; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: white; }
         </style>
     """, unsafe_allow_html=True)
 
     st.markdown("<h1 class='green-title'>🟢 GREEN SECRET CHAT</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก", key="back_green"): go_to("home")
 
-    st.info("🤐 พื้นที่นี้เป็นความลับ ข้อความจะถูกส่งแบบเข้ารหัสส่วนตัว")
+    st.info("🤐 พื้นที่ส่งข้อความลับแบบส่วนตัว")
 
-    # ส่วนการแชท (เชื่อมต่อ Firebase)
     if db:
-        with st.container():
-            # ฟอร์มส่งข้อความ
-            with st.form("chat_form", clear_on_submit=True):
-                col_text, col_btn = st.columns([4, 1])
-                with col_text:
-                    chat_msg = st.text_input("พิมพ์ข้อความลับของคุณที่นี่...", placeholder="พิมพ์อะไรบางอย่าง...")
-                with col_btn:
-                    if st.form_submit_button("ส่ง"):
-                        if chat_msg:
-                            db.collection('messages_green').add({
-                                'user': st.session_state.user,
-                                'msg': chat_msg,
-                                'time': datetime.now()
-                            })
-                            st.rerun()
+        with st.form("chat_form_green", clear_on_submit=True):
+            col_text, col_btn = st.columns([4, 1])
+            with col_text:
+                chat_msg = st.text_input("พิมพ์ข้อความลับ...")
+            with col_btn:
+                if st.form_submit_button("ส่ง"):
+                    if chat_msg:
+                        db.collection('messages_green').add({
+                            'user': st.session_state.user,
+                            'msg': chat_msg,
+                            'time': datetime.now()
+                        })
+                        st.rerun()
 
-            st.divider()
+        st.divider()
+        try:
+            chats = db.collection('messages_green').order_by('time', direction='DESCENDING').limit(20).stream()
+            for chat in chats:
+                c = chat.to_dict()
+                st.markdown(f'<div class="chat-bubble"><b>{c.get("user")}</b>: {c.get("msg")}</div>', unsafe_allow_html=True)
+        except:
+            st.write("ยังไม่มีข้อความลับ...")
 
-            # แสดงข้อความแชท
-            try:
-                # ดึงข้อความ 20 อันดับล่าสุด
-                chats = db.collection('messages_green').order_by('time', direction='DESCENDING').limit(20).stream()
-                for chat in chats:
-                    c = chat.to_dict()
-                    st.markdown(f"""
-                        <div class="chat-bubble">
-                            <small style="color:#00ff88;">{c.get('user')} • {c.get('time').strftime('%H:%M') if c.get('time') else ''}</small><br>
-                            {c.get('msg')}
-                        </div>
-                    """, unsafe_allow_html=True)
-            except Exception:
-                st.write("เริ่มบทสนทนาลับครั้งแรกได้เลย...")
-
-# อย่าลืมไปเพิ่มเงื่อนไขใน Main Logic (ล่างสุดของไฟล์) ด้วยนะครับ:
-# elif st.session_state.page == "green":
-#     render_green_room()
-
-
-# --- 8. ตัวควบคุมหลัก (Main Logic) ---
+# --- 9. ตัวควบคุมหลัก (Main Logic - แก้ไขจุดที่ปุ่มไม่ติด) ---
 if st.session_state.page == "home":
     render_home()
 elif st.session_state.page == "red":
     render_red_room()
 elif st.session_state.page == "blue":
     render_blue_room()
+elif st.session_state.page == "green":
+    render_green_room()
 else:
     st.title(f"มิติ {st.session_state.page} กำลังเปิดการเชื่อมต่อ...")
     if st.button("กลับหน้าหลัก"): 
