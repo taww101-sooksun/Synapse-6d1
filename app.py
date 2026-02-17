@@ -3,6 +3,15 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 import time
+# --- วางไว้แถวๆ บรรทัดที่ 10-15 (หลัง import) ---
+def play_notification_sound():
+    # เสียงแจ้งเตือนแบบ Cyber สั้นๆ
+    audio_url = "https://www.soundjay.com/buttons/sounds/button-20.mp3"
+    audio_html = f"""
+        <iframe src="{audio_url}" allow="autoplay" style="display:none"></iframe>
+        <audio autoplay><source src="{audio_url}" type="audio/mp3"></audio>
+    """
+    st.components.v1.html(audio_html, height=0)
 
 # --- 1. SETTING & STYLE (สวยเหมือนเดิม ไม่ตัดออก) ---
 st.set_page_config(page_title="Synapse Core", layout="wide", initial_sidebar_state="collapsed")
