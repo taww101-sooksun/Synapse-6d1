@@ -3,14 +3,17 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 import time
-import google.generativeai as genai  # เพิ่มสมองกล AI เข้ามา
+import google.generativeai as genai
 
-# --- 0. ตั้งค่าสมอง AI GEMINI (ดึงคีย์จาก Secrets ที่หัวหน้าซ่อนไว้) ---
+# --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
+    # ดึงคีย์จาก Secrets ที่หัวหน้าต้องกด Save ให้สำเร็จก่อน
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('gemini-1.5-flash')
-except:
+except Exception as e:
+    # ผมเก็บ 'except' ไว้ตามคำขอหัวหน้า แต่เพิ่มการแสดงผล Error เพื่อให้เรารู้สาเหตุ
     model = None
+    st.error(f"ระบบตรวจพบปัญหาการเชื่อมต่อ API: {e}")
 
 # --- ฟังก์ชันเล่นเสียงแจ้งเตือน ---
 def play_notification_sound():
@@ -108,13 +111,12 @@ def simple_chat(collection_name, color_code):
                     st.toast("ส่งสัญญาณสำเร็จ!", icon='📢')
                     time.sleep(0.5)
                     st.rerun()
-        # แสดงข้อความ
         messages = db.collection(collection_name).order_by('time', direction='DESCENDING').limit(15).stream()
         for m in messages:
             d = m.to_dict()
             st.markdown(f"<div style='border-left: 3px solid {color_code}; padding-left:10px; margin-bottom:5px;'><b>{d.get('name')}</b>: {d.get('text')}</div>", unsafe_allow_html=True)
 
-# --- 7. มิติพื้นฐาน (RED, BLACK) ---
+# --- 7. มิติพื้นฐาน ---
 def show_dimension(name, color_code, glow_class):
     st.markdown(f"<h1 style='color:{color_code};'>{name} DIMENSION</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก"): navigate_to("home")
@@ -122,7 +124,7 @@ def show_dimension(name, color_code, glow_class):
     simple_chat(f"chat_{name.lower()}", color_code)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 8. BLUE (VOICE) ---
+# --- 8. BLUE, 9. GREEN ---
 def show_blue():
     st.markdown("<h1 style='color:#00d4ff;'>🔵 BLUE VOICE HUB</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก"): navigate_to("home")
@@ -133,7 +135,6 @@ def show_blue():
         st.markdown(f"<a href='{url}' target='_blank' class='call-btn'>📞 START CALL</a>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 9. GREEN (CHAT) ---
 def show_green():
     st.markdown("<h1 style='color:#00ff88;'>🟢 GREEN SECRET CHAT</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก"): navigate_to("home")
@@ -144,7 +145,7 @@ def show_purple():
     st.markdown("<h1 style='color:#ab47bc;'>🟣 มิติพยากรณ์ & ระบายใจ</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก"): navigate_to("home")
     
-    st.markdown(f"""
+    st.markdown("""
         <div class='dimension-card purple-glow'>
             <h3 style='color:#ab47bc;'>🤖 AI: อยู่นิ้งๆไม่เจ็บตัว</h3>
             <p style='color:#888;'>สถานะ: พร้อมวิเคราะห์กระแสจิตด้วย Gemini 1.5 Flash</p>
@@ -158,28 +159,22 @@ def show_purple():
             with st.status("🌀 AI อยู่นิ้งๆไม่เจ็บตัว กำลังวิเคราะห์...", expanded=True) as s:
                 try:
                     if model:
-                        prompt = f"คุณคือ AI ชื่อ 'อยู่นิ้งๆไม่เจ็บตัว' จงตอบกลับข้อความนี้แบบกวนๆ แต่จริงใจ: {user_input}"
+                        prompt = f"คุณคือ AI ชื่อ 'อยู่นิ้งๆไม่เจ็บตัว' จงตอบกลับข้อความนี้แบบกวนๆ แต่จริงใจ และลงท้ายด้วยสโลแกนเสมอ: {user_input}"
                         response = model.generate_content(prompt)
-                        
-                        if response and response.text:
-                            ans = response.text
-                        else:
-                            ans = "AI อ่านกระแสจิตไม่ออก... ลองพิมพ์ใหม่อีกทีนะคนับ"
+                        ans = response.text if response else "AI มึนตึ้บ... ลองใหม่นะคนับ"
                     else:
-                        ans = "หัวหน้าครับ! สมองกลยังไม่เชื่อมต่อ (เช็ก API Key ใน Secrets นะคนับ)"
+                        ans = "หัวหน้าครับ! สมองกลยังไม่เชื่อมต่อ (เช็กปุ่ม Save changes ใน Secrets นะคนับ)"
                 except Exception as e:
                     ans = f"เกิดข้อผิดพลาดทางเทคนิค: {str(e)}"
                 
-                # --- แสดงผลแค่ที่เดียวตรงนี้พอครับ ---
                 st.markdown(f"**🤖 AI ตอบว่า:** \n\n {ans}")
                 s.update(label="วิเคราะห์เสร็จสิ้น!", state="complete")
-            
             play_notification_sound()
             st.toast("AI ตัวจริงตอบแล้ว!", icon='🔮')
         else:
             st.warning("กรุณาพิมพ์ข้อความก่อนส่งสัญญาณครับ")
 
-# --- MAIN CONTROL (ตัวคุมหน้าจอ - แก้ Error ซ้ำซ้อน) ---
+# --- MAIN CONTROL ---
 if not st.session_state.logged_in:
     show_login()
 else:
