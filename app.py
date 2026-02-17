@@ -10,7 +10,6 @@ try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     # ลองใช้ชื่อรุ่นมาตรฐานที่ระบบ v1beta คุ้นเคยที่สุดครับหัวหน้า
     model = genai.GenerativeModel('gemini-pro') 
-
  
 except Exception as e:
     model = None
