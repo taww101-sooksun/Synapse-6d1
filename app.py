@@ -9,7 +9,7 @@ import google.generativeai as genai
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     # ใช้ชื่อรุ่นแบบระบุเวอร์ชัน เพื่อให้ v1beta หาเจอแน่นอนคนับหัวหน้า
-model = genai.GenerativeModel('gemini-1.5-flash-8b') 
+    model = genai.GenerativeModel('gemini-1.5-flash-8b') 
  
 except Exception as e:
     model = None
