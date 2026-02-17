@@ -8,11 +8,12 @@ import google.generativeai as genai
 # --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # ผมย้ายคอมเมนต์ภาษาไทยมาไว้ข้างบน เพื่อไม่ให้ขวางทางโค้ดครับหัวหน้า
-    # แก้บรรทัดนี้เป็นรุ่นล่าสุดให้เรียบร้อยแล้วคนับ
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    # แก้กลับเป็นชื่อรุ่นมาตรฐาน เพื่อให้ v1beta รู้จักครับหัวหน้า
+    model = genai.GenerativeModel('gemini-1.5-flash') 
 except Exception as e:
     model = None
+    st.error(f"ระบบตรวจพบปัญหาการเชื่อมต่อ API: {e}")
+
     st.error(f"ระบบตรวจพบปัญหาการเชื่อมต่อ API: {e}")
 
 # --- ฟังก์ชันเล่นเสียงแจ้งเตือน ---
