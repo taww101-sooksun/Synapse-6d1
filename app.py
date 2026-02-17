@@ -94,8 +94,7 @@ def simple_chat(collection_name, color_code):
     if db:
         with st.form(f"form_{collection_name}", clear_on_submit=True):
             msg = st.text_input("พิมพ์ข้อความ...")
-            if st.form_submit_button("SEND"):
-            
+            if st.form_submit_button("SEND"):            
 # ... (โค้ดส่ง Firebase เดิมของคุณ) ...
     play_notification_sound()  # สั่งให้เสียง "ติ๊ง"
     st.toast("ส่งสัญญาณสำเร็จ!", icon='📢') # สั่งให้ "เด้ง"
