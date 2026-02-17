@@ -108,6 +108,73 @@ def render_red_room():
                     st.button(f"❤️ Like", key=f"lk_{doc.id}")
         except Exception:
             st.write("กำลังรอการเชื่อมต่อฟีด...")
+            def render_blue_room():
+    # 1. CSS เฉพาะห้องสีน้ำเงิน (Neon Blue & Glassmorphism)
+    st.markdown("""
+        <style>
+        .stApp { background: radial-gradient(circle, #001a33 0%, #000000 100%); }
+        .blue-title {
+            color: #00d4ff; text-align: center; font-weight: bold;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+            letter-spacing: 3px;
+        }
+        /* กล่องรายชื่อเพื่อน */
+        .contact-card {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px; padding: 15px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-dot {
+            height: 10px; width: 10px; background-color: #00ff00;
+            border-radius: 50%; display: inline-block; margin-right: 5px;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 class='blue-title'>🔵 BLUE VOICE HUB</h1>", unsafe_allow_html=True)
+    
+    col_back, col_status = st.columns([1, 2])
+    with col_back:
+        if st.button("⬅️ กลับหน้าหลัก"): go_to("home")
+    with col_status:
+        st.markdown("<p style='color:#00d4ff; text-align:right;'>📡 System: Online</p>", unsafe_allow_html=True)
+
+    st.divider()
+
+    # 2. รายชื่อผู้ติดต่อ (ดึงจาก Firebase หรือจำลอง)
+    st.subheader("👥 ผู้ติดต่อออนไลน์")
+    
+    contacts = ["System Admin", "User_01", "Member_X"] # ในอนาคตดึงจาก db.collection('users')
+    
+    for name in contacts:
+        with st.container():
+            col_name, col_call = st.columns([3, 1])
+            with col_name:
+                st.markdown(f"""
+                    <div class="contact-card">
+                        <span><span class="status-dot"></span> {name}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+            with col_call:
+                if st.button(f"📞 CALL", key=f"call_{name}"):
+                    st.toast(f"กำลังเชื่อมต่อสายไปยัง {name}...")
+                    st.balloons() # เอฟเฟกต์ดีใจตอนกดโทร
+
+    st.divider()
+
+    # 3. แผงควบคุมเสียง (Audio Therapy)
+    st.subheader("🎵 Synapse Sound Therapy")
+    st.info("เลือกฟังเสียงบำบัดเพื่อความผ่อนคลาย (อยู่นิ่งๆ ไม่เจ็บตัว)")
+    
+    # คุณสามารถแปะลิงก์เสียงจากเพลย์ลิสต์ YouTube ที่เน้นเสียงบำบัดได้ที่นี่
+    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # ตัวอย่างวิดีโอเสียง
+
+# อย่าลืมไปเพิ่มเงื่อนไขใน Main Logic ด้านล่างด้วยนะครับ:
+# elif st.session_state.page == "blue":
+#     render_blue_room()
+
 
 # --- 7. ตัวควบคุมหลัก (Main Logic) ---
 if st.session_state.page == "home":
