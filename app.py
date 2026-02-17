@@ -94,15 +94,24 @@ def simple_chat(collection_name, color_code):
     if db:
         with st.form(f"form_{collection_name}", clear_on_submit=True):
             msg = st.text_input("พิมพ์ข้อความ...")
-            if st.form_submit_button("SEND"):if st.form_submit_button("SEND"):
-    # ... (โค้ดส่ง Firebase เดิมของคุณ) ...
-    play_notification_sound()  # สั่งให้เสียง "ติ๊ง"
-    st.toast("ส่งสัญญาณสำเร็จ!", icon='📢') # สั่งให้ "เด้ง"
-    st.rerun()
-            
-            if msg:
-                    db.collection(collection_name).add({'name': st.session_state.user_name, 'text': msg, 'time': datetime.now()})
+                        # --- บรรทัดที่ 97 เริ่มตรงนี้ ---
+            if st.form_submit_button("SEND"):
+                if msg:
+                    # 1. ส่งข้อมูลไป Firebase
+                    db.collection(collection_name).add({
+                        'name': st.session_state.user_name, 
+                        'text': msg, 
+                        'time': datetime.now()
+                    })
+                    
+                    # 2. ตัวทีเด็ด (เสียง + เด้ง)
+                    play_notification_sound()
+                    st.toast("ส่งสัญญาณสำเร็จ!", icon='📢')
+                    
+                    # 3. รีเฟรชหน้าจอ
+                    time.sleep(0.5)
                     st.rerun()
+
         messages = db.collection(collection_name).order_by('time', direction='DESCENDING').limit(15).stream()
         for m in messages:
             d = m.to_dict()
