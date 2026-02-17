@@ -7,12 +7,11 @@ import google.generativeai as genai
 
 # --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
-    # ดึงคีย์จาก Secrets ที่หัวหน้าต้องกด Save ให้สำเร็จก่อน
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash') # ต้องมี model = นะครับ
 except Exception as e:
-    # ผมเก็บ 'except' ไว้ตามคำขอหัวหน้า แต่เพิ่มการแสดงผล Error เพื่อให้เรารู้สาเหตุ
     model = None
+
     st.error(f"ระบบตรวจพบปัญหาการเชื่อมต่อ API: {e}")
 
 # --- ฟังก์ชันเล่นเสียงแจ้งเตือน ---
