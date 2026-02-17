@@ -8,8 +8,9 @@ import google.generativeai as genai
 # --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # แก้กลับเป็นชื่อรุ่นมาตรฐาน เพื่อให้ v1beta รู้จักครับหัวหน้า
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    # ใช้ชื่อรุ่นแบบระบุเวอร์ชัน เพื่อให้ v1beta หาเจอแน่นอนคนับหัวหน้า
+model = genai.GenerativeModel('gemini-1.5-flash-8b') 
+ 
 except Exception as e:
     model = None
     st.error(f"ระบบตรวจพบปัญหาการเชื่อมต่อ API: {e}")
