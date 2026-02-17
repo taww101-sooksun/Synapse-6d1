@@ -101,7 +101,6 @@ def simple_chat(collection_name, color_code):
     st.toast("ส่งสัญญาณสำเร็จ!", icon='📢') # สั่งให้ "เด้ง"
     st.rerun()
 
-
                 if msg:
                     db.collection(collection_name).add({'name': st.session_state.user_name, 'text': msg, 'time': datetime.now()})
                     st.rerun()
