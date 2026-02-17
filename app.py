@@ -8,8 +8,9 @@ import google.generativeai as genai
 # --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # ใช้ชื่อรุ่นแบบระบุเวอร์ชัน เพื่อให้ v1beta หาเจอแน่นอนคนับหัวหน้า
-    model = genai.GenerativeModel('gemini-1.5-flash-8b') 
+    # ลองใช้ชื่อรุ่นมาตรฐานที่ระบบ v1beta คุ้นเคยที่สุดครับหัวหน้า
+    model = genai.GenerativeModel('gemini-pro') 
+
  
 except Exception as e:
     model = None
