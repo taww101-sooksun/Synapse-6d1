@@ -8,7 +8,7 @@ import google.generativeai as genai
 # --- 0. ตั้งค่าสมอง AI GEMINI ---
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
 except Exception as e:
     model = None
