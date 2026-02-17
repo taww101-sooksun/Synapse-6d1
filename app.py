@@ -1,82 +1,79 @@
 import streamlit as st
-import streamlit.components.v1 as components
+from datetime import datetime
+import uuid
 
-# --- 1. ตั้งค่าพื้นฐาน (ป้องกันหน้าจอขาว) ---
-st.set_page_config(page_title="Synapse Home", layout="centered")
+# --- ฟังก์ชันดึงข้อมูลโพสต์จาก Firebase ---
+def fetch_red_posts():
+    # ดึงโพสต์เรียงตามเวลาล่าสุด (ดันฟีดไปเรื่อยๆ ตามที่คุณต้องการ)
+    posts_ref = db.collection('posts_red').order_by('time', direction='DESCENDING').limit(50)
+    return posts_ref.stream()
 
-# จำลองสถานะ Login เพื่อให้รันหน้าหลักได้ทันที
-if 'user' not in st.session_state:
-    st.session_state.user = "Synapse User"
-if 'page' not in st.session_state:
-    st.session_state.page = "home"
+def render_red_room():
+    st.markdown("<h1 style='color:#FF4D4D; text-align:center;'>🔴 RED PUBLIC FEED</h1>", unsafe_allow_html=True)
+    
+    if st.button("⬅️ กลับหน้าศูนย์บัญชาการ"):
+        st.session_state.page = "home"
+        st.rerun()
 
-# --- 2. CSS ปรับแต่งรูปลักษณ์ ---
-st.markdown("""
-    <style>
-    .stApp {
-        background: radial-gradient(circle, #001219 0%, #000000 100%);
-        color: white;
-    }
-    .logo-container {
-        display: flex; justify-content: center; padding: 20px;
-    }
-    .logo-img {
-        width: 300px; border-radius: 20px;
-        border: 2px solid #D4AF37;
-        box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
-    }
-    .stButton>button {
-        width: 100%; height: 60px; border-radius: 12px; font-weight: bold;
-    }
-    /* สีปุ่มแยกตามมิติ */
-    button[key="red"] { background: #4a0000 !important; }
-    button[key="blue"] { background: #002147 !important; }
-    button[key="green"] { background: #0a2910 !important; }
-    button[key="black"] { background: #1a1a1a !important; }
-    button[key="purple"] { background: #2d004d !important; }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- 3. ฟังก์ชันหน้าหลัก ---
-def render_home():
-    # แสดงโลโก้ที่เป็นความจริงจาก GitHub ของคุณ
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    # ใช้ลิงก์ดิบ (Raw) เพื่อให้ Streamlit ดึงภาพมาแสดงได้ชัวร์ๆ
-    logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Synapse-6d1/main/logo.jpg"
-    st.image(logo_url, width=300)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("<h2 style='text-align:center; color:#FFD700;'>SYNAPSE COMMAND CENTER</h2>", unsafe_allow_html=True)
-
-    # YouTube Playlist ของคุณ
-    st.write("### 🎬 Synapse Playlist")
-    components.html(f"""
-        <iframe width="100%" height="315" 
-        src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
-        frameborder="0" allowfullscreen style="border-radius:15px; border:1px solid #444;"></iframe>
-    """, height=330)
+    # --- 1. ส่วนการโพสต์ (Write to Firebase) ---
+    with st.expander("📝 สร้างโพสต์ใหม่ (แชร์วิดีโอ/รูปภาพ)"):
+        with st.form("form_red", clear_on_submit=True):
+            msg = st.text_area("คุณกำลังคิดอะไรอยู่?")
+            media_url = st.text_input("แปะลิงก์ YouTube หรือลิงก์รูปภาพ")
+            
+            if st.form_submit_button("🚀 ปล่อยโพสต์"):
+                if msg or media_url:
+                    # บันทึกลง Firestore
+                    db.collection('posts_red').add({
+                        'user': st.session_state.user,
+                        'text': msg,
+                        'media': media_url,
+                        'likes': [],
+                        'time': datetime.now() # ใช้เวลาปัจจุบันเป็นตัวดันฟีด
+                    })
+                    st.success("โพสต์สำเร็จ!")
+                    st.rerun()
 
     st.divider()
 
-    # ปุ่ม 5 ห้อง 5 สี
-    st.subheader("🌐 เลือกเข้าสู่มิติ")
-    c1, c2, c3 = st.columns(3)
-    c4, c5 = st.columns(2)
+    # --- 2. ส่วนแสดงฟีด (Read from Firebase) ---
+    docs = fetch_red_posts()
+    
+    for doc in docs:
+        p = doc.to_dict()
+        pid = doc.id
+        
+        # กล่องโพสต์
+        st.markdown(f"""
+            <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; border:1px solid #444; margin-bottom:15px;">
+                <b style="color:#FFD700;">👤 {p.get('user')}</b> 
+                <small style="color:#666; margin-left:10px;">{p.get('time').strftime('%Y-%m-%d %H:%M') if p.get('time') else ''}</small>
+                <p style="margin-top:10px;">{p.get('text')}</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-    with c1:
-        if st.button("🔴 RED", key="red"): st.info("กำลังพัฒนาห้อง RED")
-    with c2:
-        if st.button("🔵 BLUE", key="blue"): st.session_state.page = "blue"; st.rerun()
-    with c3:
-        if st.button("🟢 GREEN", key="green"): st.info("กำลังพัฒนาห้อง GREEN")
-    with c4:
-        if st.button("⚫ BLACK", key="black"): st.info("กำลังพัฒนาห้อง BLACK")
-    with c5:
-        if st.button("🟣 PURPLE", key="purple"): st.info("กำลังพัฒนาห้อง PURPLE")
+        # แสดงสื่อ (วิดีโอ/รูป)
+        m = p.get('media', '')
+        if "youtube.com" in m or "youtu.be" in m:
+            st.video(m)
+        elif m.startswith("http"):
+            st.image(m, use_container_width=True)
 
-# --- 4. การควบคุมหน้าจอ ---
-if st.session_state.page == "home":
-    render_home()
-elif st.session_state.page == "blue":
-    st.title("🔵 Blue Room (Voice Hub)")
-    if st.button("⬅️ กลับหน้าหลัก"): st.session_state.page = "home"; st.rerun()
+        # --- 3. ระบบ Like & Comment ---
+        likes = p.get('likes', [])
+        col1, col2, col3 = st.columns([1, 1, 4])
+        
+        with col1:
+            if st.button(f"❤️ {len(likes)}", key=f"like_{pid}"):
+                ref = db.collection('posts_red').document(pid)
+                if st.session_state.user in likes:
+                    ref.update({'likes': firestore.ArrayRemove([st.session_state.user])})
+                else:
+                    ref.update({'likes': firestore.ArrayUnion([st.session_state.user])})
+                st.rerun()
+        
+        with col2:
+            if st.button("💬", key=f"comment_{pid}"):
+                st.session_state.view_comments = pid # เก็บ ID ไว้เพื่อเปิดหน้าคอมเมนต์
+
+        st.markdown("<hr style='border:0.5px solid #222;'>", unsafe_allow_html=True)
