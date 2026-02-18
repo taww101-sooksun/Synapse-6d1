@@ -92,10 +92,7 @@ if st.session_state.app_locked:
 
     # คู่มือเอาไว้ข้างล่างสุดแบบย่อ
     with st.expander("📖 วิธีใช้งานและมิติสีต่างๆ"):
-        st.write("🔴 RED: ระบาย | 🔵 BLUE: ฟังเพลง | 🟣 PURPLE: AI บำบัด")
-
-        </div>
-        <div class='dimension-box' style='border-co
+        st.write("🔴 RED: ระบาย | 🔵 BLUE: ฟังเพลง | 🟣 PURPLE: AI บำบัด"
         </div>
         """, unsafe_allow_html=True)
 
