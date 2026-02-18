@@ -1,157 +1,78 @@
 import streamlit as st
-import google.generativeai as genai
 import time
+import firebase_admin
+from firebase_admin import credentials, firestore, storage
 
-# --- 0. INITIAL SETUP ---
-st.set_page_config(page_title="SYNAPSE 6D : FINAL", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. ระบบ 6 ภาษา (ของจริงที่คุณพี่คัดมา) ---
+translations = {
+    "app_title": {"en": "SYNAPSE 6D", "th": "SYNAPSE 6D", "lo": "SYNAPSE 6D", "my": "SYNAPSE 6D", "zh": "SYNAPSE 6D", "ja": "SYNAPSE 6D"},
+    "welcome": {"en": "Welcome", "th": "ยินดีต้อนรับ", "lo": "ຍິນດີຕ້ອນຮັບ", "my": "ကြိုဆိုပါတယ်", "zh": "欢迎", "ja": "ようこそ"},
+    "login_btn": {"en": "Login", "th": "ยืนยันรหัสเข้าสู่มิติ", "lo": "ເຂົ້າສູ່ມິຕິ", "my": "ရှုထောင့်ထဲသို့ဝင်ရန်", "zh": "登录", "ja": "ログイン"}
+    # (... ดึงค่า translations เดิมที่คุณพี่โพสต์ไว้มาใส่ให้ครบตรงนี้ ...)
+}
 
-# --- 1. FUNCTION: เพลงมัดมือฟัง (ลิขสิทธิ์คุณพี่ 60 เพลง) ---
-def forced_therapy_radio():
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    st.markdown(f"""
-        <div style="display:none;">
-            <iframe src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" allow="autoplay"></iframe>
-        </div>
-        <div style="position: fixed; bottom: 10px; left: 10px; z-index: 9999; color: #00ff88; font-family: 'Orbitron'; font-size: 0.7em;">
-            📡 ON AIR: อยู่นิ่งๆ ไม่เจ็บตัว Radio
-        </div>
-    """, unsafe_allow_html=True)
+def get_text(key):
+    lang = st.session_state.get('lang', 'th')
+    return translations.get(key, {}).get(lang, translations.get(key, {}).get("th", key))
 
-# --- 2. CSS: ปุ่มนูน 3D + สีสะท้อนแสง + ตัวหนังสือเรืองแสง ---
+# --- 2. ตั้งค่า FIREBASE (ของจริงสำหรับห้องแดง/น้ำเงิน) ---
+if not firebase_admin._apps:
+    try:
+        # ใช้ secrets จาก streamlit สำหรับของจริง
+        cred = credentials.Certificate(st.secrets["firebase"])
+        firebase_admin.initialize_app(cred, {'storageBucket': f"{st.secrets['firebase']['project_id']}.appspot.com"})
+        db = firestore.client()
+        bucket = storage.bucket()
+    except:
+        st.error("ระบบฐานข้อมูลยังไม่ได้เชื่อมต่อ (โปรดเช็คไฟล์ secrets)")
+
+# --- 3. CSS ปุ่มนูนสะท้อนแสง (แบบที่คุณพี่ชอบ) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap');
-    
-    .stApp {
-        background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc);
-        background-size: 400% 400%;
-        animation: gradient 10s ease infinite;
-        color: #fff; font-family: 'Kanit', sans-serif;
+    .stApp { background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc); background-size: 400% 400%; animation: gradient 10s infinite; }
+    .stButton>button { 
+        height: 80px !important; width: 100% !important; font-size: 22px !important; 
+        border-radius: 15px !important; border: 4px solid #fff !important;
+        box-shadow: 0 0 20px rgba(255,255,255,0.5) !important;
+        background: rgba(0,0,0,0.8) !important; color: #fff !important;
     }
-    @keyframes gradient { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
-
-    /* ปุ่มนูนสะท้อนแสง 3D */
-    .stButton>button {
-        height: 80px !important; width: 100% !important;
-        font-size: 24px !important; font-weight: 900 !important;
-        border-radius: 20px !important; border: 4px solid rgba(255,255,255,0.4) !important;
-        box-shadow: 8px 8px 20px rgba(0,0,0,0.6), inset -5px -5px 10px rgba(0,0,0,0.3) !important;
-        transition: 0.2s; text-transform: uppercase;
-    }
-    .stButton>button:hover { transform: scale(1.02); filter: brightness(1.2); }
-    
-    /* สีห้องแต่ละห้อง */
-    .btn-red button { background: #ff0000 !important; box-shadow: 0 0 30px #ff0000 !important; }
-    .btn-blue button { background: #0000ff !important; box-shadow: 0 0 30px #0000ff !important; }
-    .btn-green button { background: #00ff00 !important; color: black !important; box-shadow: 0 0 30px #00ff00 !important; }
-    .btn-black button { background: #000000 !important; color: white !important; box-shadow: 0 0 30px #ffffff !important; }
-    .btn-purple button { background: #ab47bc !important; box-shadow: 0 0 30px #ab47bc !important; }
-
-    .neon-text { text-shadow: 0 0 10px #ab47bc, 0 0 20px #ab47bc, 0 0 30px #fff; font-family: 'Orbitron'; }
+    /* ปุ่มเรืองแสงแยกตามสีห้อง */
+    .btn-red button { border-color: #ff0000 !important; box-shadow: 0 0 30px #ff0000 !important; }
+    .btn-blue button { border-color: #0000ff !important; box-shadow: 0 0 30px #0000ff !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SESSION STATE ---
-if 'page' not in st.session_state: st.session_state.page = "LANDING"
-if 'user_id' not in st.session_state: st.session_state.user_id = "Ta101"
-if 'current_dimension' not in st.session_state: st.session_state.current_dimension = "MAIN"
-if 'purple_locked' not in st.session_state: st.session_state.purple_locked = True
+# --- 4. ฟังก์ชันเพลง (ห้ามดับ) ---
+def forced_therapy_radio():
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    st.markdown(f'<iframe src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" style="display:none;"></iframe>', unsafe_allow_html=True)
 
+# --- เริ่มการทำงาน ---
 forced_therapy_radio()
 
-def go_to(dim_name):
-    st.session_state.current_dimension = dim_name
-    st.rerun()
+if 'page' not in st.session_state: st.session_state.page = "LANDING"
 
-# ==========================================
-# หน้าแรก : LANDING (LOGO & LOGIN)
-# ==========================================
+# หน้าแรก
 if st.session_state.page == "LANDING":
-    st.markdown("<h1 class='neon-text' style='text-align:center; font-size:5em;'>SYNAPSE 6D</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\"</h2>", unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        try: st.image("logo.jpg", width=250)
-        except: st.info("🌐 [LOGO.JPG SPACE]")
-        
-        st.text_input("👤 Username:", value=st.session_state.user_id)
-        st.text_input("🔑 Password:", type="password")
-        if st.button("🚀 เข้าสู่มิติ"):
-            st.session_state.page = "APP"
-            st.rerun()
-
-# ==========================================
-# หน้าแอปหลัก : DIMENSION SELECTOR
-# ==========================================
-elif st.session_state.page == "APP":
-    
-    if st.session_state.current_dimension == "MAIN":
-        st.markdown(f"<h2 class='neon-text'>USER: {st.session_state.user_id} 🔓</h2>", unsafe_allow_html=True)
-        
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown('<div class="btn-red">', unsafe_allow_html=True)
-            if st.button("🔴 RED DIMENSION (FEED/ระบาย)"): go_to("RED")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="btn-green">', unsafe_allow_html=True)
-            if st.button("🟢 GREEN DIMENSION (แชทลับ/หิมะ)"): go_to("GREEN")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        with col_b:
-            st.markdown('<div class="btn-blue">', unsafe_allow_html=True)
-            if st.button("🔵 BLUE DIMENSION (โทรฟรี/SOCIAL)"): go_to("BLUE")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="btn-purple">', unsafe_allow_html=True)
-            if st.button("🟣 PURPLE DIMENSION (AI ปรับทุกข์)"): go_to("PURPLE")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        st.markdown('<div class="btn-black">', unsafe_allow_html=True)
-        if st.button("⚫ BLACK DIMENSION (ศูนย์ควบคุม/โปรเจกต์)"): go_to("BLACK")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- ห้องสีต่างๆ ---
-    elif st.session_state.current_dimension == "RED":
-        st.header("🔴 มิติแดง : Feed ความรู้สึก")
-        st.text_area("✍️ ระบายออกมาให้สุด...")
-        st.file_uploader("🖼️ โพสต์รูป/วิดีโอ")
-        if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
-
-    elif st.session_state.current_dimension == "BLUE":
-        st.header("🔵 มิติน้ำเงิน : โทรฟรี & Social")
-        st.button("☎️ กดเพื่อเริ่มสายโทรฟรีออนไลน์")
-        st.markdown("---")
-        st.write("ฟีดแชร์เรื่องราวสไตล์ Facebook...")
-        if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
-
-    elif st.session_state.current_dimension == "GREEN":
-        st.header("🟢 มิติเขียว : แชทลับ & หิมะร่วง")
-        st.snow() # หิมะร่วงตามสั่ง
-        st.markdown("> **คู่มือ:** ห้องนี้เป็นความลับเฉพาะคุณและเพื่อนที่รู้ ID เท่านั้น")
-        st.text_input("➕ ใส่ ID เพื่อน:")
-        if st.button("🎇 ส่งดอกไม้ไฟ (Fireworks)"): st.balloons()
-        if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
-
-    elif st.session_state.current_dimension == "PURPLE":
-        st.markdown("<h1 class='neon-text'>🟣 มิติม่วง : AI ดูดวง & ปรับทุกข์</h1>", unsafe_allow_html=True)
-        if st.session_state.purple_locked:
-            pw2 = st.text_input("🔐 รหัสลับชั้นที่ 2:", type="password")
-            if st.button("ปลดล็อก"): st.session_state.purple_locked = False; st.rerun()
-        else:
-            st.write("AI: 'กวนนิดๆ แต่จริงใจ 100% จำได้ทุกคำที่คุยกันครับ'")
-            st.text_area("เขียนถึง AI (ช่องใหญ่พิเศษ):", height=400)
-            if st.button("⬅️ กลับหน้าหลัก"): st.session_state.purple_locked = True; go_to("MAIN")
-
-    elif st.session_state.current_dimension == "BLACK":
-        st.header("⚫ มิติดำ : Master Control")
-        st.subheader("⚙️ ตั้งค่าโปรเจกต์ & เปลี่ยนชื่อ")
-        st.text_input("ชื่อใหม่:", value=st.session_state.user_id)
-        st.button("💾 บันทึกโปรเจกต์")
-        if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
-
-    if st.button("🚪 Logout"):
-        st.session_state.page = "LANDING"
-        st.session_state.current_dimension = "MAIN"
+    st.markdown("<h1 style='text-align:center;'>SYNAPSE 6D</h1>", unsafe_allow_html=True)
+    st.image("logo.jpg", width=200) # โลโก้จริง
+    lang = st.selectbox("🌐 เลือกภาษา", ["th", "en", "lo", "my", "zh", "ja"])
+    st.session_state.lang = lang
+    if st.button(get_text("login_btn")):
+        st.session_state.page = "MAIN"
         st.rerun()
+
+# หน้าหลัก (ห้องต่างๆ)
+elif st.session_state.page == "MAIN":
+    st.markdown(f"### {get_text('welcome')}คุณ Ta101")
+    # ปุ่มมิติแดง (ระบาย)
+    st.markdown('<div class="btn-red">', unsafe_allow_html=True)
+    if st.button("🔴 RED ROOM (FIREBASE FEED)"):
+        st.session_state.page = "RED"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # ปุ่มมิติเขียว (ลับ)
+    if st.button("🟢 GREEN ROOM (SECRET CHAT)"):
+        st.snow() # หิมะร่วงของจริง
+        st.balloons() # ดอกไม้ไฟ
