@@ -7,7 +7,7 @@ import google.generativeai as genai
 # --- 1. ส่วนฟังก์ชันเครื่องเล่นเพลง (วางไว้ตรงนี้) ---
 def forced_therapy_radio():
     # ใช้ ID เพลย์ลิสต์ของลูกพี่อันนี้ครับ
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
+    playlist_id =ฟ  "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
     
     st.markdown(f"""
         <div style="display:none;">
