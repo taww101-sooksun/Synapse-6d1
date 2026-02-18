@@ -116,7 +116,7 @@ elif st.session_state.current_room == "BLACK":
         st.subheader("📂 โปรเจกต์ของฉัน")
         st.button("➕ สร้างโปรเจกต์ใหม่")
         if st.button("⬅️ กลับ"): go_to("MAIN")
-    # ปุ่มกดนูนขนาดใหญ่ 5 สี
+# ปุ่มกดนูนขนาดใหญ่ 5 สี
     st.markdown('<div class="btn-red">', unsafe_allow_html=True)
     if st.button("🔴 เข้าสู่มิติแดง (RED ROOM - YouTube Feed)"): go_to("RED")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -147,7 +147,7 @@ elif st.session_state.page == "RED":
     if st.button("📮 โพสต์ลงฟีด"): st.success("โพสต์เรียบร้อย!")
     
     st.markdown("---")
-    # ตัวอย่างฟีด
+# ตัวอย่างฟีด
     for i in range(3):
         st.markdown(f"""
             <div style="background:rgba(255,0,0,0.1); padding:20px; border-radius:10px; border:1px solid red; margin-bottom:10px;">
@@ -165,7 +165,7 @@ elif st.session_state.page == "RED":
 elif st.session_state.page == "PURPLE":
     st.header("🟣 PURPLE ROOM : AI ปรับทุกข์ (กวนใจแต่จริงใจ)")
     
-    # ระบบรหัส 2 ชั้นสำหรับความลับ
+# ระบบรหัส 2 ชั้นสำหรับความลับ
     if 'purple_locked' not in st.session_state: st.session_state.purple_locked = True
     if st.session_state.purple_locked:
         p_pw = st.text_input("🔑 รหัสลับขั้นที่ 2 สำหรับห้องม่วง:", type="password")
