@@ -1,198 +1,155 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore, storage
-import hashlib
-from datetime import datetime, timedelta
-import uuid
-import streamlit.components.v1 as components
-import re
+import time
 
-# --- 1. ตั้งค่าการเชื่อมต่อ Firebase ---
-if not firebase_admin._apps:
-    try:
-        cred_dict = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': st.secrets["firebase_config"]["storageBucket"]
-        })
-    except Exception as e:
-        st.error(f"❌ เชื่อมต่อฐานข้อมูลไม่สำเร็จ: {e}")
-        st.stop()
+# --- 0. SETUP ---
+st.set_page_config(page_title="SYNAPSE 6D : มัดน็อก", layout="wide", initial_sidebar_state="collapsed")
 
-db = firestore.client()
-bucket = storage.bucket()
-
-# --- 2. ฟังก์ชันเสริม (Helper Functions) ---
-def hash_password(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
-
-def get_thai_time():
-    return datetime.utcnow() + timedelta(hours=7)
-
-def get_youtube_id(url):
-    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
-    match = re.search(pattern, url)
-    return match.group(1) if match else None
-
-# --- 3. ธีมสุดหรู (Luxury Theme) ---
-def set_luxury_theme(room_type):
-    themes = {
-        "home":  {"bg": "#001219", "text": "#FFD700", "accent": "#D4AF37"},
-        "red":   {"bg": "#3d0000", "text": "#FFFFFF", "accent": "#FF4D4D"},
-        "blue":  {"bg": "#002147", "text": "#FFFFFF", "accent": "#00A8E8"},
-        "green": {"bg": "#0a2910", "text": "#FFFFFF", "accent": "#38B000"},
-        "black": {"bg": "#121212", "text": "#FFFFFF", "accent": "#E5E5E5"}
-    }
-    cfg = themes.get(room_type, themes["home"])
+# --- 1. หมัดเด็ดเพลงบำบัด (ห้ามเอาออก) ---
+def forced_therapy_radio():
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
     st.markdown(f"""
-        <style>
-        .stApp {{ background: {cfg['bg']}; color: {cfg['text']}; }}
-        .post-box {{
-            border: 1px solid {cfg['accent']};
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px; border-radius: 12px; margin-bottom: 10px;
-        }}
-        .stButton>button {{
-            background: {cfg['accent']}; color: black !important;
-            font-weight: bold; border-radius: 8px; width: 100%;
-        }}
-        </style>
+        <div style="display:none;">
+            <iframe src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" allow="autoplay"></iframe>
+        </div>
     """, unsafe_allow_html=True)
 
-# --- 4. ฟังก์ชันแสดงโพสต์และระบบ Like ---
-def render_posts(room_id):
-    try:
-        posts_ref = db.collection(f'posts_{room_id}').order_by('time', direction='DESCENDING').limit(20)
-        docs = posts_ref.stream()
-        
-        has_post = False
-        for doc in docs:
-            has_post = True
-            p = doc.to_dict()
-            pid = doc.id
-            st.markdown(f'''<div class="post-box">
-                <b>👤 {p.get("user", "ไม่ระบุชื่อ")}</b> | <small>{p.get("time").strftime("%H:%M") if p.get("time") else ""}</small><br>
-                {p.get("text", "")}
-            </div>''', unsafe_allow_html=True)
-            
-            if p.get('type') == 'youtube':
-                st.video(p['media'])
-            elif p.get('media'):
-                if p.get('type') == 'video': st.video(p['media'])
-                else: st.image(p['media'])
-            
-            likes = p.get('likes', [])
-            if st.button(f"❤️ {len(likes)}", key=f"like_{room_id}_{pid}"):
-                ref = db.collection(f'posts_{room_id}').document(pid)
-                if st.session_state.user in likes:
-                    ref.update({'likes': firestore.ArrayRemove([st.session_state.user])})
-                else:
-                    ref.update({'likes': firestore.ArrayUnion([st.session_state.user])})
-                st.rerun()
-        
-        if not has_post:
-            st.info("ยังไม่มีโพสต์ในห้องนี้ เริ่มโพสต์คนแรกเลย!")
-    except Exception as e:
-        st.warning("กำลังเตรียมฐานข้อมูลหรือยังไม่มีข้อมูลโพสต์")
-
-# --- 5. ระบบจัดการหน้าจอ (Logic) ---
-if 'user' not in st.session_state:
-    set_luxury_theme("home")
-    st.title("🛡️ Synapse Login")
-    u = st.text_input("ชื่อผู้ใช้ (Username)")
-    p = st.text_input("รหัสผ่าน (Password)", type="password")
+# --- 2. CYBERPUNK CSS (สีสะท้อนแสง + ตัวหนังสือเรืองแสง + ปุ่มนูน) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap');
     
-    col1, col2 = st.columns(2)
-    if col1.button("เข้าสู่ระบบ"):
-        user_doc = db.collection('users').document(u).get()
-        if user_doc.exists and user_doc.to_dict().get('pw') == hash_password(p):
-            st.session_state.user = u
-            st.session_state.page = "home"
+    /* พื้นหลังรุ้งสะท้อนแสง */
+    .stApp { 
+        background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc);
+        background-size: 400% 400%;
+        animation: gradient 10s ease infinite;
+        color: #fff; font-family: 'Kanit', sans-serif;
+    }
+    @keyframes gradient { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+    /* ตัวหนังสือเรืองแสง */
+    .neon-text {
+        color: #fff;
+        text-shadow: 0 0 10px #ab47bc, 0 0 20px #ab47bc, 0 0 40px #ab47bc;
+        font-family: 'Orbitron', sans-serif;
+        text-align: center;
+    }
+
+    /* ปุ่มนูนสะท้อนแสงแรงๆ */
+    .stButton>button {
+        height: 70px !important; width: 100% !important;
+        font-size: 20px !important; font-weight: 900 !important;
+        border-radius: 20px !important; border: 3px solid rgba(255,255,255,0.5) !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.4) !important;
+        transition: 0.3s;
+    }
+    .btn-red button { background: #ff0000 !important; box-shadow: 0 0 30px #ff0000 !important; }
+    .btn-blue button { background: #0000ff !important; box-shadow: 0 0 30px #0000ff !important; }
+    .btn-green button { background: #00ff00 !important; color: #000 !important; box-shadow: 0 0 30px #00ff00 !important; }
+    .btn-black button { background: #000000 !important; color: #fff !important; box-shadow: 0 0 30px #ffffff !important; }
+    .btn-purple button { background: #ab47bc !important; box-shadow: 0 0 30px #ab47bc !important; }
+
+    .setup-card { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 30px; border: 2px solid #fff; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 3. SESSION STATE ---
+if 'page' not in st.session_state: st.session_state.page = "LANDING"
+if 'current_room' not in st.session_state: st.session_state.current_room = "MAIN"
+if 'user_id' not in st.session_state: st.session_state.user_id = "Ta101"
+
+forced_therapy_radio()
+
+def go_to(page_name):
+    st.session_state.current_room = page_name
+    st.rerun()
+
+# ==========================================
+# 1. หน้าแรก (LANDING PAGE)
+# ==========================================
+if st.session_state.page == "LANDING":
+    st.markdown("<h1 class='neon-text' style='font-size:4em;'>SYNAPSE 6D</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center; color:white;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\"</h3>", unsafe_allow_html=True)
+    
+    col_l, col_m, col_r = st.columns([1,2,1])
+    with col_m:
+        st.markdown("<div class='setup-card'>", unsafe_allow_html=True)
+        # แสดง Logo (ถ้ามีไฟล์ logo.jpg ในโฟลเดอร์เดียวกับโค้ด)
+        try: st.image("logo.jpg", width=300)
+        except: st.warning("กรุณาวางไฟล์ logo.jpg ในโฟลเดอร์แอปนะครับ")
+        
+        st.text_input("👤 ชื่อผู้ใช้:", value=st.session_state.user_id, key="name_input")
+        st.text_input("🔑 รหัสผ่าน:", type="password", key="pass_input")
+        
+        if st.button("🚀 ยืนยันเข้าสู่มิติ"):
+            st.session_state.page = "APP"
             st.rerun()
-        else: st.error("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ==========================================
+# 2. ส่วนแอปหลัก
+# ==========================================
+elif st.session_state.page == "APP":
+    
+    if st.session_state.current_room == "MAIN":
+        st.markdown("<h1 class='neon-text'>เลือกมิติการบำบัด</h1>", unsafe_allow_html=True)
         
-    if col2.button("ลงทะเบียนใหม่"):
-        if u and p:
-            db.collection('users').document(u).set({'pw': hash_password(p)})
-            st.success("✅ ลงทะเบียนสำเร็จ! กรุณากดเข้าสู่ระบบ")
+        st.markdown('<div class="btn-red">', unsafe_allow_html=True)
+        if st.button("🔴 มิติแดง (โพสต์รูป/วิดีโอ/ฟีด)"): go_to("RED")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-else:
-    # หน้าหลัก
-    if st.session_state.page == "home":
-        set_luxury_theme("home")
-        st.title(f"ยินดีต้อนรับ, {st.session_state.user}")
-        st.markdown("<p style='color:#FFD700;'>🎬 เพลย์ลิสต์แนะนำจาก Synapse</p>", unsafe_allow_html=True)
-        components.html('<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allowfullscreen></iframe>', height=220)
-        
-        st.subheader("📂 เลือกห้องสนทนา")
-        c1, c2 = st.columns(2)
-        if c1.button("🔴 YouTube Zone"): st.session_state.page = "red"; st.rerun()
-        if c2.button("🔵 Facebook (โทรฟรี)"): st.session_state.page = "blue"; st.rerun()
-        if c1.button("🟢 ห้องแชทลับ"): st.session_state.page = "green"; st.rerun()
-        if c2.button("⚫ ห้อง X เรียลไทม์"): st.session_state.page = "black"; st.rerun()
-        if st.button("🚪 ออกจากระบบ"): del st.session_state.user; st.rerun()
+        st.markdown('<div class="btn-blue">', unsafe_allow_html=True)
+        if st.button("🔵 มิติน้ำเงิน (Social/โทรฟรี/แชทสด)"): go_to("BLUE")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # หน้าห้องต่างๆ
-    elif st.session_state.page in ["red", "blue", "green", "black"]:
-        set_luxury_theme(st.session_state.page)
-        room = st.session_state.page
-        st.header(f"ห้อง {room.upper()}")
-        if st.button("⬅️ กลับหน้าหลัก"): st.session_state.page = "home"; st.rerun()
+        st.markdown('<div class="btn-green">', unsafe_allow_html=True)
+        if st.button("🟢 มิติเขียว (แชทลับ/เพิ่มเพื่อน)"): go_to("GREEN")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # ระบบโทรฟรีเฉพาะห้อง BLUE
-        if room == "blue":
-            st.markdown('<div class="post-box">📞 โทรฟรีหาเพื่อน</div>', unsafe_allow_html=True)
-            u_ref = db.collection('users').stream()
-            friends = [u.id for u in u_ref if u.id != st.session_state.user]
-            target = st.selectbox("เลือกเพื่อน:", [""] + friends)
-            if target:
-                html_code = """
-                <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-                <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:10px;color:white;text-align:center;">
-                    <p id="status">สถานะ: พร้อมใช้งาน</p>
-                    <button id="callBtn" style="width:100%%;padding:10px;background:#28a745;color:white;border:none;border-radius:5px;">🟢 โทรออก</button>
-                    <audio id="remoteAudio" autoplay></audio>
-                </div>
-                <script>
-                    const peer = new Peer('%s');
-                    document.getElementById('callBtn').onclick = () => {
-                        navigator.mediaDevices.getUserMedia({audio:true}).then(s => {
-                            const call = peer.call('%s', s);
-                            call.on('stream', rs => { document.getElementById('remoteAudio').srcObject = rs; });
-                        });
-                    };
-                    peer.on('call', c => {
-                        navigator.mediaDevices.getUserMedia({audio:true}).then(s => {
-                            c.answer(s);
-                            c.on('stream', rs => { document.getElementById('remoteAudio').srcObject = rs; });
-                        });
-                    });
-                </script>
-                """ % (st.session_state.user, target)
-                components.html(html_code, height=180)
+        st.markdown('<div class="btn-black">', unsafe_allow_html=True)
+        if st.button("⚫ มิติดำ (ตั้งค่า/โปรเจกต์/เปลี่ยนรหัส)"): go_to("BLACK")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # ฟอร์มโพสต์
-        with st.expander("📝 เขียนโพสต์ใหม่"):
-            with st.form(f"f_{room}", clear_on_submit=True):
-                msg = st.text_area("ข้อความ...")
-                yt_link = st.text_input("ลิงก์ YouTube") if room == "red" else ""
-                file = st.file_uploader("รูป/วิดีโอ", type=['jpg','png','mp4'])
-                if st.form_submit_button("🚀 ส่ง"):
-                    if msg or yt_link or file:
-                        m_url, m_type = None, None
-                        y_id = get_youtube_id(yt_link)
-                        if y_id: m_url, m_type = f"https://www.youtube.com/watch?v={y_id}", "youtube"
-                        elif file:
-                            path = f"{room}/{uuid.uuid4()}_{file.name}"
-                            blob = bucket.blob(path)
-                            blob.upload_from_string(file.getvalue(), content_type=file.type)
-                            blob.make_public()
-                            m_url, m_type = blob.public_url, ("video" if "video" in file.type else "image")
-                        db.collection(f'posts_{room}').add({
-                            'user': st.session_state.user, 'text': msg,
-                            'media': m_url, 'type': m_type,
-                            'likes': [], 'time': get_thai_time()
-                        })
-                        st.rerun()
+        st.markdown('<div class="btn-purple">', unsafe_allow_html=True)
+        if st.button("🟣 มิติม่วง (AI คู่คิด/ความจำดี)"): go_to("PURPLE")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        render_posts(room)
+    # --- ห้องน้ำเงิน (BLUE ROOM) ---
+    elif st.session_state.current_room == "BLUE":
+        st.markdown("<h1 style='color:blue;'>🔵 มิติน้ำเงิน : Social Connect</h1>", unsafe_allow_html=True)
+        st.markdown("### 📞 ระบบโทรฟรี (Voice Call Online)")
+        st.button("☎️ กดเพื่อโทรออกหาเพื่อน")
+        st.markdown("---")
+        st.text_area("💬 แชทสดๆ ตรงนี้:")
+        st.button("ส่งข้อความ")
+        if st.button("⬅️ กลับ"): go_to("MAIN")
+
+    # --- ห้องเขียว (GREEN ROOM) ---
+    elif st.session_state.current_room == "GREEN":
+        st.markdown("<h1 style='color:green;'>🟢 มิติเขียว : ความลับสีเขียว</h1>", unsafe_allow_html=True)
+        st.info("📖 **วิธีใช้งาน:** ห้องนี้เป็นแชทลับออนไลน์ คุณต้องกด 'เพิ่มเพื่อน' โดยใช้ ID เพื่อนก่อนถึงจะเริ่มคุยกันได้ ข้อมูลในนี้จะไม่ถูกเปิดเผยต่อสาธารณะ")
+        st.text_input("➕ ใส่ ID เพื่อนเพื่อเพิ่มเพื่อน:")
+        st.button("ยืนยันการเพิ่มเพื่อน")
+        st.text_input("🔗 ส่งลิงก์วิดีโอให้เพื่อน:")
+        if st.button("⬅️ กลับ"): go_to("MAIN")
+
+    # --- ห้องดำ (BLACK ROOM) ---
+    elif st.session_state.current_room == "BLACK":
+        st.markdown("<h1 style='color:white; text-shadow:0 0 10px #00ff88;'>⚫ มิติดำ : ศูนย์ควบคุม</h1>", unsafe_allow_html=True)
+        st.subheader("⚙️ การตั้งค่าส่วนตัว")
+        st.text_input("🔄 เปลี่ยนชื่อผู้ใช้:", value=st.session_state.user_id)
+        st.text_input("🔑 เปลี่ยนรหัสผ่านใหม่:", type="password")
+        st.subheader("📂 โปรเจกต์ของฉัน")
+        st.button("➕ สร้างโปรเจกต์ใหม่")
+        if st.button("⬅️ กลับ"): go_to("MAIN")
+
+    # --- ห้องม่วง (PURPLE ROOM) ---
+    elif st.session_state.current_room == "PURPLE":
+        st.markdown("<h1 class='neon-text'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
+        st.write("AI: 'ยินดีที่ได้พบกันอีกครั้ง... จำได้ไหมเราเคยคุยเรื่องอะไรกันไว้?'")
+        st.text_area("ช่องเขียนข้อความ (ขนาดใหญ่พิเศษ):", height=400)
+        if st.button("⬅️ กลับ"): go_to("MAIN")
+
+    if st.button("🚪 LOGOUT"):
+        st.session_state.page = "LANDING"
+        st.rerun()
