@@ -26,8 +26,8 @@ def forced_therapy_radio():
 
 # เรียกใช้งานเพลงทันที
 forced_therapy_radio()
-    # --- เครื่องในห้องม่วง (AI Engine) ---
-    st.markdown("<h1 class='neon-text'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
+# --- เครื่องในห้องม่วง (AI Engine) ---
+st.markdown("<h1 class='neon-text'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
     
     # ดึงค่า API Key (ต้องตั้งค่าใน st.secrets["gemini_key"])
     if "messages" not in st.session_state:
