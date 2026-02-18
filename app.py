@@ -113,7 +113,6 @@ if st.session_state.app_locked:
 
 # --- 4. MAIN INTERFACE (หลังปลดล็อก) ---
 else:
-    play_bg_music() # เพลงยังคงดังต่อเนื่อง
     st.markdown(f"<h2 style='text-align:right; color:#ab47bc;'>USER: {st.session_state.user_id} 🔓</h2>", unsafe_allow_html=True)
     
     tab1, tab2, tab3 = st.tabs(["🌌 มิติทั้งหมด", "⚙️ เปลี่ยนรหัส", "🎵 เครื่องเล่นเพลง"])
