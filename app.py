@@ -6,16 +6,18 @@ from datetime import datetime
 if 'page' not in st.session_state: 
     st.session_state.page = "LANDING"
 if 'current_room' not in st.session_state: 
-    st.session_state.current_room = "MAIN"
+    st.session_state.current_room = "PURPLE"  # ตั้งต้นที่ห้องม่วงตามโค้ดที่คุณให้มา
 if 'user_id' not in st.session_state: 
     st.session_state.user_id = "Ta101"
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # --- 2. ฟังก์ชันสลับมิติ (Gear Shift) ---
 def go_to(room_name):
     st.session_state.current_room = room_name
     st.rerun()
 
-# --- 3. ฟังก์ชันเพลงบำบัด (ห้ามดับ) ---
+# --- 3. ฟังก์ชันเพลงบำบัด ---
 def forced_therapy_radio():
     playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
     st.markdown(f"""
@@ -24,56 +26,54 @@ def forced_therapy_radio():
         </div>
     """, unsafe_allow_html=True)
 
-# เรียกใช้งานเพลงทันที
+# เรียกใช้งานเพลง
 forced_therapy_radio()
-# --- เครื่องในห้องม่วง (AI Engine) ---
-st.markdown("<h1 class='neon-text'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
+
+# --- แยกส่วนตามห้อง (Current Room) ---
+
+# ==========================================
+# 1. มิติม่วง (AI Engine)
+# ==========================================
+if st.session_state.current_room == "PURPLE":
+    st.markdown("<h1 style='color:#a020f0;'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
     
-# ดึงค่า API Key (ต้องตั้งค่าใน st.secrets["gemini_key"])
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.markdown(f"### 🤖 AI: 'สวัสดีครับคุณ {st.session_state.user_id} ผมจำได้ทุกอย่างที่เราคุยกัน...'")
 
-# AI ทักทายด้วยชื่อคุณพี่จากระบบ
-st.markdown(f"### 🤖 AI: 'สวัสดีครับคุณ {st.session_state.user_id} ผมจำได้ทุกอย่างที่เราคุยกัน...'")
+    # แสดงประวัติแชท
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-# กล่องแชทแบบเห็นประวัติ (เครื่องในเดินแล้ว!)
-for msg in st.session_state.messages:
-with st.chat_message(msg["role"]):
-     st.write(msg["content"])
-
-# ช่องกรอกข้อความขนาดใหญ่ตามสั่ง
-if prompt := st.chat_input("ระบายความลับ หรือปรึกษาเรื่องโปรเจกต์ได้เลยครับ..."):
+    # ช่องกรอกข้อความ
+    if prompt := st.chat_input("ระบายความลับ หรือปรึกษาเรื่องโปรเจกต์ได้เลยครับ..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-with st.chat_message("user"):
+        with st.chat_message("user"):
             st.write(prompt)
 
-with st.chat_message("assistant"):
-with st.spinner("AI กำลังใช้ความจำระดับเทพวิเคราะห์..."):
-                # ตรงนี้คือการส่งไปหา AI จริงๆ (จำลองการเดินเครื่อง)
+        with st.chat_message("assistant"):
+            with st.spinner("AI กำลังใช้ความจำระดับเทพวิเคราะห์..."):
                 time.sleep(1.5) 
                 response = f"ในฐานะคู่คิดของคุณ {st.session_state.user_id}, ผมวิเคราะห์ว่าเรื่อง '{prompt}' นี้ พี่ควรใช้หลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' นะครับ"
                 st.write(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
     st.markdown("---")
-if st.button("🧹 ล้างความจำ AI (เฉพาะห้องนี้)"):
+    if st.button("🧹 ล้างความจำ AI (เฉพาะห้องนี้)"):
         st.session_state.messages = []
         st.rerun()
 
-if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
+    if st.button("⬅️ ไปมิติแดง"): go_to("RED")
 
 # ==========================================
-# 3. ส่วนเครื่องในห้องแดง (FIREBASE FETCH) - ตัวอย่างการเดินระบบ
+# 2. มิติแดง (FIREBASE FETCH)
 # ==========================================
 elif st.session_state.current_room == "RED":
-    st.markdown("<h1 style='color:#ff0000;'>🔴 มิติแดง : Feed ความรู้สึก</h1>")
+    st.markdown("<h1 style='color:#ff0000;'>🔴 มิติแดง : Feed ความรู้สึก</h1>", unsafe_allow_html=True)
     
-# จำลองการดึง Feed จาก Firebase
     st.markdown("### 📽️ ฟีดล่าสุดจากเพื่อนๆ")
     
-# สร้างการแสดงผลแบบ Card
- with st.container():
-        st.markdown("<div class='setup-card'>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown("<div style='border:1px solid #ff0000; padding:10px; border-radius:10px;'>", unsafe_allow_html=True)
         st.write(f"👤 **{st.session_state.user_id}** (คุณ)")
         st.info("วันนี้รู้สึกดีมากที่ระบบเดินเครื่องได้สมบูรณ์!")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -81,4 +81,4 @@ elif st.session_state.current_room == "RED":
     st.markdown("---")
     st.file_uploader("📤 อัปโหลดวิดีโอ/รูปภาพระบายอารมณ์", type=['jpg','png','mp4'])
     
-if st.button("⬅️ กลับ"): go_to("MAIN")
+    if st.button("⬅️ กลับมิติม่วง"): go_to("PURPLE")
