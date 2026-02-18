@@ -75,7 +75,7 @@ if st.session_state.page == "LANDING":
     with col_m:
         st.markdown("<div class='setup-card'>", unsafe_allow_html=True)
         # แสดง Logo (ถ้ามีไฟล์ logo.jpg ในโฟลเดอร์เดียวกับโค้ด)
-        try: st.image("logo.jpg", width=200)
+        try: st.image("logo.jpg", width=300)
         except: st.warning("กรุณาวางไฟล์ logo.jpg ในโฟลเดอร์แอปนะครับ")
         
         st.text_input("👤 ชื่อผู้ใช้:", value=st.session_state.user_id, key="name_input")
