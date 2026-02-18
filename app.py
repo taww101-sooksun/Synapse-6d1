@@ -68,7 +68,6 @@ if 'user_id' not in st.session_state: st.session_state.user_id = ""
 
 # --- 3. LANDING PAGE : โลโก้ + ตั้งรหัสเอง ---
 if st.session_state.app_locked:
-    play_bg_music() # เปิดเพลงตั้งแต่หน้าแรก
     st.markdown("<div class='logo-container'><h1 class='main-logo'>SYNAPSE 6D</h1><p style='letter-spacing:5px;'>ULTIMATE THERAPY SYSTEM</p></div>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns([1, 2, 1])
