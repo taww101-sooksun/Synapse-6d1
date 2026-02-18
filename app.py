@@ -439,8 +439,9 @@ st.markdown("""
     <style>
     @import url("""'https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap'""");
     /* ส่วน CSS เดิมของคุณ */
-    .stApp {
-        background: linear-gradient("""135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc""");
+    .stApp>       
+         background: linear-gradient("""135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc""");
+       
         background-size: 400% 400%;
         animation: gradient 15s ease infinite;
         color: #fff; font-family: 'Kanit', sans-serif;
