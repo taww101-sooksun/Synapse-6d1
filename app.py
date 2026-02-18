@@ -37,13 +37,7 @@ if 'app_locked' not in st.session_state:
 st.set_page_config(page_title="SYNAPSE 6D : CORE", layout="wide", initial_sidebar_state="collapsed")
 
 # ระบบเครื่องเล่นเพลงแบบ Global (ดังทุกห้อง)
-def play_bg_music():
-    # เปลี่ยน URL ตรงนี้เป็นไฟล์เพลงของลูกพี่นะคนับ (Direct Link .mp3)
-    music_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" 
-    st.markdown(f"""
-        <iframe src="{music_url}" allow="autoplay" style="display:none" id="bgAudio"></iframe>
-        <audio autoplay loop style="width: 100%; filter: invert(100%); opacity: 0.5;">
-            <source src="{music_url}" type="audio/mp3">
+
         </audio>
     """, unsafe_allow_html=True)
 
