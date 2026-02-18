@@ -97,8 +97,7 @@ if st.session_state.page == "LANDING":
 # 2. หน้าหลัก (MAIN MENU)
 # ==========================================
 elif st.session_state.page == "MAIN":
-    st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")
-    
+    st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")    
     # --- ห้องเขียว (GREEN ROOM) ---
     elif st.session_state.current_room == "GREEN":
         st.markdown("<h1 style='color:green;'>🟢 มิติเขียว : ความลับสีเขียว</h1>", unsafe_allow_html=True)
