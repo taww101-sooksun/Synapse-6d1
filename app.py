@@ -38,7 +38,6 @@ st.set_page_config(page_title="SYNAPSE 6D : CORE", layout="wide", initial_sideba
 
 # ระบบเครื่องเล่นเพลงแบบ Global (ดังทุกห้อง)
 
-        </audio>
     """, unsafe_allow_html=True)
 
 # --- 1. CYBERPUNK CSS (รกๆ เท่ๆ มีโลโก้) ---
