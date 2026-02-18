@@ -441,8 +441,7 @@ st.markdown("""
     /* ส่วน CSS เดิมของคุณ */
     .stApp>       
          background: linear-gradient("""135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc""");
-       
-        background-size: 400% 400%;
+    background-size: 400% 400%;
         animation: gradient 15s ease infinite;
         color: #fff; font-family: 'Kanit', sans-serif;
     }
