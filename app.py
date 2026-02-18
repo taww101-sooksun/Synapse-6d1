@@ -2,7 +2,7 @@ import streamlit as st
 import time
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
-import uuid # สำหรับสร้างชื่อไฟล์ที่ไม่ซ้ำกัน
+import uuid # สำหรับสร้งชื่อไฟล์ที่ไม่ซ้ำกัน
 from datetime import datetime # สำหรับฟอร์แมต timestamp
 
 # --- Translation Dictionary (ส่วนใหม่สำหรับระบบ 6 ภาษา) ---
