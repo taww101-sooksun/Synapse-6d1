@@ -100,22 +100,22 @@ elif st.session_state.page == "MAIN":
     st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")                           # --- ห้องเขียว (GREEN ROOM) ---
 # --- ห้องเขียว (GREEN ROOM) ---     
 elif st.session_state.current_room == "GREEN":
-        st.markdown("<h1 style='color:green;'>🟢 มิติเขียว : ความลับสีเขียว</h1>", unsafe_allow_html=True)
-        st.info("📖 **วิธีใช้งาน:** ห้องนี้เป็นแชทลับออนไลน์ คุณต้องกด 'เพิ่มเพื่อน' โดยใช้ ID เพื่อนก่อนถึงจะเริ่มคุยกันได้ ข้อมูลในนี้จะไม่ถูกเปิดเผยต่อสาธารณะ")
-        st.text_input("➕ ใส่ ID เพื่อนเพื่อเพิ่มเพื่อน:")
-        st.button("ยืนยันการเพิ่มเพื่อน")
-        st.text_input("🔗 ส่งลิงก์วิดีโอให้เพื่อน:")
-        if st.button("⬅️ กลับ"): go_to("MAIN")
+    st.markdown("<h1 style='color:green;'>🟢 มิติเขียว : ความลับสีเขียว</h1>", unsafe_allow_html=True)
+    st.info("📖 **วิธีใช้งาน:** ห้องนี้เป็นแชทลับออนไลน์ คุณต้องกด 'เพิ่มเพื่อน' โดยใช้ ID เพื่อนก่อนถึงจะเริ่มคุยกันได้ ข้อมูลในนี้จะไม่ถูกเปิดเผยต่อสาธารณะ")
+    st.text_input("➕ ใส่ ID เพื่อนเพื่อเพิ่มเพื่อน:")
+    st.button("ยืนยันการเพิ่มเพื่อน")
+    st.text_input("🔗 ส่งลิงก์วิดีโอให้เพื่อน:")
+    if st.button("⬅️ กลับ"): go_to("MAIN")
 
 # --- ห้องดำ (BLACK ROOM) ---
 elif st.session_state.current_room == "BLACK":
-        st.markdown("<h1 style='color:white; text-shadow:0 0 10px #00ff88;'>⚫ มิติดำ : ศูนย์ควบคุม</h1>", unsafe_allow_html=True)
-        st.subheader("⚙️ การตั้งค่าส่วนตัว")
-        st.text_input("🔄 เปลี่ยนชื่อผู้ใช้:", value=st.session_state.user_id)
-        st.text_input("🔑 เปลี่ยนรหัสผ่านใหม่:", type="password")
-        st.subheader("📂 โปรเจกต์ของฉัน")
-        st.button("➕ สร้างโปรเจกต์ใหม่")
-        if st.button("⬅️ กลับ"): go_to("MAIN")
+    st.markdown("<h1 style='color:white; text-shadow:0 0 10px #00ff88;'>⚫ มิติดำ : ศูนย์ควบคุม</h1>", unsafe_allow_html=True)
+    st.subheader("⚙️ การตั้งค่าส่วนตัว")
+    st.text_input("🔄 เปลี่ยนชื่อผู้ใช้:", value=st.session_state.user_id)
+    st.text_input("🔑 เปลี่ยนรหัสผ่านใหม่:", type="password")
+    st.subheader("📂 โปรเจกต์ของฉัน")
+    st.button("➕ สร้างโปรเจกต์ใหม่")
+    if st.button("⬅️ กลับ"): go_to("MAIN")
 # ปุ่มกดนูนขนาดใหญ่ 5 สี
     st.markdown('<div class="btn-red">', unsafe_allow_html=True)
     if st.button("🔴 เข้าสู่มิติแดง (RED ROOM - YouTube Feed)"): go_to("RED")
