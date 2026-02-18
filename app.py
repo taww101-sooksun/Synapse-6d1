@@ -437,7 +437,7 @@ def forced_therapy_radio():
 # --- 2. CYBERPUNK CSS (รกๆ สะท้อนแสง ปุ่มนูน) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap');
+    @import url("""'https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap'""");
     /* ส่วน CSS เดิมของคุณ */
     .stApp {
         background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc);
