@@ -1,6 +1,37 @@
 import streamlit as st
 import google.generativeai as genai
 import time
+import streamlit as st
+import google.generativeai as genai
+
+# --- 1. ส่วนฟังก์ชันเครื่องเล่นเพลง (วางไว้ตรงนี้) ---
+def forced_therapy_radio():
+    # ใช้ ID เพลย์ลิสต์ของลูกพี่อันนี้ครับ
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
+    
+    st.markdown(f"""
+        <div style="display:none;">
+            <iframe 
+                src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" 
+                allow="autoplay">
+            </iframe>
+        </div>
+        <div style="position: fixed; top: 10px; right: 10px; z-index: 1000; opacity: 0.6;">
+            <p style="color: #00ff88; font-size: 0.6em; font-family: 'Orbitron';">
+                📡 THERAPY STREAMING... (CONNECTED)
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- 2. ส่วนรันโปรแกรม ---
+# เรียกใช้ทันทีเพื่อให้เพลงดังตั้งแต่หน้าแรก
+forced_therapy_radio()
+
+# ต่อด้วยโค้ดหน้าด่าน (Landing Page) ที่เราคุยกันไว้
+if 'app_locked' not in st.session_state:
+    st.session_state.app_locked = True
+
+# ... โค้ดส่วนที่เหลือของลูกพี่ ...
 
 # --- 0. INITIAL SETUP & GLOBAL MUSIC ---
 st.set_page_config(page_title="SYNAPSE 6D : CORE", layout="wide", initial_sidebar_state="collapsed")
