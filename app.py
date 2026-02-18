@@ -98,8 +98,7 @@ if st.session_state.page == "LANDING":
 # ==========================================
 elif st.session_state.page == "MAIN":
     st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")                           # --- ห้องเขียว (GREEN ROOM) ---
-    มกดนูนขนาดใหญ่ 5 สี
-    
+# มกดนูนขนาดใหญ่ 5 สี
     st.markdown('<div class="btn-red">', unsafe_allow_html=True)
     if st.button("🔴 เข้าสู่มิติแดง (RED ROOM - YouTube Feed)"): go_to("RED")
     st.markdown('</div>', unsafe_allow_html=True)
