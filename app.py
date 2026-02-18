@@ -99,16 +99,6 @@ if st.session_state.page == "LANDING":
 elif st.session_state.page == "MAIN":
     st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")
     
-    # --- ห้องน้ำเงิน (BLUE ROOM) ---
-    elif st.session_state.current_room == "BLUE":
-        st.markdown("<h1 style='color:blue;'>🔵 มิติน้ำเงิน : Social Connect</h1>", unsafe_allow_html=True)
-        st.markdown("### 📞 ระบบโทรฟรี (Voice Call Online)")
-        st.button("☎️ กดเพื่อโทรออกหาเพื่อน")
-        st.markdown("---")
-        st.text_area("💬 แชทสดๆ ตรงนี้:")
-        st.button("ส่งข้อความ")
-        if st.button("⬅️ กลับ"): go_to("MAIN")
-
     # --- ห้องเขียว (GREEN ROOM) ---
     elif st.session_state.current_room == "GREEN":
         st.markdown("<h1 style='color:green;'>🟢 มิติเขียว : ความลับสีเขียว</h1>", unsafe_allow_html=True)
