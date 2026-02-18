@@ -396,7 +396,7 @@ translations = {
 # Helper function to get translated text
 def get_text(key):
     # Default to English if language not set or key not found for selected language
-    return translations.get(key, {}).get(st.session_state.lang, translations.get(key, {}).get("en", f"Translation missing for {key}"))
+return translations.get(key, {}).get(st.session_state.lang, translations.get(key, {}).get("en", f"Translation missing for {key}"))
 # --- 0. INITIAL SETUP & THEME ---
 st.set_page_config(page_title=get_text("app_title"), layout="wide", initial_sidebar_state="collapsed")
 
