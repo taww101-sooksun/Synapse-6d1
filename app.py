@@ -153,7 +153,23 @@ def show_green():
 def show_purple():
     st.markdown("<h1 style='color:#ab47bc;'>🟣 มิติพยากรณ์ & ระบายใจ</h1>", unsafe_allow_html=True)
     if st.button("⬅️ กลับหน้าหลัก"): navigate_to("home")
-    
+    # --- เริ่มต้น: ส่วนดึงความจำจากฐานข้อมูล ---
+    history_context = ""
+    if db:
+        try:
+    # ดึงประวัติเฉพาะของคนที่ Login อยู่ตอนนี้ (ของใครของมัน)
+            memories = db.collection("ai_memories") \
+                         .where("user", "==", st.session_state.user_name) \
+                         .order_by("timestamp", direction="DESCENDING") \
+                         .limit(5).stream()
+            
+            history_list = [m.to_dict().get('chat_history') for m in memories]
+            history_list.reverse() # เรียงลำดับจากเก่าไปใหม่
+            history_context = "\n".join(history_list)
+        except:
+            history_context = "เพิ่งเคยคุยกันครั้งแรก"
+    # --- สิ้นสุด: ส่วนดึงความจำ ---
+   
     st.markdown("""
         <div class='dimension-card purple-glow'>
             <h3 style='color:#ab47bc;'>🤖 AI: อยู่นิ้งๆไม่เจ็บตัว</h3>
