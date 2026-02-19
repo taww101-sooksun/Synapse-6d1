@@ -1,84 +1,98 @@
 import streamlit as st
+import google.generativeai as genai
+import firebase_admin
+from firebase_admin import credentials, firestore
 import time
-from datetime import datetime
 
-# --- 1. ตั้งค่าพื้นฐานเครื่องยนต์ ---
-if 'page' not in st.session_state: 
-    st.session_state.page = "LANDING"
-if 'current_room' not in st.session_state: 
-    st.session_state.current_room = "PURPLE"  # ตั้งต้นที่ห้องม่วงตามโค้ดที่คุณให้มา
-if 'user_id' not in st.session_state: 
-    st.session_state.user_id = "Ta101"
+# --- 1. ปลุกระบบฐานข้อมูล (Firebase Setup) ---
+# ตรวจสอบก่อนว่าเคย Initialize ไปหรือยัง จะได้ไม่เจ็บตัวจาก Error
+if not firebase_admin._apps:
+    try:
+        # ดึงค่าจาก st.secrets["firebase_service_account"] ที่พี่เตรียมไว้
+        cred_info = dict(st.secrets["firebase_service_account"])
+        cred = credentials.Certificate(cred_info)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
+
+db = firestore.client()
+
+# --- 2. ตั้งค่าสมอง AI (Gemini Setup) ---
+try:
+    genai.configure(api_key=st.secrets["gemini_key"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error(f"ปลุกสมอง Gemini ไม่สำเร็จ: {e}")
+
+# --- 3. ระบบจัดการความจำ (Memory Engine) ---
+AI_NAME = "น้องอยู่นิ่งๆ ไม่เจ็บตัว"
+USER_ID = st.session_state.get('user_id', 'Ta101')
+
+def load_memory_from_cloud(uid):
+    """ดึงความจำเก่าจาก Firebase"""
+    doc_ref = db.collection("memories").document(uid).get()
+    if doc_ref.exists:
+        return doc_ref.to_dict().get("history", [])
+    return []
+
+def save_memory_to_cloud(uid, history):
+    """บันทึกความจำลง Firebase"""
+    db.collection("memories").document(uid).set({
+        "history": history,
+        "last_seen": time.time()
+    })
+
+# โหลดความจำเมื่อเปิดแอปครั้งแรก
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = load_memory_from_cloud(USER_ID)
 
-# --- 2. ฟังก์ชันสลับมิติ (Gear Shift) ---
-def go_to(room_name):
-    st.session_state.current_room = room_name
+# --- 4. หน้าตาโปรแกรม (UI) ---
+st.set_page_config(page_title=AI_NAME, page_icon="🔮")
+
+st.markdown(f"<h1 style='color:#a020f0;'>🔮 {AI_NAME}</h1>", unsafe_allow_html=True)
+st.caption(f"สถานะ: สมองออนไลน์ | ความจำ Cloud (Firebase) เชื่อมต่อแล้ว | พี่: {USER_ID}")
+
+# แสดงประวัติแชทจากความจำถาวร
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# --- 5. ระบบพูดคุยและวิเคราะห์ ---
+if prompt := st.chat_input("ปรึกษาดวง แง่คิด หรือความรู้ได้ทุกทิศ..."):
+    # 1. บันทึกคำถามพี่ลงหน้าจอ
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 2. ส่งให้ Gemini วิเคราะห์ (โดยแนบประวัติแชทไปทั้งหมดให้น้องจำได้)
+    with st.chat_message("assistant"):
+        with st.spinner(f"{AI_NAME} กำลังค้นหาคำตอบจากดวงดาวและฐานความรู้..."):
+            try:
+                # สร้าง Context ให้ AI รู้จักตัวเองและพี่มากขึ้น
+                context = f"คุณคือ {AI_NAME} ที่ปรึกษาผู้รอบรู้รอบทิศ มีสโลแกนคือ 'อยู่นิ่งๆ ไม่เจ็บตัว' คู่สนทนาของคุณคือคุณ {USER_ID} จงตอบคำถามโดยให้แง่คิดที่เฉียบคมและใช้ความจำจากบทสนทนาที่ผ่านมาให้เป็นประโยชน์"
+                
+                # รวมประวัติเพื่อส่งให้ Gemini
+                full_history = [{"role": m["role"] if m["role"] != "assistant" else "model", "parts": [m["content"]]} for m in st.session_state.messages]
+                
+                chat = model.start_chat(history=full_history[:-1]) # ส่งประวัติยกเว้นข้อความล่าสุด
+                response = chat.send_message(f"{context}\n\nคำถามใหม่: {prompt}")
+                
+                ai_text = response.text
+                st.markdown(ai_text)
+                
+                # 3. บันทึกคำตอบ AI ลงความจำใน Session และ Firebase
+                st.session_state.messages.append({"role": "assistant", "content": ai_text})
+                save_memory_to_cloud(USER_ID, st.session_state.messages)
+                
+            except Exception as e:
+                st.error(f"สมองรวนนิดหน่อย: {e}")
+
+# --- 6. ปุ่มควบคุมทางลัด ---
+st.sidebar.title("ระบบควบคุม")
+if st.sidebar.button("🧹 ล้างสมอง (เฉพาะในเครื่อง)"):
+    st.session_state.messages = []
     st.rerun()
 
-# --- 3. ฟังก์ชันเพลงบำบัด ---
-def forced_therapy_radio():
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
-    st.markdown(f"""
-        <div style="display:none;">
-            <iframe src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" allow="autoplay"></iframe>
-        </div>
-    """, unsafe_allow_html=True)
-
-# เรียกใช้งานเพลง
-forced_therapy_radio()
-
-# --- แยกส่วนตามห้อง (Current Room) ---
-
-# ==========================================
-# 1. มิติม่วง (AI Engine)
-# ==========================================
-if st.session_state.current_room == "PURPLE":
-    st.markdown("<h1 style='color:#a020f0;'>🟣 มิติม่วง : AI อัจฉริยะ</h1>", unsafe_allow_html=True)
-    
-    st.markdown(f"### 🤖 AI: 'สวัสดีครับคุณ {st.session_state.user_id} ผมจำได้ทุกอย่างที่เราคุยกัน...'")
-
-    # แสดงประวัติแชท
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-
-    # ช่องกรอกข้อความ
-    if prompt := st.chat_input("ระบายความลับ หรือปรึกษาเรื่องโปรเจกต์ได้เลยครับ..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("AI กำลังใช้ความจำระดับเทพวิเคราะห์..."):
-                time.sleep(1.5) 
-                response = f"ในฐานะคู่คิดของคุณ {st.session_state.user_id}, ผมวิเคราะห์ว่าเรื่อง '{prompt}' นี้ พี่ควรใช้หลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' นะครับ"
-                st.write(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-
-    st.markdown("---")
-    if st.button("🧹 ล้างความจำ AI (เฉพาะห้องนี้)"):
-        st.session_state.messages = []
-        st.rerun()
-
-    if st.button("⬅️ ไปมิติแดง"): go_to("RED")
-
-# ==========================================
-# 2. มิติแดง (FIREBASE FETCH)
-# ==========================================
-elif st.session_state.current_room == "RED":
-    st.markdown("<h1 style='color:#ff0000;'>🔴 มิติแดง : Feed ความรู้สึก</h1>", unsafe_allow_html=True)
-    
-    st.markdown("### 📽️ ฟีดล่าสุดจากเพื่อนๆ")
-    
-    with st.container():
-        st.markdown("<div style='border:1px solid #ff0000; padding:10px; border-radius:10px;'>", unsafe_allow_html=True)
-        st.write(f"👤 **{st.session_state.user_id}** (คุณ)")
-        st.info("วันนี้รู้สึกดีมากที่ระบบเดินเครื่องได้สมบูรณ์!")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    st.markdown("---")
-    st.file_uploader("📤 อัปโหลดวิดีโอ/รูปภาพระบายอารมณ์", type=['jpg','png','mp4'])
-    
-    if st.button("⬅️ กลับมิติม่วง"): go_to("PURPLE")
+if st.sidebar.button("🚨 ลบความจำถาวร (Firebase)"):
+    db.collection("memories").document(USER_ID).delete()
+    st.session_state.messages = []
