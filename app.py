@@ -25,7 +25,7 @@ except Exception as e:
     st.error(f"ปลุกสมอง Gemini ไม่สำเร็จ: {e}")
 
 # --- 3. ระบบจัดการความจำ (Memory Engine) ---
-AI_NAME = "น้องอยู่นิ่งๆ ไม่เจ็บตัว"
+AI_NAME = "อยู่นิ่งๆ ไม่เจ็บตัว"
 USER_ID = st.session_state.get('user_id', 'Ta101')
 
 def load_memory_from_cloud(uid):
