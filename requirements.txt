@@ -11,12 +11,10 @@ streamlit-js-eval
 torch
 gTTS
 streamlit
-firebase-admin
-streamlit
 requests
 pytz
-timezonefinder
 geopy
 folium
 streamlit-folium
 firebase-admin
+timezonefinder
