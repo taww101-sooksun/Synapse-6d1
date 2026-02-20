@@ -10,8 +10,6 @@ streamlit-player
 streamlit-js-eval
 torch
 gTTS
-streamlit
-requests
 pytz
 geopy
 folium
