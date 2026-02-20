@@ -11,7 +11,7 @@ import firebase_admin
 from firebase_admin import credentials, db, storage
 import uuid
 
-# --- 1. INITIALIZE FIREBASE (ใช้ URL สิงคโปร์ที่คุณสร้าง) ---
+# --- 1. INITIALIZE FIREBASE ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
 if not firebase_admin._apps:
@@ -19,14 +19,13 @@ if not firebase_admin._apps:
         fb_creds = dict(st.secrets["firebase_service_account"])
         cred = credentials.Certificate(fb_creds)
         firebase_admin.initialize_app(cred, {
-            # ใช้ URL ใหม่ที่คุณแจ้งมา เพื่อความเร็วสูงสุด
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/',
             'storageBucket': 'notty-101.firebasestorage.app' 
         })
     except Exception as e:
         st.error(f"Firebase Connection Error: {e}")
 
-# --- 2. SECURITY GATE (หน้าด่าน Login) ---
+# --- 2. SECURITY GATE ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
@@ -51,20 +50,22 @@ languages = {
         "allow_gps": "💡 โปรดกดยืนยัน 'Allow' เพื่อเข้าสู่ Command Center",
         "connecting": "📡 กำลังเชื่อมต่อสัญญาณ...",
         "temp": "🌡️ อุณหภูมิ", "wind": "💨 ลม", "time": "⏰ เวลา",
-        "map_title": "🗺️ แผนที่พิกัดปัจจุบันของคุณ",
+        "map_title": "🗺️ แผนที่พิกัด (น้ำเงิน: คุณ | แดง: เพื่อน)",
         "music_title": "🎵 Sound Therapy (เล่นอัตโนมัติ)",
         "footer": "SYNAPSE V1.6 | ระบบ 2 ภาษา | 'อยู่นิ่งๆ' ไม่เจ็บตัว",
-        "call_btn": "✅ รับสาย", "reject_btn": "❌ ไม่รับ", "call_in": "🚨 มีสายเรียกเข้า!"
+        "call_btn": "✅ รับสาย", "reject_btn": "❌ ไม่รับ", "call_in": "🚨 มีสายเรียกเข้า!",
+        "waiting": "⏳ กำลังรออีกฝ่ายรับสาย..."
     },
     "EN": {
         "status_info": "STAY STILL & HEAL : 'Stay Still & No Pain'",
         "allow_gps": "💡 Please click 'Allow' to enter Command Center",
         "connecting": "📡 Connecting to Satellite...",
         "temp": "🌡️ Temp", "wind": "💨 Wind", "time": "⏰ Time",
-        "map_title": "🗺️ Your Current Location Map",
+        "map_title": "🗺️ Location Map (Blue: You | Red: Friend)",
         "music_title": "🎵 Sound Therapy (Autoplay)",
         "footer": "SYNAPSE V1.6 | Dual Language | 'Stay Still' No Pain",
-        "call_btn": "✅ Accept", "reject_btn": "❌ Reject", "call_in": "🚨 Incoming Call!"
+        "call_btn": "✅ Accept", "reject_btn": "❌ Reject", "call_in": "🚨 Incoming Call!",
+        "waiting": "⏳ Waiting for answer..."
     }
 }
 
@@ -72,7 +73,7 @@ sel_lang = st.sidebar.selectbox("SELECT LANGUAGE / เลือกภาษา",
 t = languages[sel_lang]
 my_id = st.session_state.my_id
 
-# --- 4. STYLE (Rainbow Effect) ---
+# --- 4. STYLE ---
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -82,15 +83,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 5. REGISTER & FRIEND LIST (ระบบจำเพื่อนอัตโนมัติ) ---
+# --- 5. REGISTER & FRIEND LIST ---
 try:
-    # บันทึกสถานะออนไลน์ของเรา
     db.reference(f'/users/{my_id}').update({
         'last_seen': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'status': 'online'
     })
-
-    # ดึงรายชื่อคนอื่นในระบบมาทำสมุดโทรศัพท์
     all_users = db.reference('/users').get()
     friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
 except: friend_options = []
@@ -109,8 +107,10 @@ if st.sidebar.button("📞 Call Now"):
     if target and target != "-- Select --":
         room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
         db.reference(f'/calls/{target}').set({
-            'from': my_id, 'room': room_id, 'status': 'calling', 'location': "Syncing..."
+            'from': my_id, 'room': room_id, 'status': 'calling'
         })
+        st.session_state.active_room = room_id
+        st.session_state.call_target = target
         st.sidebar.success(f"Calling {target}...")
     else:
         st.sidebar.error("Select a target first!")
@@ -131,6 +131,7 @@ try:
         b1, b2 = st.columns(2)
         if b1.button(t['call_btn']):
             st.session_state.active_room = call_data.get('room')
+            st.session_state.call_target = call_data.get('from')
             incoming_ref.update({'status': 'connected'})
             st.rerun()
         if b2.button(t['reject_btn']):
@@ -144,11 +145,14 @@ if location:
     coords = location.get('coords', {})
     lat, lon = coords.get('latitude'), coords.get('longitude')
     if lat and lon:
-        # อัปเดตพิกัดลง Database เผื่อคนอื่นโทรมา
-        try: db.reference(f'/calls/{my_id}').update({'location': f"{lat:.4f}, {lon:.4f}"})
+        # อัปเดตพิกัดเราลงที่ /users/ เพื่อให้คนอื่นเห็น (สำคัญมาก)
+        try: 
+            db.reference(f'/users/{my_id}/location').update({
+                'lat': lat, 'lon': lon, 'timestamp': datetime.now().isoformat()
+            })
         except: pass
 
-        # ข้อมูลสถานที่
+        # ข้อมูลสถานที่ & อากาศ
         tf = TimezoneFinder()
         tz_name = tf.timezone_at(lng=lon, lat=lat)
         try:
@@ -158,7 +162,6 @@ if location:
             display_loc = f"📍 {loc_th} | {loc_en}"
         except: display_loc = f"📍 {lat:.4f}, {lon:.4f}"
 
-        # ข้อมูลอากาศ
         try:
             w_res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
             temp, wind = w_res['temperature'], w_res['windspeed']
@@ -174,8 +177,20 @@ if location:
 
         st.write("---")
         st.subheader(t["map_title"])
-        m = folium.Map(location=[lat, lon], zoom_start=18, tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google Satellite')
-        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
+        
+        # สร้างแผนที่
+        m = folium.Map(location=[lat, lon], zoom_start=15, tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google Satellite')
+        folium.Marker([lat, lon], popup="You", icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
+
+        # ดึงพิกัดเพื่อนมาโชว์ถ้ามีการกดเลือกชื่อ หรือกำลังโทร
+        active_target = st.session_state.get('call_target') or (target if target != "-- Select --" else None)
+        if active_target:
+            f_loc = db.reference(f'/users/{active_target}/location').get()
+            if f_loc:
+                f_lat, f_lon = f_loc.get('lat'), f_loc.get('lon')
+                folium.Marker([f_lat, f_lon], popup=active_target, icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
+                folium.PolyLine([[lat, lon], [f_lat, f_lon]], color="white", weight=1, opacity=0.6, dash_array='5').add_to(m)
+
         st_folium(m, width=700, height=350)
     else: st.warning(t["connecting"])
 else: st.info(t["allow_gps"])
@@ -183,11 +198,18 @@ else: st.info(t["allow_gps"])
 # --- 10. ACTIVE CALL & MUSIC ---
 if "active_room" in st.session_state:
     st.divider()
-    st.subheader("🌐 Private Line Active")
+    # ตรวจสอบว่าอีกฝ่ายรับหรือยัง
+    check_call = db.reference(f'/calls/{st.session_state.call_target}').get()
+    if check_call and check_call.get('status') == 'calling':
+        st.warning(t["waiting"])
+    
+    st.subheader(f"🌐 Line Active: {st.session_state.call_target}")
     st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="450" style="border-radius:15px;"></iframe>', unsafe_allow_html=True)
+    
     if st.button("End Call"):
-        del st.session_state.active_room
-        db.reference(f'/calls/{my_id}').delete()
+        db.reference(f'/calls/{st.session_state.call_target}').delete()
+        if "active_room" in st.session_state: del st.session_state.active_room
+        if "call_target" in st.session_state: del st.session_state.call_target
         st.rerun()
 
 st.write("---")
