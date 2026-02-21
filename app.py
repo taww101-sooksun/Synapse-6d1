@@ -46,7 +46,7 @@ t = texts[st.session_state.lang]
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 5s ease infinite; }
     .glossy-card { background: rgba(0, 0, 0, 0.9); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
     .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; padding: 15px !important; }
     </style>
@@ -61,7 +61,7 @@ if not st.session_state.authenticated:
         u_id = st.text_input("ID")
         u_pw = st.text_input("Password", type="password")
         if st.form_submit_button("UNLOCK"):
-            if u_pw == "synapse2026" and u_id:
+            if u_pw == "99999999" and u_id:
                 st.session_state.authenticated = True
                 st.session_state.my_id = u_id
                 st.rerun()
