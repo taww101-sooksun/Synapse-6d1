@@ -11,30 +11,25 @@ from firebase_admin import credentials, db
 import uuid
 import os
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+# --- 1. INITIALIZE ---
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
 
 if not firebase_admin._apps:
     try:
         fb_creds = dict(st.secrets["firebase_service_account"])
         cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-        })
-    except Exception as e:
-        st.error(f"Firebase Connection Error: {e}")
+        firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except: pass
 
-# --- 2. SECURITY GATE ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
+# --- 2. SECURITY ---
+if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center;'>🔐 ACCESS CONTROL</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE UNLOCK</h2>", unsafe_allow_html=True)
     with st.form("Login"):
-        u_id = st.text_input("Enter ID")
+        u_id = st.text_input("ID")
         u_pw = st.text_input("Password", type="password")
         if st.form_submit_button("UNLOCK"):
-            if u_pw == "synapse2026" and u_id: 
+            if u_pw == "synapse2026" and u_id:
                 st.session_state.authenticated = True
                 st.session_state.my_id = u_id
                 st.rerun()
@@ -42,103 +37,78 @@ if not st.session_state.authenticated:
 
 my_id = st.session_state.my_id
 
-# --- 3. STYLE & RAINBOW (Compact Mode) ---
+# --- 3. STYLE (Rainbow Flow) ---
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 15s ease infinite; }
-    .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
-    div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
+    @keyframes Rainbow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
+    .stApp { background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab); background-size: 400% 400%; animation: Rainbow 15s ease infinite; }
+    .info-box { background: rgba(0,0,0,0.8); border: 2px solid #fff; border-radius: 15px; padding: 15px; color: white; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. HEADER & LOGO CHECK ---
-# ตรวจสอบไฟล์โลโก้ ถ้าไม่มีให้ใช้ Text Header แทน
-if os.path.exists("logo.jpg"):
-    st.image("logo.jpg", width=200)
-else:
-    st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+# --- 4. HEADER ---
+if os.path.exists("logo.jpg"): 
+    st.image("logo.jpg", width=150)
+else: 
+    st.markdown("<h1 style='color: white; text-align: center;'>SYNAPSE REAL-TIME</h1>", unsafe_allow_html=True)
 
-st.write(f"👤 **ID:** {my_id} | **Status:** 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# --- 5. CALL & SEARCH SYSTEM ---
-with st.expander("🔍 ค้นหาและโทรหาเพื่อน", expanded=False):
-    all_users = db.reference('/users').get()
-    friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
-    target = st.selectbox("เลือกเพื่อน", ["-- Select --"] + friend_options)
-    if st.button("📞 CALL NOW"):
-        if target != "-- Select --":
-            room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
-            db.reference(f'/calls/{target}').set({'from': my_id, 'room': room_id, 'status': 'calling'})
-            st.session_state.active_room = room_id
-            st.session_state.call_target = target
-
-# --- 6. INCOMING CALL LISTENER ---
-try:
-    call_data = db.reference(f'/calls/{my_id}').get()
-    if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨 สายเรียกเข้าจาก: {call_data.get('from')}")
-        col_a, col_r = st.columns(2)
-        if col_a.button("✅ รับสาย"):
-            st.session_state.active_room = call_data.get('room')
-            st.session_state.call_target = call_data.get('from')
-            db.reference(f'/calls/{my_id}').update({'status': 'connected'})
-            st.rerun()
-        if col_r.button("❌ ไม่รับ"):
-            db.reference(f'/calls/{my_id}').delete()
-            st.rerun()
-except: pass
-
-# --- 7. CORE DATA (COMPACT REALITY) ---
+# --- 5. LOCATION & REAL TIME (ความจริงที่คลาดเคลื่อนไม่ได้) ---
 location = get_geolocation()
-if location:
-    coords = location.get('coords', {})
-    lat, lon = coords.get('latitude'), coords.get('longitude')
-    if lat and lon:
-        db.reference(f'/users/{my_id}/location').update({'lat': lat, 'lon': lon, 'time': datetime.now().isoformat()})
+if location and location.get('coords'):
+    lat = location['coords'].get('latitude')
+    lon = location['coords'].get('longitude')
+    
+    # หา Timezone จริงจากพิกัดเพื่อเวลาที่ถูกต้องที่สุด
+    tf = TimezoneFinder()
+    tz_name = tf.timezone_at(lng=lon, lat=lat)
+    
+    if tz_name:
+        local_tz = pytz.timezone(tz_name)
+        now = datetime.now(local_tz)
+        current_time = now.strftime('%H:%M:%S')
+        date_str = now.strftime('%d/%m/%Y')
         
-        # ยุบแถบข้อมูลให้ประหยัดพื้นที่
-        w_res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🌡️ Temp", f"{w_res['temperature']}°C")
-        c2.metric("💨 Wind", f"{w_res['windspeed']}k/h")
-        c3.metric("⏰ Time", datetime.now().strftime('%H:%M'))
+        # บันทึกพิกัดเข้าฐานข้อมูล
+        db.reference(f'/users/{my_id}/location').update({'lat': lat, 'lon': lon, 'time': now.isoformat()})
         
-        st.caption(f"📍 พิกัดจริงของคุณ: {lat:.5f}, {lon:.5f}")
+        # แสดงผลแบบเน้นๆ เฉพาะสิ่งที่จริง
+        st.markdown(f"""
+        <div class="info-box">
+            <h3 style='margin:0;'>👤 ID: {my_id}</h3>
+            <p style='margin:5px 0;'>🌍 พิกัดปัจจุบัน: <b>{lat:.5f}, {lon:.5f}</b></p>
+            <p style='margin:5px 0;'>⏰ เวลาท้องถิ่น ({tz_name}): <b style='color:#00ff00; font-size:1.5rem;'>{current_time}</b></p>
+            <p style='margin:0; font-size:0.8rem;'>วันที่: {date_str}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # --- แผนที่ HYBRID (ใหญ่สะใจ) ---
-        m = folium.Map(location=[lat, lon], zoom_start=17, 
-                       tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
-                       attr='Google Hybrid')
-        folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
-        
-        # แสดงพิกัดเพื่อนถ้าเชื่อมต่ออยู่
-        if "call_target" in st.session_state:
-            f_data = db.reference(f'/users/{st.session_state.call_target}/location').get()
-            if f_data:
-                folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
-        
+        # --- 6. HYBRID MAP (เต็มพื้นที่) ---
+        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={{x}}&y={{y}}&z={{z}}', attr='Google Hybrid')
+        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='info-sign')).add_to(m)
         st_folium(m, use_container_width=True, height=500)
-    else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
-else: st.info("💡 โปรดอนุญาต GPS")
+else:
+    st.warning("⚠️ กำลังรอการยืนยันพิกัด GPS เพื่อแสดงความจริง...")
 
-# --- 8. ACTIVE CALL ---
-if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
-    if st.button("❌ END CALL"):
-        db.reference(f'/calls/{st.session_state.call_target}').delete()
-        del st.session_state.active_room
-        st.rerun()
+# --- 7. SEARCH & CALL ---
+with st.expander("🔍 ค้นหาเพื่อนเพื่อดูพิกัดจริง", expanded=False):
+    all_u = db.reference('/users').get()
+    friends = [u for u in all_u.keys() if u != my_id] if all_u else []
+    target = st.selectbox("เลือก ID เพื่อน", ["-- เลือก --"] + friends)
+    if st.button("📞 เริ่มการสื่อสาร (CALL)") and target != "-- เลือก --":
+        room = f"SYN-{uuid.uuid4().hex[:4]}"
+        db.reference(f'/calls/{target}').set({'from': my_id, 'room': room, 'status': 'calling'})
+        st.session_state.active_room = room
+        st.session_state.call_target = target
 
-# --- 9. YOUTUBE AUTOPLAY (บังคับเปิดตลอด) ---
+# --- 8. MUSIC THERAPY (คลังเพลงรวมของนาย) ---
 st.write("---")
-# ใส่ &autoplay=1&mute=1 เพื่อให้เล่นอัตโนมัติบน Browser ส่วนใหญ่ (ต้องติด Mute ไว้ตามนโยบาย Chrome/Safari)
-# เพิ่ม loop=1 และ playlist ID เพื่อให้วนลูป
-playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.subheader("🎵 รวมเพลงสบายๆ..อยู่นิ่งๆไม่เจ็บตัว")
+pl_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 st.markdown(f'''
-    <iframe width="100%" height="80" 
-    src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" 
-    frameborder="0" allow="autoplay; encrypted-media"></iframe>
+    <div style="border: 4px solid white; border-radius: 20px; overflow: hidden;">
+        <iframe width="100%" height="450" 
+        src="https://www.youtube.com/embed/videoseries?list={pl_id}" 
+        frameborder="0" allowfullscreen></iframe>
+    </div>
     ''', unsafe_allow_html=True)
 
-st.caption("SYNAPSE V1.9 | REAL DATA | NO LIES")
+st.caption("SYNAPSE V1.9.7 | FOCUS ON REALITY")
