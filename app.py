@@ -138,7 +138,7 @@ playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 st.markdown(f'''
     <iframe width="100%" height="100" 
     src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" 
-    frameborder="2" allow="autoplay; encrypted-media"></iframe>
+    frameborder="5" allow="autoplay; encrypted-media"></iframe>
     ''', unsafe_allow_html=True)
 
 st.caption("SYNAPSE V1.9 | REAL DATA | NO LIES")
