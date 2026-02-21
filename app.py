@@ -42,13 +42,13 @@ texts = {
 if 'lang' not in st.session_state: st.session_state.lang = "TH"
 t = texts[st.session_state.lang]
 
-# --- 3. STYLE (ดำเงาแว้บ + รุ้ง 10s) ---
+# --- 3. STYLE (ดำเงา + รุ้ง) ---
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 5s ease infinite; }
-    .glossy-card { background: rgba(0, 0, 0, 0.9); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
-    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; padding: 15px !important; }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
+    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
+    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -68,17 +68,16 @@ if not st.session_state.authenticated:
             else: st.error("Unauthorized!")
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
-# --- ส่วนการแสดง LOGO ให้อยู่ตรงกลาง ---
+
+# --- LOGO ---
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try:
-        # ดึงรูปจากไฟล์ชื่อ logo.jpg ใน GitHub ของนาย
         st.image("logo2.jpg", use_container_width=True)
     except:
-        # ถ้ายังไม่มีไฟล์รูป ให้แสดงชื่อระบบเท่ๆ ไปก่อน ระบบจะได้ไม่ Error
         st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
 
-# --- 5. HEADER & LANGUAGE SWITCH ---
+# --- 5. HEADER ---
 c1, c2 = st.columns([4, 1])
 with c1: st.title("🛰️ COMMAND CENTER")
 with c2: 
@@ -86,28 +85,28 @@ with c2:
         st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
         st.rerun()
 
-# --- 6. REALITY CORE (GPS / WORLD TIME / ADDRESS) ---
+# --- 6. REALITY CORE (GPS + MAP) ---
+# จุดนี้ปรับเพื่อให้แผนที่แสดงผลได้จริง
 location = get_geolocation()
+
 if location and location.get('coords'):
-    lat, lon = location['coords']['latitude'], location['coords']['longitude']
+    lat = location['coords']['latitude']
+    lon = location['coords']['longitude']
     
-    # 🌍 หาเวลาตามตำแหน่งพิกัดจริงทั่วโลก
+    # เวลาโลก
     tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat)
-    if tz_name:
-        local_tz = pytz.timezone(tz_name)
-        now = datetime.now(local_tz).strftime('%H:%M:%S')
-    else:
-        now = datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%H:%M:%S')
+    now = datetime.now(pytz.timezone(tz_name if tz_name else 'Asia/Bangkok')).strftime('%H:%M:%S')
 
-    # 🏘️ ดึงที่อยู่ละเอียด
+    # ที่อยู่
     try:
-        geo = Nominatim(user_agent="synapse_final_v3")
-        addr = geo.reverse(f"{lat}, {lon}", language='th' if st.session_state.lang == "TH" else 'en').raw['address']
-        detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🛣️ {addr.get('road', '---')} | 🏙️ {addr.get('province', '')}"
+        geo = Nominatim(user_agent="synapse_v3_agent")
+        loc_data = geo.reverse(f"{lat}, {lon}", timeout=10)
+        addr = loc_data.raw['address']
+        detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🏙️ {addr.get('province', '')}"
     except: detail = f"📍 {lat:.4f}, {lon:.4f}"
 
-    # 🌡️ สภาพอากาศจริง
+    # สภาพอากาศ
     try:
         w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
         temp, wind = w['temperature'], w['windspeed']
@@ -117,7 +116,7 @@ if location and location.get('coords'):
     <div class="glossy-card">
         <p style='color: #00ff00; font-weight: bold; font-size: 1.2rem;'>{detail}</p>
         <hr>
-        <div style='display: flex; justify-content: space-around; font-size: 1.2rem;'>
+        <div style='display: flex; justify-content: space-around; font-size: 1.1rem;'>
             <span>{t['weather']}: {temp}°C</span>
             <span>{t['wind']}: {wind}km/h</span>
             <span style='color: yellow;'>{t['time_label']}: {now}</span>
@@ -125,40 +124,21 @@ if location and location.get('coords'):
     </div>
     """, unsafe_allow_html=True)
 
-    # 🗺️ แผนที่จริง
+    # แผนที่ (ใส่ Key ป้องกันแผนที่หายเวลา Refresh)
     m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-    folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
-    st_folium(m, use_container_width=True, height=400)
+    folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
+    st_folium(m, use_container_width=True, height=400, key="synapse_map_v3")
+else:
+    st.info("📡 กำลังรอการยืนยันพิกัด... (โปรดกด Allow Location บนบราวเซอร์)")
 
-# --- 7. ระบบโทร JITSI (ปรับปรุงให้เข้าห้องเดียวกัน) ---
-with st.expander(t["call_h"], expanded=False):
-    st.markdown("""
-        <div style='background: black; padding: 20px; border-radius: 10px; border: 1px solid white;'>
-            <p style='color: white; font-size: 1.1rem;'>📡 เข้าร่วมชุมสายสื่อสาร SYNAPSE</p>
-            <p style='color: #00ff00; font-size: 0.9rem;'>*รหัสห้องต้องตรงกันเพื่อเชื่อมต่อ*</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # สร้างช่องให้กรอก "รหัสกลุ่ม" หรือ "ชื่อห้อง" ให้เหมือนกัน
-    call_room = st.text_input("กรอกรหัสห้อง (เช่น synapse_group1)", "synapse_private_room")
-    
+# --- 7. JITSI ---
+with st.expander(t["call_h"]):
+    call_room = st.text_input("กรอกรหัสห้อง", "synapse_private_room")
     if st.button(t["call_btn"]):
-        # ใช้ชื่อห้องที่นายกรอก ถ้ากรอกเหมือนกัน จะเจอกันทันที!
         room_name = f"SYNAPSE_{call_room}"
-        st.success(f"กำลังเข้าสู่ห้อง: {room_name}")
-        
-        st.markdown(f'''
-            <iframe src="https://meet.jit.si/{room_name}#config.startWithVideoMuted=true" 
-            allow="camera; microphone; fullscreen" 
-            width="100%" height="600" 
-            style="border: 2px solid white; border-radius: 15px;">
-            </iframe>
-        ''', unsafe_allow_html=True)
+        st.markdown(f'<iframe src="https://meet.jit.si/{room_name}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
 
-
-# --- 8. MUSIC & FOOTER ---
+# --- 8. FOOTER ---
 st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
 pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
-
-st.caption(f"SYNAPSE V3.4 | REALITY SYSTEM | {t['status']}")
+st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0"></iframe>', unsafe_allow_html=True)
