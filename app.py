@@ -57,14 +57,13 @@ if not st.session_state.authenticated:
 
 my_id = st.session_state.my_id
 
-# --- 3. CUSTOM STYLE ---
+# --- 3. STYLE (ดำเงา + รุ้ง) ---
 st.markdown("""
     <style>
-    .stApp { background: #0f0c29; color: white; }
-    .chat-container { background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 15px; height: 500px; overflow-y: auto; }
-    .bubble-me { background: #0078ff; padding: 10px; border-radius: 15px 15px 0 15px; margin: 10px 0; margin-left: auto; width: fit-content; max-width: 80%; }
-    .bubble-them { background: #333; padding: 10px; border-radius: 15px 15px 15px 0; margin: 10px 0; width: fit-content; max-width: 80%; }
-    .media-content { border-radius: 10px; margin-top: 5px; max-width: 100%; }
+    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
+    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
+    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
