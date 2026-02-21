@@ -11,7 +11,7 @@ import firebase_admin
 from firebase_admin import credentials, db
 import os
 
-# --- 1. INITIALIZE ---
+# --- 1. INITIALIZE FIREBASE ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
 if not firebase_admin._apps:
@@ -21,7 +21,7 @@ if not firebase_admin._apps:
         firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
     except: pass
 
-# --- 2. MULTI-LANGUAGE ---
+# --- 2. MULTI-LANGUAGE DICTIONARY ---
 texts = {
     "TH": {
         "call_h": "📞 ระบบติดต่อสื่อสาร (CLICK TO OPEN)",
@@ -48,7 +48,6 @@ st.markdown("""
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
     .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
     .glossy-card { background: rgba(0, 0, 0, 0.9); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
-    /* ปุ่มพับหน้าจอใหญ่พิเศษ */
     .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; padding: 15px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -58,17 +57,19 @@ if 'authenticated' not in st.session_state: st.session_state.authenticated = Fal
 if not st.session_state.authenticated:
     st.markdown("<div class='glossy-card'>", unsafe_allow_html=True)
     st.subheader("🔐 SYNAPSE ACCESS")
-    u_id = st.text_input("ID")
-    u_pw = st.text_input("Password", type="password")
-    if st.button("UNLOCK"):
-        if u_pw == "synapse2026" and u_id:
-            st.session_state.authenticated = True
-            st.session_state.my_id = u_id
-            st.rerun()
+    with st.form("login_form"):
+        u_id = st.text_input("ID")
+        u_pw = st.text_input("Password", type="password")
+        if st.form_submit_button("UNLOCK"):
+            if u_pw == "synapse2026" and u_id:
+                st.session_state.authenticated = True
+                st.session_state.my_id = u_id
+                st.rerun()
+            else: st.error("Unauthorized!")
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- 5. HEADER & LANG ---
+# --- 5. HEADER & LANGUAGE SWITCH ---
 c1, c2 = st.columns([4, 1])
 with c1: st.title("🛰️ COMMAND CENTER")
 with c2: 
@@ -76,12 +77,12 @@ with c2:
         st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
         st.rerun()
 
-# --- 6. REALITY CORE (LOCATION & TIME) ---
+# --- 6. REALITY CORE (GPS / WORLD TIME / ADDRESS) ---
 location = get_geolocation()
 if location and location.get('coords'):
     lat, lon = location['coords']['latitude'], location['coords']['longitude']
     
-    # ดึงเวลาตามตำแหน่งจริง (เพื่อนนายอยู่อังกฤษก็ได้เวลาอังกฤษ)
+    # 🌍 หาเวลาตามตำแหน่งพิกัดจริงทั่วโลก
     tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat)
     if tz_name:
@@ -90,14 +91,14 @@ if location and location.get('coords'):
     else:
         now = datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%H:%M:%S')
 
-    # ดึงที่อยู่ (ถนน หมู่บ้าน แม่น้ำ)
+    # 🏘️ ดึงที่อยู่ละเอียด
     try:
-        geo = Nominatim(user_agent="synapse_v3")
+        geo = Nominatim(user_agent="synapse_final_v3")
         addr = geo.reverse(f"{lat}, {lon}", language='th' if st.session_state.lang == "TH" else 'en').raw['address']
         detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🛣️ {addr.get('road', '---')} | 🏙️ {addr.get('province', '')}"
     except: detail = f"📍 {lat:.4f}, {lon:.4f}"
 
-    # สภาพอากาศ
+    # 🌡️ สภาพอากาศจริง
     try:
         w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
         temp, wind = w['temperature'], w['windspeed']
@@ -115,15 +116,12 @@ if location and location.get('coords'):
     </div>
     """, unsafe_allow_html=True)
 
-    # MAP
+    # 🗺️ แผนที่จริง
     m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-    folium.Marker([lat, lon], icon=folium.Icon(color='blue')).add_to(m)
+    folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
     st_folium(m, use_container_width=True, height=400)
 
-# --- 7. ระบบโทร JITSI (ใน Expander ใหญ่) ---
-with st.expander(t["call_h"], expanded=False):
-    st.markdown("<div style='background: black;
-# --- แก้ไขบรรทัดที่ 125 เป็นต้นไป ---
+# --- 7. ระบบโทร JITSI (แก้ไข Error บรรทัดที่ 125 เรียบร้อย) ---
 with st.expander(t["call_h"], expanded=False):
     st.markdown("""
         <div style='background: black; padding: 20px; border-radius: 10px; border: 1px solid white;'>
@@ -132,6 +130,13 @@ with st.expander(t["call_h"], expanded=False):
     """, unsafe_allow_html=True)
     
     if st.button(t["call_btn"]):
-        # สร้างห้องโทรฟรีทันที
+        # สร้างห้องสื่อสารแยกตาม ID
         room = f"SYNAPSE_ROOM_{st.session_state.my_id}"
         st.markdown(f'<iframe src="https://meet.jit.si/{room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+
+# --- 8. MUSIC & FOOTER ---
+st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
+pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+
+st.caption(f"SYNAPSE V3.4 | REALITY SYSTEM | {t['status']}")
