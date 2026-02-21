@@ -92,7 +92,7 @@ if location and location.get('coords'):
     """, unsafe_allow_html=True)
 
     # 📥 ดึงพิกัดทุกคนมาปักหมุด
-    m = folium.Map(location=[lat, lon], zoom_start=15, 
+    m = folium.Map(location=[lat, lon], zoom_start=30, 
                    tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
                    attr='Google Hybrid')
     
