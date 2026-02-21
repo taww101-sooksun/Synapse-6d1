@@ -79,4 +79,59 @@ with col_map:
         
         # อัปเดตตำแหน่งลง Firebase
         db.reference(f'locations/{st.session_state.my_id}').set({
-            'lat': lat, '
+            'lat': lat, 'lon': lon, 'last_seen': now
+        })
+        
+        st.markdown(f"<div class='glossy-card'>📍 Location: {lat:.4f}, {lon:.4f} | ⏰ {now}</div>", unsafe_allow_html=True)
+        
+        m = folium.Map(location=[lat, lon], zoom_start=14)
+        folium.TileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google', name='Google Hybrid').add_to(m)
+        
+        # ดึงทุกคนมาปักหมุด
+        all_users = db.reference('locations').get()
+        if all_users:
+            for uid, data in all_users.items():
+                color = 'red' if uid == st.session_state.my_id else 'blue'
+                folium.Marker([data['lat'], data['lon']], popup=uid, icon=folium.Icon(color=color)).add_to(m)
+        
+        st_folium(m, use_container_width=True, height=450, key="main_map")
+    else:
+        st.warning("📡 กำลังรอสัญญาณ GPS... (กรุณากดอนุญาตสิทธิ์การเข้าถึงตำแหน่ง)")
+
+# --- 5. CHAT SYSTEM ---
+with col_chat:
+    st.markdown("<div class='glossy-card'>💬 TRANSMISSION</div>", unsafe_allow_html=True)
+    
+    # ส่วนแสดงข้อความ
+    chat_container = st.container(height=350)
+    try:
+        messages = db.reference('chat').order_by_key().limit_to_last(20).get()
+        if messages:
+            for m_id, msg in messages.items():
+                # ระบบ Notification แจ้งเตือนข้อความใหม่
+                if st.session_state.last_msg_id != m_id:
+                    if msg['user'] != st.session_state.my_id:
+                        st.toast(f"New Msg from {msg['user']}")
+                    st.session_state.last_msg_id = m_id
+                
+                with chat_container:
+                    align = "right" if msg['user'] == st.session_state.my_id else "left"
+                    st.markdown(f"**{msg['user']}**: {msg['text']} <br><small style='color:gray;'>{msg['time']}</small>", unsafe_allow_html=True)
+                    st.markdown("---")
+    except:
+        st.error("Chat Offline")
+
+    # ส่วนส่งข้อความ
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_input("Message", label_visibility="collapsed")
+        submit = st.form_submit_button("📡 SEND")
+        if submit and user_input:
+            db.reference('chat').push({
+                'user': st.session_state.my_id,
+                'text': user_input,
+                'time': datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%H:%M')
+            })
+            st.rerun()
+
+# --- 6. FOOTER ---
+st.markdown(f"<div class='glossy-card' style='text-align: center; border-color: red;'>สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว</div>", unsafe_allow_html=True)
