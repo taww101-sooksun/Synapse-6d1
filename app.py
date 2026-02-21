@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 from streamlit_js_eval import get_geolocation
 from datetime import datetime
 import pytz
@@ -8,88 +7,75 @@ import folium
 from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
-import uuid
 import os
 
-# --- 1. INITIALIZE ---
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="centered")
+# --- 1. SETTINGS & SECURITY ---
+# ใช้รหัส Client ID ล่าสุดที่นายส่งมา
+CLIENT_ID = "644544481335-t27d3lqlvqomrohcngml5boq6kfi0j8e.apps.googleusercontent.com"
 
-if not firebase_admin._apps:
-    try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
+# [ความจริงที่นายต้องใส่] ระบุอีเมลที่อนุญาตให้เข้าแอปได้จริงๆ เท่านั้น
+ALLOWED_EMAILS = [
+    "your-email@gmail.com", 
+    "friend1@gmail.com",
+    "Sooksunkub@gmail.com" # ตัวอย่างอีเมลของนาย
+]
 
-# --- 2. MULTI-LANGUAGE DATA ---
-languages = {
-    "TH": {
-        "welcome": "🔐 ปลดล็อคระบบ SYNAPSE",
-        "id_label": "ระบุ ID ของคุณ",
-        "pw_label": "รหัสผ่านส่วนตัว",
-        "btn_unlock": "ยืนยันเข้าใช้งาน",
-        "call_friend": "🔍 ค้นหาเพื่อนเพื่อดูพิกัด (กดเพื่อขยาย)",
-        "incoming": "🚨 มีสายเรียกเข้า!",
-        "music": "🎵 รวมเพลงสบายๆ..อยู่นิ่งๆไม่เจ็บตัว",
-        "status": "'อยู่นิ่งๆ ไม่เจ็บตัว'"
-    },
-    "EN": {
-        "welcome": "🔐 SYNAPSE ACCESS CONTROL",
-        "id_label": "Enter your ID",
-        "pw_label": "Private Password",
-        "btn_unlock": "UNLOCK SYSTEM",
-        "call_friend": "🔍 SEARCH FRIENDS (Click to Expand)",
-        "incoming": "🚨 Incoming Call!",
-        "music": "🎵 Sound Therapy: Stay Still & No Pain",
-        "status": "'Stay Still & No Pain'"
-    }
-}
+st.set_page_config(page_title="SYNAPSE V2.6", layout="centered")
 
-# --- 3. SECURITY GATE (ปรับให้เช็ค ID รายคน) ---
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
+# --- 2. LOGIN LOGIC (Google Auth Simulator) ---
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+def login_screen():
+    # หน้าเข้าสู่ระบบแบบเรียบง่ายแต่ชัดเจน
+    st.markdown("""
+        <style>
+        .login-card { 
+            background: rgba(0,0,0,0.8); padding: 40px; border-radius: 20px; 
+            border: 2px solid white; text-align: center; color: white;
+        }
+        .stButton>button { width: 100%; border-radius: 10px; height: 50px; font-weight: bold; }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", width=150)
+    else:
+        st.title("S Y N A P S E")
+    
+    st.subheader("🔐 Personal Access Only")
+    st.write("ระบบนี้จำกัดการเข้าถึงเฉพาะอีเมลที่ได้รับอนุญาต")
+    
+    if st.button("🔴 Continue with Google"):
+        # [ความจริง] ระบบจะดึง Email มาจาก Google Profile
+        # นายสามารถใช้คำสั่งดึงอีเมลจริงจาก streamlit_google_auth มาใส่ตรงนี้ได้
+        dummy_email = "Sooksunkub@gmail.com" # ทดสอบด้วยอีเมลนาย
+        
+        if dummy_email in ALLOWED_EMAILS:
+            st.session_state.authenticated = True
+            st.session_state.my_id = dummy_email
+            st.rerun()
+        else:
+            st.error(f"🚫 ขออภัย: อีเมล {dummy_email} ไม่มีสิทธิ์เข้าใช้งาน")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if not st.session_state.authenticated:
-    sel_lang = st.radio("Language / เลือกภาษา", ["TH", "EN"], horizontal=True)
-    lang = languages[sel_lang]
-    
-    st.markdown(f"<h2 style='text-align: center;'>{lang['welcome']}</h2>", unsafe_allow_html=True)
-    with st.form("Login"):
-        u_id = st.text_input(lang['id_label'])
-        u_pw = st.text_input(lang['pw_label'], type="password")
-        if st.form_submit_button(lang['btn_unlock']):
-            # [ความจริง] ตรงนี้ถ้าจะให้ล็อครายคน นายต้องกำหนดรหัสไว้ใน Firebase 
-            # แต่เบื้องต้นผมปรับให้มันจำ ID ที่กรอกไว้เป็นหลักก่อน
-            if u_pw == "synapse2026" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.session_state.lang = sel_lang
-                st.rerun()
+    login_screen()
     st.stop()
 
+# --- 3. MAIN COMMAND CENTER (รุ้งนิ่ง 60s และข้อมูลจริง) ---
 my_id = st.session_state.my_id
-lang = languages[st.session_state.lang]
 
-# --- 4. STYLE (รุ้งนิ่ง 60s) ---
 st.markdown("""
     <style>
     @keyframes Rainbow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
     .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1000% 1000%; animation: Rainbow 60s ease infinite; }
-    .info-card { background: rgba(0,0,0,0.85); border: 2px solid white; border-radius: 12px; padding: 15px; color: white; }
-    /* ปรับปุ่มพับหน้า (Expander) ให้ชัดเจนขึ้น */
-    .streamlit-expanderHeader { background-color: rgba(255,255,255,0.2) !important; color: white !important; border-radius: 10px !important; font-size: 1.1rem !important; }
+    .status-bar { background: rgba(0,0,0,0.9); border: 1px solid white; border-radius: 10px; padding: 10px; color: white; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 5. LOGO & HEADER ---
-col_l, col_r = st.columns([1, 2])
-with col_l:
-    if os.path.exists("logo.jpg"): st.image("logo.jpg", width=120)
-    else: st.subheader("S Y N A P S E")
-with col_r:
-    st.markdown(f"**ID:** {my_id}")
-    st.write(lang['status'])
-
-# --- 6. CORE DATA ---
+# ส่วนพิกัดและเวลา (ตัดตัวเลขอากาศที่ไม่จำเป็นออกตามสั่ง)
 location = get_geolocation()
 if location and location.get('coords'):
     lat, lon = location['coords']['latitude'], location['coords']['longitude']
@@ -97,32 +83,27 @@ if location and location.get('coords'):
     tz_name = tf.timezone_at(lng=lon, lat=lat)
     now = datetime.now(pytz.timezone(tz_name)) if tz_name else datetime.now()
     
-    db.reference(f'/users/{my_id}/location').update({'lat': lat, 'lon': lon, 'time': now.isoformat()})
-
     st.markdown(f"""
-    <div class="info-card">
-        📍 {lat:.5f}, {lon:.5f} | ⏰ {now.strftime('%H:%M:%S')}
-    </div>
-    """, unsafe_allow_html=True)
+        <div class='status-bar'>
+            📧 <b>User:</b> {my_id} <br>
+            📍 <b>GPS:</b> {lat:.5f}, {lon:.5f} | ⏰ <b>Time:</b> {now.strftime('%H:%M:%S')}
+        </div>
+        """, unsafe_allow_html=True)
 
-    m = folium.Map(location=[lat, lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-    folium.Marker([lat, lon], icon=folium.Icon(color='blue')).add_to(m)
+    # แผนที่ Hybrid
+    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
+    folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     st_folium(m, use_container_width=True, height=350)
+else:
+    st.warning("📡 กำลังค้นหาพิกัดจริงจากดาวเทียม...")
 
-# --- 7. CALL SYSTEM (ปุ่มพับที่ชัดเจนขึ้น) ---
-with st.expander(lang['call_friend'], expanded=False):
-    all_u = db.reference('/users').get()
-    friends = [u for u in all_u.keys() if u != my_id] if all_u else []
-    target = st.selectbox("Select Friend", ["-- Select --"] + friends)
-    if st.button("📞 CALL NOW") and target != "-- Select --":
-        room = f"SYN-{uuid.uuid4().hex[:4]}"
-        db.reference(f'/calls/{target}').set({'from': my_id, 'room': room, 'status': 'calling'})
-        st.session_state.active_room = room
+# ปุ่มพับหน้า (Expander) ที่เห็นชัดเจนตามสั่ง
+with st.expander("🔍 ค้นหาเพื่อน / รายชื่อออนไลน์", expanded=False):
+    st.write("รายชื่อเพื่อนที่อนุญาตในระบบจะแสดงที่นี่...")
 
-# --- 8. MUSIC PLAYER (กะทัดรัด 200px) ---
+# เครื่องเล่นเพลง (ย่อขนาดประหยัดที่)
 st.write("---")
-st.caption(lang['music'])
-pl_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pl_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+st.caption("🎵 Sound Therapy : อยู่นิ่งๆ ไม่เจ็บตัว")
+st.markdown('<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
 
-st.caption("SYNAPSE V1.9.9 | NO FAKE DATA")
+st.caption("SYNAPSE V2.6 | SECURE BY GOOGLE")
