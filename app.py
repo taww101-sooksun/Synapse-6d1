@@ -3,165 +3,197 @@ import requests
 from streamlit_js_eval import get_geolocation
 from datetime import datetime
 import pytz
-from firebase_admin import credentials, db, storage
-import firebase_admin
+from timezonefinder import TimezoneFinder
+from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
+import firebase_admin
+from firebase_admin import credentials, db, storage
 import uuid
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+# --- 1. INITIALIZE FIREBASE (ใช้ URL สิงคโปร์ที่คุณสร้าง) ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+if not firebase_admin._apps:
+    try:
+        fb_creds = dict(st.secrets["firebase_service_account"])
+        cred = credentials.Certificate(fb_creds)
+        firebase_admin.initialize_app(cred, {
+            # ใช้ URL ใหม่ที่คุณแจ้งมา เพื่อความเร็วสูงสุด
+            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/',
+            'storageBucket': 'notty-101.firebasestorage.app' 
+        })
+    except Exception as e:
+        st.error(f"Firebase Connection Error: {e}")
 
-# ฟังก์ชันสำหรับเชื่อมต่อ Firebase และดึง Bucket
-def get_firebase_bucket():
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_service_account"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app',
-                'storageBucket': 'notty-101.firebasestorage.app' 
-            })
-        except Exception as e:
-            st.error(f"Firebase Connection Error: {e}")
-            return None
-    # ใส่ชื่อ Bucket ลงในวงเล็บนี้เพื่อแก้ Error ตัวหนังสือสีแดง
-    return storage.bucket('notty-101.firebasestorage.app')
-
-# เรียกใช้งานฟังก์ชันเพื่อสร้างตัวแปร bucket
-bucket = get_firebase_bucket()
-
-# --- 2. SECURITY GATE (ต่อจากนี้ใช้โค้ดเดิมของคุณได้เลย) ---
-
-
-# --- 2. SECURITY GATE ---
+# --- 2. SECURITY GATE (หน้าด่าน Login) ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
     st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE ACCESS CONTROL</h2>", unsafe_allow_html=True)
-    try: st.image("logo2.jpg", width=300)
-    except: pass
     with st.form("Login"):
-        u_id = st.text_input("Enter your ID / ใส่ ID")
-        u_pw = st.text_input("Password", type="password")
+        u_id = st.text_input("Enter your ID / ใส่ ID ของคุณ (ห้ามเว้นว่าง)")
+        u_pw = st.text_input("Password / รหัสผ่าน", type="password")
         if st.form_submit_button("UNLOCK SYSTEM"):
-            if u_pw == "99999999" and u_id: 
+            if u_pw == "synapse2026" and u_id: 
                 st.session_state.authenticated = True
-                st.session_state.my_id = u_id.strip()
+                st.session_state.my_id = u_id
                 st.rerun()
+            else:
+                st.error("Unauthorized or ID Empty! / รหัสผิด หรือยังไม่ได้ใส่ ID")
     st.stop()
 
+# --- 3. SETTINGS & LANGUAGES ---
+languages = {
+    "TH": {
+        "status_info": "STAY STILL & HEAL : 'อยู่นิ่งๆ ไม่เจ็บตัว'",
+        "allow_gps": "💡 โปรดกดยืนยัน 'Allow' เพื่อเข้าสู่ Command Center",
+        "connecting": "📡 กำลังเชื่อมต่อสัญญาณ...",
+        "temp": "🌡️ อุณหภูมิ", "wind": "💨 ลม", "time": "⏰ เวลา",
+        "map_title": "🗺️ แผนที่พิกัดปัจจุบันของคุณ",
+        "music_title": "🎵 Sound Therapy (เล่นอัตโนมัติ)",
+        "footer": "SYNAPSE V1.6 | ระบบ 2 ภาษา | 'อยู่นิ่งๆ' ไม่เจ็บตัว",
+        "call_btn": "✅ รับสาย", "reject_btn": "❌ ไม่รับ", "call_in": "🚨 มีสายเรียกเข้า!"
+    },
+    "EN": {
+        "status_info": "STAY STILL & HEAL : 'Stay Still & No Pain'",
+        "allow_gps": "💡 Please click 'Allow' to enter Command Center",
+        "connecting": "📡 Connecting to Satellite...",
+        "temp": "🌡️ Temp", "wind": "💨 Wind", "time": "⏰ Time",
+        "map_title": "🗺️ Your Current Location Map",
+        "music_title": "🎵 Sound Therapy (Autoplay)",
+        "footer": "SYNAPSE V1.6 | Dual Language | 'Stay Still' No Pain",
+        "call_btn": "✅ Accept", "reject_btn": "❌ Reject", "call_in": "🚨 Incoming Call!"
+    }
+}
+
+sel_lang = st.sidebar.selectbox("SELECT LANGUAGE / เลือกภาษา", ["TH", "EN"])
+t = languages[sel_lang]
 my_id = st.session_state.my_id
 
-# --- 3. STYLE (ดำเงา + รุ้ง) ---
+# --- 4. STYLE (Rainbow Effect) ---
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
-    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
-    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
+    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; color: #ffffff; }
+    .stMetric, .stInfo, .stSuccess, .stWarning { background-color: rgba(0, 0, 0, 0.6) !important; padding: 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); }
+    h1, h2, h3, p, span { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SIDEBAR & LOGO ---
-with st.sidebar:
-    try: st.image("logo2.jpg", use_container_width=True)
-    except: st.title("S Y N A P S E")
-    st.write(f"🟢 **Online:** {my_id}")
-    
+# --- 5. REGISTER & FRIEND LIST (ระบบจำเพื่อนอัตโนมัติ) ---
+try:
+    # บันทึกสถานะออนไลน์ของเรา
+    db.reference(f'/users/{my_id}').update({
+        'last_seen': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'status': 'online'
+    })
+
+    # ดึงรายชื่อคนอื่นในระบบมาทำสมุดโทรศัพท์
     all_users = db.reference('/users').get()
-    friend_list = [u for u in all_users.keys() if u != my_id] if all_users else []
-    target_chat = st.selectbox("💬 เลือกเพื่อนสนทนา:", ["-- เลือกเพื่อน --"] + friend_list)
-    
+    friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
+except: friend_options = []
+
+# --- 6. SIDEBAR: CALL SYSTEM ---
+st.sidebar.title(f"👤 ID: {my_id}")
+st.sidebar.write("---")
+st.sidebar.subheader("👥 Friend List")
+
+if friend_options:
+    target = st.sidebar.selectbox("Select Friend to Call", ["-- Select --"] + friend_options)
+else:
+    target = st.sidebar.text_input("Target ID (No one online)", placeholder="Waiting for friends...")
+
+if st.sidebar.button("📞 Call Now"):
+    if target and target != "-- Select --":
+        room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
+        db.reference(f'/calls/{target}').set({
+            'from': my_id, 'room': room_id, 'status': 'calling', 'location': "Syncing..."
+        })
+        st.sidebar.success(f"Calling {target}...")
+    else:
+        st.sidebar.error("Select a target first!")
+
+# --- 7. HEADER ---
+try:
+    st.image("logo.jpg", width=300)
+except:
+    st.markdown("<h1 style='text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+st.info(t["status_info"])
+
+# --- 8. INCOMING CALL LISTENER ---
+try:
+    incoming_ref = db.reference(f'/calls/{my_id}')
+    call_data = incoming_ref.get()
+    if call_data and call_data.get('status') == 'calling':
+        st.warning(f"{t['call_in']} จาก: {call_data.get('from')}")
+        b1, b2 = st.columns(2)
+        if b1.button(t['call_btn']):
+            st.session_state.active_room = call_data.get('room')
+            incoming_ref.update({'status': 'connected'})
+            st.rerun()
+        if b2.button(t['reject_btn']):
+            incoming_ref.delete()
+            st.rerun()
+except: pass
+
+# --- 9. CORE DATA (GPS, WEATHER, MAP) ---
+location = get_geolocation()
+if location:
+    coords = location.get('coords', {})
+    lat, lon = coords.get('latitude'), coords.get('longitude')
+    if lat and lon:
+        # อัปเดตพิกัดลง Database เผื่อคนอื่นโทรมา
+        try: db.reference(f'/calls/{my_id}').update({'location': f"{lat:.4f}, {lon:.4f}"})
+        except: pass
+
+        # ข้อมูลสถานที่
+        tf = TimezoneFinder()
+        tz_name = tf.timezone_at(lng=lon, lat=lat)
+        try:
+            geo = Nominatim(user_agent="synapse_v1")
+            loc_th = geo.reverse(f"{lat}, {lon}", language='th').raw.get('address', {}).get('province', 'พิกัดไทย')
+            loc_en = geo.reverse(f"{lat}, {lon}", language='en').raw.get('address', {}).get('state', 'Location')
+            display_loc = f"📍 {loc_th} | {loc_en}"
+        except: display_loc = f"📍 {lat:.4f}, {lon:.4f}"
+
+        # ข้อมูลอากาศ
+        try:
+            w_res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
+            temp, wind = w_res['temperature'], w_res['windspeed']
+        except: temp, wind = "--", "--"
+        
+        st.success(display_loc)
+        c1, c2, c3 = st.columns(3)
+        with c1: st.metric(t["temp"], f"{temp} °C")
+        with c2: st.metric(t["wind"], f"{wind} km/h")
+        with c3:
+            now_t = datetime.now(pytz.timezone(tz_name)) if tz_name else datetime.now()
+            st.metric(t["time"], now_t.strftime('%H:%M'))
+
+        st.write("---")
+        st.subheader(t["map_title"])
+        m = folium.Map(location=[lat, lon], zoom_start=18, tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google Satellite')
+        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
+        st_folium(m, width=700, height=350)
+    else: st.warning(t["connecting"])
+else: st.info(t["allow_gps"])
+
+# --- 10. ACTIVE CALL & MUSIC ---
+if "active_room" in st.session_state:
     st.divider()
-    if st.button("Logout"):
-        st.session_state.authenticated = False
+    st.subheader("🌐 Private Line Active")
+    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="450" style="border-radius:15px;"></iframe>', unsafe_allow_html=True)
+    if st.button("End Call"):
+        del st.session_state.active_room
+        db.reference(f'/calls/{my_id}').delete()
         st.rerun()
 
-# --- 5. CHAT LOGIC ---
-col1, col2 = st.columns([1, 2])
-
-with col1:
-    st.subheader("📍 Satellite Tracking")
-    location = get_geolocation()
-    if location:
-        coords = location.get('coords', {})
-        lat, lon = coords.get('latitude'), coords.get('longitude')
-        if lat and lon:
-            m = folium.Map(location=[lat, lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-            folium.Marker([lat, lon]).add_to(m)
-            st_folium(m, width=350, height=300)
-
-with col2:
-    if target_chat != "-- เลือกเพื่อน --":
-        st.subheader(f"Talking to: {target_chat}")
-        
-        chat_room_id = "_".join(sorted([my_id, target_chat]))
-        chat_ref = db.reference(f'/chats/{chat_room_id}')
-
-        # ดึงและเรียงข้อความ (แก้ Error ที่คุณเจอ)
-        raw_msgs = chat_ref.get()
-        msgs = []
-        if raw_msgs:
-            # แปลงเป็น List และ Sort ใน Python
-            msgs = sorted(raw_msgs.values(), key=lambda x: x.get('timestamp', 0))
-            msgs = msgs[-20:] # เอา 20 อันล่าสุด
-
-        # แสดงข้อความใน Container
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        for m in msgs:
-            is_me = m['sender'] == my_id
-            cls = "bubble-me" if is_me else "bubble-them"
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.write(f"**{m['sender']}**")
-                if m.get('text'): st.write(m['text'])
-                
-                # แสดงรูปภาพหรือวิดีโอ
-                if m.get('type') == 'image':
-                    st.image(m['url'], use_container_width=True)
-                elif m.get('type') == 'video':
-                    st.video(m['url'])
-                
-                st.caption(m.get('time', ''))
-
-        # ส่วนส่งข้อมูล
-        with st.form("chat_form", clear_on_submit=True):
-            msg_text = st.text_input("พิมพ์ข้อความ...")
-            uploaded_file = st.file_uploader("ส่งรูปหรือวิดีโอ", type=['jpg','png','mp4','mov'])
-            
-            if st.form_submit_button("SEND 🚀"):
-                new_msg = {
-                    'sender': my_id,
-                    'timestamp': datetime.now().timestamp(),
-                    'time': datetime.now().strftime('%H:%M'),
-                    'type': 'text'
-                }
-                
-                if uploaded_file:
-                    # อัปโหลดไป Firebase Storage
-                    file_id = f"{uuid.uuid4()}_{uploaded_file.name}"
-                    blob = bucket.blob(f"chat_media/{file_id}")
-                    blob.upload_from_file(uploaded_file)
-                    blob.make_public()
-                    
-                    new_msg['url'] = blob.public_url
-                    new_msg['type'] = 'image' if uploaded_file.type.startswith('image') else 'video'
-                
-                if msg_text:
-                    new_msg['text'] = msg_text
-                
-                if msg_text or uploaded_file:
-                    chat_ref.push(new_msg)
-                    st.rerun()
-    else:
-        st.info("กรุณาเลือกเพื่อนเพื่อเริ่มการสนทนา")
-
-# --- 6. MUSIC ---
 st.write("---")
-with st.expander("🎵 Therapy Music"):
-    st.markdown('<iframe width="100%" height="150" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0"></iframe>', unsafe_allow_html=True)
+st.subheader(t["music_title"])
+pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}&autoplay=1&mute=1" frameborder="0" allow="autoplay; encrypted-media"></iframe>', unsafe_allow_html=True)
+
+st.divider()
+st.caption(t["footer"])
