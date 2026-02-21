@@ -15,7 +15,7 @@ import os
 st.set_page_config(page_title="SYNAPSE V3.0", layout="wide")
 
 # รายชื่อเบอร์ที่อนุญาต (Whitelist)
-ALLOWED_PHONES = ["0812345678", "0987654321"] # <-- แก้เบอร์เพื่อนที่นี่
+ALLOWED_PHONES = ["0970801941", "0896544464"] # <-- แก้เบอร์เพื่อนที่นี่
 
 if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 if 'lang' not in st.session_state: st.session_state.lang = "TH"
