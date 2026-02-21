@@ -68,6 +68,15 @@ if not st.session_state.authenticated:
             else: st.error("Unauthorized!")
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
+# --- ส่วนการแสดง LOGO ให้อยู่ตรงกลาง ---
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    try:
+        # ดึงรูปจากไฟล์ชื่อ logo.jpg ใน GitHub ของนาย
+        st.image("logo.jpg", use_container_width=True)
+    except:
+        # ถ้ายังไม่มีไฟล์รูป ให้แสดงชื่อระบบเท่ๆ ไปก่อน ระบบจะได้ไม่ Error
+        st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
 
 # --- 5. HEADER & LANGUAGE SWITCH ---
 c1, c2 = st.columns([4, 1])
