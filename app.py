@@ -49,10 +49,14 @@ except Exception as e:
     chat_messages = {}
     st.sidebar.warning("Database connection issues.")
 
-# ---  STYLE (CSS) ---
+# --- 3. STYLE (CSS) ---
 st.markdown("""
-
     <style>
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
     .stApp { background: linear-gradient(270deg, #1a1a1a, #001f3f, #000000); background-size: 400% 400%; animation: RainbowFlow 20s ease infinite; }
     .glossy-card { background: rgba(20, 20, 20, 0.8); border: 1px solid #00f2ff; border-radius: 12px; padding: 15px; color: white; box-shadow: 0
+# บรรทัดที่ 53
+st.markdown("""
+    เนื้อหาที่คุณต้องการแสดง...
+    สามารถเขียนได้หลายบรรทัด
+""") # <--- ต้องมีเครื่องหมายคำพูด 3 อันปิดท้ายแบบนี้เสมอ
