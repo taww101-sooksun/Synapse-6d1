@@ -47,7 +47,7 @@ st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 30s ease infinite; }
-    .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
+    .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 2px solid white; }
     div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
     </style>
     """, unsafe_allow_html=True)
@@ -77,7 +77,7 @@ with st.expander("🔍 ค้นหาและโทรหาเพื่อน
 try:
     call_data = db.reference(f'/calls/{my_id}').get()
     if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨 สายเรียกเข้าจาก: {call_data.get('from')}")
+        st.warning(f"🚨🚨🚨 สายเรียกเข้าจาก: {call_data.get('from')}")
         col_a, col_r = st.columns(2)
         if col_a.button("✅ รับสาย"):
             st.session_state.active_room = call_data.get('room')
@@ -118,13 +118,13 @@ if location:
             if f_data:
                 folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
         
-        st_folium(m, use_container_width=True, height=500)
+        st_folium(m, use_container_width=True, height=400)
     else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
 else: st.info("💡 โปรดอนุญาต GPS")
 
 # --- 8. ACTIVE CALL ---
 if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 5px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="120%" height="400" style="border: 5px solid white; border-radius: 30px;"></iframe>', unsafe_allow_html=True)
     if st.button("❌ END CALL"):
         db.reference(f'/calls/{st.session_state.call_target}').delete()
         del st.session_state.active_room
@@ -136,9 +136,9 @@ st.write("---")
 # เพิ่ม loop=1 และ playlist ID เพื่อให้วนลูป
 playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 st.markdown(f'''
-    <iframe width="100%" height="80" 
+    <iframe width="100%" height="100" 
     src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" 
-    frameborder="0" allow="autoplay; encrypted-media"></iframe>
+    frameborder="2" allow="autoplay; encrypted-media"></iframe>
     ''', unsafe_allow_html=True)
 
 st.caption("SYNAPSE V1.9 | REAL DATA | NO LIES")
