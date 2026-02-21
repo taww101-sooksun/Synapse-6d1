@@ -11,9 +11,10 @@ import firebase_admin
 from firebase_admin import credentials, db
 import os
 
-# --- 1. INITIALIZE FIREBASE ---
+# --- 1. INITIALIZE (ตั้งค่าหน้าจอ) ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
+# เชื่อมต่อ Firebase (ถ้าต้องการเก็บ Log เงียบๆ ไว้ดูเอง)
 if not firebase_admin._apps:
     try:
         fb_creds = dict(st.secrets["firebase_service_account"])
@@ -21,7 +22,7 @@ if not firebase_admin._apps:
         firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
     except: pass
 
-# --- 2. MULTI-LANGUAGE DICTIONARY ---
+# --- 2. DICTIONARY ---
 texts = {
     "TH": {
         "call_h": "📞 ระบบติดต่อสื่อสาร (CLICK TO OPEN)",
@@ -42,7 +43,7 @@ texts = {
 if 'lang' not in st.session_state: st.session_state.lang = "TH"
 t = texts[st.session_state.lang]
 
-# --- 3. STYLE (ดำเงา + รุ้ง) ---
+# --- 3. STYLE (รุ้ง + ดำเงา) ---
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
@@ -52,24 +53,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SECURITY GATE ---
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if not st.session_state.authenticated:
-    st.markdown("<div class='glossy-card'>", unsafe_allow_html=True)
-    st.subheader("🔐 SYNAPSE ACCESS")
-    with st.form("login_form"):
-        u_id = st.text_input("ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "99999999" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
-            else: st.error("Unauthorized!")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-
-# --- LOGO ---
+# --- 4. LOGO & HEADER ---
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try:
@@ -77,7 +61,6 @@ with col2:
     except:
         st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
 
-# --- 5. HEADER ---
 c1, c2 = st.columns([4, 1])
 with c1: st.title("🛰️ COMMAND CENTER")
 with c2: 
@@ -85,24 +68,21 @@ with c2:
         st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
         st.rerun()
 
-# --- 6. REALITY CORE (GPS + MAP) ---
-# จุดนี้ปรับเพื่อให้แผนที่แสดงผลได้จริง
+# --- 5. REALITY CORE (GPS + แผนที่) ---
 location = get_geolocation()
 
 if location and location.get('coords'):
-    lat = location['coords']['latitude']
-    lon = location['coords']['longitude']
+    lat, lon = location['coords']['latitude'], location['coords']['longitude']
     
-    # เวลาโลก
+    # ดึงเวลา
     tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat)
     now = datetime.now(pytz.timezone(tz_name if tz_name else 'Asia/Bangkok')).strftime('%H:%M:%S')
 
-    # ที่อยู่
+    # ดึงที่อยู่
     try:
-        geo = Nominatim(user_agent="synapse_v3_agent")
-        loc_data = geo.reverse(f"{lat}, {lon}", timeout=10)
-        addr = loc_data.raw['address']
+        geo = Nominatim(user_agent="synapse_v3_free")
+        addr = geo.reverse(f"{lat}, {lon}", timeout=10).raw['address']
         detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🏙️ {addr.get('province', '')}"
     except: detail = f"📍 {lat:.4f}, {lon:.4f}"
 
@@ -124,21 +104,18 @@ if location and location.get('coords'):
     </div>
     """, unsafe_allow_html=True)
 
-    # แผนที่ (ใส่ Key ป้องกันแผนที่หายเวลา Refresh)
+    # แผนที่
     m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
     folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
-    st_folium(m, use_container_width=True, height=400, key="synapse_map_v3")
+    st_folium(m, use_container_width=True, height=400, key="map_no_auth")
 else:
-    st.info("📡 กำลังรอการยืนยันพิกัด... (โปรดกด Allow Location บนบราวเซอร์)")
+    st.info("📡 กรุณากด 'Allow Location' เพื่อเปิดระบบแผนที่")
 
-# --- 7. JITSI ---
+# --- 6. COMMUNICATION & FOOTER ---
 with st.expander(t["call_h"]):
-    call_room = st.text_input("กรอกรหัสห้อง", "synapse_private_room")
+    call_room = st.text_input("รหัสห้อง", "synapse_free_zone")
     if st.button(t["call_btn"]):
-        room_name = f"SYNAPSE_{call_room}"
-        st.markdown(f'<iframe src="https://meet.jit.si/{room_name}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+        st.markdown(f'<iframe src="https://meet.jit.si/SYNAPSE_{call_room}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
 
-# --- 8. FOOTER ---
 st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
-pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0"></iframe>', unsafe_allow_html=True)
+st.markdown('<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0"></iframe>', unsafe_allow_html=True)
