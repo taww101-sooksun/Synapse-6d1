@@ -123,3 +123,15 @@ if location and location.get('coords'):
 # --- 7. ระบบโทร JITSI (ใน Expander ใหญ่) ---
 with st.expander(t["call_h"], expanded=False):
     st.markdown("<div style='background: black;
+# --- แก้ไขบรรทัดที่ 125 เป็นต้นไป ---
+with st.expander(t["call_h"], expanded=False):
+    st.markdown("""
+        <div style='background: black; padding: 20px; border-radius: 10px; border: 1px solid white;'>
+            <p style='color: white; font-size: 1.1rem;'>📡 เข้าร่วมชุมสายสื่อสาร SYNAPSE</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button(t["call_btn"]):
+        # สร้างห้องโทรฟรีทันที
+        room = f"SYNAPSE_ROOM_{st.session_state.my_id}"
+        st.markdown(f'<iframe src="https://meet.jit.si/{room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
