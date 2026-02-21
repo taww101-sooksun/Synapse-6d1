@@ -121,18 +121,31 @@ if location and location.get('coords'):
     folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
     st_folium(m, use_container_width=True, height=400)
 
-# --- 7. ระบบโทร JITSI (แก้ไข Error บรรทัดที่ 125 เรียบร้อย) ---
+# --- 7. ระบบโทร JITSI (ปรับปรุงให้เข้าห้องเดียวกัน) ---
 with st.expander(t["call_h"], expanded=False):
     st.markdown("""
         <div style='background: black; padding: 20px; border-radius: 10px; border: 1px solid white;'>
             <p style='color: white; font-size: 1.1rem;'>📡 เข้าร่วมชุมสายสื่อสาร SYNAPSE</p>
+            <p style='color: #00ff00; font-size: 0.9rem;'>*รหัสห้องต้องตรงกันเพื่อเชื่อมต่อ*</p>
         </div>
     """, unsafe_allow_html=True)
     
+    # สร้างช่องให้กรอก "รหัสกลุ่ม" หรือ "ชื่อห้อง" ให้เหมือนกัน
+    call_room = st.text_input("กรอกรหัสห้อง (เช่น synapse_group1)", "synapse_private_room")
+    
     if st.button(t["call_btn"]):
-        # สร้างห้องสื่อสารแยกตาม ID
-        room = f"SYNAPSE_ROOM_{st.session_state.my_id}"
-        st.markdown(f'<iframe src="https://meet.jit.si/{room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+        # ใช้ชื่อห้องที่นายกรอก ถ้ากรอกเหมือนกัน จะเจอกันทันที!
+        room_name = f"SYNAPSE_{call_room}"
+        st.success(f"กำลังเข้าสู่ห้อง: {room_name}")
+        
+        st.markdown(f'''
+            <iframe src="https://meet.jit.si/{room_name}#config.startWithVideoMuted=true" 
+            allow="camera; microphone; fullscreen" 
+            width="100%" height="600" 
+            style="border: 2px solid white; border-radius: 15px;">
+            </iframe>
+        ''', unsafe_allow_html=True)
+
 
 # --- 8. MUSIC & FOOTER ---
 st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
