@@ -3,109 +3,129 @@ import requests
 from streamlit_js_eval import get_geolocation
 from datetime import datetime
 import pytz
+from timezonefinder import TimezoneFinder
+from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
-import random
-from streamlit_autorefresh import st_autorefresh 
+import uuid
 
-# --- 1. INITIALIZE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", page_icon="🛰️")
-
-# รีเฟรชทุก 15 วินาที
-st_autorefresh(interval=15000, key="global_refresh")
+# --- 1. INITIALIZE FIREBASE ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
 if not firebase_admin._apps:
     try:
         fb_creds = dict(st.secrets["firebase_service_account"])
         cred = credentials.Certificate(fb_creds)
         firebase_admin.initialize_app(cred, {
-            'databaseURL': st.secrets["firebase_db_url"]
+            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
     except Exception as e:
-        st.error(f"⚠️ Firebase Connection Failed: {e}")
+        st.error(f"Firebase Connection Error: {e}")
 
-if 'my_id' not in st.session_state:
-    st.session_state.my_id = f"USER-{random.randint(1000, 9999)}"
-if 'last_msg_id' not in st.session_state:
-    st.session_state.last_msg_id = None
+# --- 2. SECURITY GATE ---
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
 
-# --- 2. STYLE (แก้จุดที่ String ไม่จบ) ---
+if not st.session_state.authenticated:
+    st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE ACCESS CONTROL</h2>", unsafe_allow_html=True)
+    with st.form("Login"):
+        u_id = st.text_input("Enter your ID / ใส่ ID ของคุณ")
+        u_pw = st.text_input("Password / รหัสผ่าน", type="password")
+        if st.form_submit_button("UNLOCK SYSTEM"):
+            if u_pw == "synapse2026" and u_id: 
+                st.session_state.authenticated = True
+                st.session_state.my_id = u_id.strip()
+                st.rerun()
+            else:
+                st.error("Unauthorized or ID Empty!")
+    st.stop()
+
+my_id = st.session_state.my_id
+
+# --- 3. LANGUAGES ---
+languages = {
+    "TH": {
+        "chat_title": "💬 ห้องสนทนาไร้สาย", "send": "ส่ง", "placeholder": "พิมพ์ข้อความ...",
+        "status_info": "STAY STILL & HEAL : 'อยู่นิ่งๆ ไม่เจ็บตัว'",
+        "temp": "🌡️ อุณหภูมิ", "time": "⏰ เวลา", "map_title": "🗺️ พิกัดดาวเทียม"
+    },
+    "EN": {
+        "chat_title": "💬 Wireless Chat", "send": "Send", "placeholder": "Type a message...",
+        "status_info": "STAY STILL & HEAL",
+        "temp": "🌡️ Temp", "time": "⏰ Time", "map_title": "🗺️ Satellite Map"
+    }
+}
+sel_lang = st.sidebar.selectbox("LANGUAGE", ["TH", "EN"])
+t = languages[sel_lang]
+
+# --- 4. STYLE (Rainbow) ---
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #1a1a1a, #001f3f, #000000); background-size: 400% 400%; animation: RainbowFlow 20s ease infinite; }
-    .glossy-card { background: rgba(20, 20, 20, 0.8); border: 1px solid #00f2ff; border-radius: 12px; padding: 15px; color: white; box-shadow: 0 0 10px #00f2ff; margin-bottom: 10px; }
-    .stTextInput>div>div>input { background-color: #111; color: white; border: 1px solid #00f2ff; }
+    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .stApp { background: linear-gradient(270deg, #121212, #1a1a2e, #16213e); background-size: 400% 400%; animation: RainbowFlow 15s ease infinite; color: white; }
+    .chat-box { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; height: 300px; overflow-y: auto; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); }
+    .msg-user { color: #00d2ff; font-weight: bold; }
+    .msg-text { color: white; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. SIDEBAR ---
-with st.sidebar:
-    st.title("🛰️ SYNAPSE ONLINE")
-    st.info(f"**ID:** {st.session_state.my_id}")
+# --- 5. REGISTER USER STATUS ---
+db.reference(f'/users/{my_id}').update({'last_seen': datetime.now().strftime('%H:%M:%S'), 'status': 'online'})
+
+# --- 6. CHAT SYSTEM (Replacement for Calling) ---
+st.sidebar.title(f"👤 ID: {my_id}")
+all_users = db.reference('/users').get()
+friend_list = [u for u in all_users.keys() if u != my_id] if all_users else []
+target_chat = st.sidebar.selectbox("💬 เลือกคนที่จะแชตด้วย", ["-- เลือกเพื่อน --"] + friend_list)
+
+if target_chat != "-- เลือกเพื่อน --":
+    st.subheader(f"{t['chat_title']} ⮕ {target_chat}")
     
-    st.markdown("---")
-    st.subheader("🎵 SYNAPSE RADIO")
-    pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    st.components.v1.html(
-        f'<iframe width="100%" height="150" src="https://www.youtube.com{pid}" '
-        f'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>',
-        height=160
-    )
+    # สร้าง Chat ID (เอา ID มาเรียงกันเพื่อให้ทั้งคู่เห็นห้องเดียวกัน)
+    chat_room_id = "_".join(sorted([my_id, target_chat]))
+    chat_ref = db.reference(f'/chats/{chat_room_id}')
+
+    # แสดงข้อความ
+    messages = chat_ref.order_by_child('timestamp').limit_to_last(20).get()
     
-    st.subheader("👥 Online Members")
-    try:
-        online_ref = db.reference('locations').get()
-        if online_ref:
-            for uid, data in online_ref.items():
-                status = "🟢" if uid == st.session_state.my_id else "🔵"
-                st.write(f"{status} {uid} <small>({data.get('last_seen', '??')})</small>", unsafe_allow_html=True)
-    except:
-        st.write("เชื่อมต่อฐานข้อมูลไม่ได้...")
+    chat_html = '<div class="chat-box">'
+    if messages:
+        for m_id in messages:
+            m = messages[m_id]
+            chat_html += f'<p><span class="msg-user">{m["sender"]}:</span> <span class="msg-text">{m["text"]}</span> <small style="opacity:0.5;">({m["time"]})</small></p>'
+    chat_html += '</div>'
+    st.markdown(chat_html, unsafe_allow_html=True)
 
-# --- 4. MAIN CONTENT (GPS & CHAT) ---
-col_map, col_chat = st.columns([3, 2])
+    # ส่วนการส่งข้อความ
+    with st.container():
+        msg_input = st.text_input("", placeholder=t["placeholder"], key="chat_input")
+        if st.button(t["send"]):
+            if msg_input:
+                chat_ref.push({
+                    'sender': my_id,
+                    'text': msg_input,
+                    'timestamp': datetime.now().timestamp(),
+                    'time': datetime.now().strftime('%H:%M')
+                })
+                st.rerun()
 
-with col_map:
-    st.subheader("📍 Real-time Tactical Map")
-    location = get_geolocation()
-    if location and 'coords' in location:
-        lat, lon = location['coords']['latitude'], location['coords']['longitude']
-        now = datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%H:%M:%S')
-        
-        # อัปเดตตำแหน่งลง Firebase (แก้ไขจุดที่พิมพ์ค้างไว้)
-        db.reference(f'locations/{st.session_state.my_id}').set({
-            'lat': lat, 
-            'lon': lon, 
-            'last_seen': now
-        })
-        
-        # แสดงแผนที่ Folium
-        m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
-        folium.Marker([lat, lon], popup="You", icon=folium.Icon(color='blue')).add_to(m)
-        st_folium(m, width="100%", height=500)
-    else:
-        st.warning("📡 กำลังรอสัญญาณ GPS... กรุณากดอนุญาตการเข้าถึงตำแหน่ง")
+st.divider()
 
-with col_chat:
-    st.subheader("💬 Synapse Comms")
-    # ส่วนสำหรับดึงข้อความจาก Firebase
-    chat_ref = db.reference('chat').order_by_key().limit_to_last(10).get()
-    
-    chat_container = st.container(height=400)
-    with chat_container:
-        if chat_ref:
-            for msg_id, msg_data in chat_ref.items():
-                with st.chat_message("user" if msg_data['user'] == st.session_state.my_id else "assistant"):
-                    st.write(f"**{msg_data['user']}**: {msg_data['text']}")
+# --- 7. GPS & MAP (เหมือนเดิม) ---
+location = get_geolocation()
+if location:
+    coords = location.get('coords', {})
+    lat, lon = coords.get('latitude'), coords.get('longitude')
+    if lat and lon:
+        st.write(f"📍 พิกัดปัจจุบัน: {lat:.4f}, {lon:.4f}")
+        m = folium.Map(location=[lat, lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
+        folium.Marker([lat, lon]).add_to(m)
+        st_folium(m, width=700, height=300)
 
-    # ช่องกรอกข้อความ
-    if prompt := st.chat_input("ส่งข้อความถึงทีม..."):
-        db.reference('chat').push({
-            'user': st.session_state.my_id,
-            'text': prompt,
-            'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
-        })
-        st.rerun()
+# --- 8. MUSIC ---
+st.write("---")
+st.subheader("🎵 Therapy Sound")
+pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="150" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', unsafe_allow_html=True)
