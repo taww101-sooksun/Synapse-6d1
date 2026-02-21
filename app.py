@@ -97,7 +97,7 @@ try:
                 'time': datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%H:%M')
             })
          st.rerun()
- import streamlit as st
+import streamlit as st
 # --- เพิ่มไลบรารีสำหรับควบคุมเวลาการรีเฟรช ---
 from streamlit_autorefresh import st_autorefresh 
 
