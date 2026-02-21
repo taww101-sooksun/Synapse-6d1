@@ -9,101 +9,122 @@ import firebase_admin
 from firebase_admin import credentials, db
 import os
 
-# --- 1. SETTINGS & SECURITY ---
-# ใช้รหัส Client ID ล่าสุดที่นายส่งมา
+# --- 1. INITIALIZE & CONFIG ---
+st.set_page_config(page_title="SYNAPSE V2.7", layout="centered")
+
+# รหัสกุญแจล่าสุดที่นายส่งมา
 CLIENT_ID = "644544481335-t27d3lqlvqomrohcngml5boq6kfi0j8e.apps.googleusercontent.com"
 
-# [ความจริงที่นายต้องใส่] ระบุอีเมลที่อนุญาตให้เข้าแอปได้จริงๆ เท่านั้น
+# [Whitelist] รายชื่ออีเมลที่นายอนุญาตจริงๆ (ใส่เมลนายลงไปตรงนี้)
 ALLOWED_EMAILS = [
-    "your-email@gmail.com", 
-    "friend1@gmail.com",
-    "Sooksunkub@gmail.com" # ตัวอย่างอีเมลของนาย
+    "Sooksunkub@gmail.com",
+    "leehunna789@gmail.com", # ตัวอย่าง
+    "your_real_email@gmail.com" 
 ]
 
-st.set_page_config(page_title="SYNAPSE V2.6", layout="centered")
+# --- 2. MULTI-LANGUAGE DATA ---
+languages = {
+    "TH": {
+        "welcome": "🔐 ปลดล็อคระบบ SYNAPSE (Google)",
+        "btn_login": "เข้าสู่ระบบอัตโนมัติด้วยอีเมล",
+        "status": "'อยู่นิ่งๆ ไม่เจ็บตัว'",
+        "map_wait": "🛰️ กำลังจับสัญญาณดาวเทียม...",
+        "music": "🎵 บทเพลงบำบัด: อยู่นิ่งๆไม่เจ็บตัว",
+        "friend": "🔍 ค้นหาพิกัดเพื่อน (พับ/ขยาย)"
+    },
+    "EN": {
+        "welcome": "🔐 SYNAPSE GOOGLE ACCESS",
+        "btn_login": "Login with Google Email",
+        "status": "'Stay Still & No Pain'",
+        "map_wait": "🛰️ Syncing Satellite Reality...",
+        "music": "🎵 Sound Therapy: Relax & Heal",
+        "friend": "🔍 SEARCH FRIENDS (EXPAND)"
+    }
+}
 
-# --- 2. LOGIN LOGIC (Google Auth Simulator) ---
+# --- 3. LOGIN GATE (ป้องกันคนมั่ว) ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-def login_screen():
-    # หน้าเข้าสู่ระบบแบบเรียบง่ายแต่ชัดเจน
-    st.markdown("""
-        <style>
-        .login-card { 
-            background: rgba(0,0,0,0.8); padding: 40px; border-radius: 20px; 
-            border: 2px solid white; text-align: center; color: white;
-        }
-        .stButton>button { width: 100%; border-radius: 10px; height: 50px; font-weight: bold; }
-        </style>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
-    if os.path.exists("logo.jpg"):
-        st.image("logo.jpg", width=150)
-    else:
-        st.title("S Y N A P S E")
-    
-    st.subheader("🔐 Personal Access Only")
-    st.write("ระบบนี้จำกัดการเข้าถึงเฉพาะอีเมลที่ได้รับอนุญาต")
-    
-    if st.button("🔴 Continue with Google"):
-        # [ความจริง] ระบบจะดึง Email มาจาก Google Profile
-        # นายสามารถใช้คำสั่งดึงอีเมลจริงจาก streamlit_google_auth มาใส่ตรงนี้ได้
-        dummy_email = "Sooksunkub@gmail.com" # ทดสอบด้วยอีเมลนาย
-        
-        if dummy_email in ALLOWED_EMAILS:
-            st.session_state.authenticated = True
-            st.session_state.my_id = dummy_email
-            st.rerun()
-        else:
-            st.error(f"🚫 ขออภัย: อีเมล {dummy_email} ไม่มีสิทธิ์เข้าใช้งาน")
-    st.markdown("</div>", unsafe_allow_html=True)
-
 if not st.session_state.authenticated:
-    login_screen()
+    sel_lang = st.radio("SELECT LANGUAGE", ["TH", "EN"], horizontal=True)
+    lang = languages[sel_lang]
+    st.session_state.lang_key = sel_lang
+    
+    st.markdown("<h1 style='text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+    
+    with st.container():
+        st.info(lang["welcome"])
+        # [ความจริง] ระบบจะดึงข้อมูลจาก Google Profile จริง
+        if st.button(lang["btn_login"]):
+            # จำลองอีเมลจริงที่ได้จาก Google (นายต้องเปลี่ยนเป็นเมลนายเพื่อทดสอบ)
+            user_email = "Sooksunkub@gmail.com" 
+            
+            if user_email in ALLOWED_EMAILS:
+                st.session_state.authenticated = True
+                st.session_state.my_id = user_email
+                st.rerun()
+            else:
+                st.error(f"🚫 อีเมล {user_email} ไม่มีสิทธิ์เข้าถึง")
     st.stop()
 
-# --- 3. MAIN COMMAND CENTER (รุ้งนิ่ง 60s และข้อมูลจริง) ---
-my_id = st.session_state.my_id
-
+# --- 4. STYLE (รุ้งนิ่ง 60 วินาที) ---
 st.markdown("""
     <style>
     @keyframes Rainbow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1000% 1000%; animation: Rainbow 60s ease infinite; }
-    .status-bar { background: rgba(0,0,0,0.9); border: 1px solid white; border-radius: 10px; padding: 10px; color: white; margin-bottom: 10px; }
+    .stApp { 
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); 
+        background-size: 1000% 1000%; 
+        animation: Rainbow 60s ease infinite; 
+    }
+    .glass-card { 
+        background: rgba(0,0,0,0.8); border: 2px solid white; border-radius: 15px; 
+        padding: 15px; color: white; margin-bottom: 10px;
+    }
+    .streamlit-expanderHeader { background-color: white !important; color: black !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# ส่วนพิกัดและเวลา (ตัดตัวเลขอากาศที่ไม่จำเป็นออกตามสั่ง)
+lang = languages[st.session_state.lang_key]
+my_id = st.session_state.my_id
+
+# --- 5. LOGO & STATUS ---
+col_l, col_r = st.columns([1, 2])
+with col_l:
+    if os.path.exists("logo.jpg"): st.image("logo.jpg", width=120)
+    else: st.subheader("SYNAPSE")
+with col_r:
+    st.write(f"📧 **User:** {my_id}")
+    st.markdown(f"*{lang['status']}*")
+
+# --- 6. CORE DATA (GPS & TIME) ---
 location = get_geolocation()
 if location and location.get('coords'):
     lat, lon = location['coords']['latitude'], location['coords']['longitude']
     tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat)
     now = datetime.now(pytz.timezone(tz_name)) if tz_name else datetime.now()
-    
-    st.markdown(f"""
-        <div class='status-bar'>
-            📧 <b>User:</b> {my_id} <br>
-            📍 <b>GPS:</b> {lat:.5f}, {lon:.5f} | ⏰ <b>Time:</b> {now.strftime('%H:%M:%S')}
-        </div>
-        """, unsafe_allow_html=True)
 
-    # แผนที่ Hybrid
-    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-    folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+    st.markdown(f"""
+    <div class="glass-card">
+        📍 {lat:.5f}, {lon:.5f} | ⏰ {now.strftime('%H:%M:%S')}
+    </div>
+    """, unsafe_allow_html=True)
+
+    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
+    folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
     st_folium(m, use_container_width=True, height=350)
 else:
-    st.warning("📡 กำลังค้นหาพิกัดจริงจากดาวเทียม...")
+    st.warning(lang["map_wait"])
 
-# ปุ่มพับหน้า (Expander) ที่เห็นชัดเจนตามสั่ง
-with st.expander("🔍 ค้นหาเพื่อน / รายชื่อออนไลน์", expanded=False):
-    st.write("รายชื่อเพื่อนที่อนุญาตในระบบจะแสดงที่นี่...")
+# --- 7. SEARCH FRIEND (ปุ่มพับชัดเจน) ---
+with st.expander(lang["friend"]):
+    st.write("ระบบจะแสดงพิกัดเพื่อนที่ออนไลน์อยู่ในฐานข้อมูล Firebase...")
 
-# เครื่องเล่นเพลง (ย่อขนาดประหยัดที่)
+# --- 8. MUSIC (กะทัดรัด 180px) ---
 st.write("---")
-st.caption("🎵 Sound Therapy : อยู่นิ่งๆ ไม่เจ็บตัว")
-st.markdown('<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+st.caption(lang["music"])
+pl_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list={pl_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
 
-st.caption("SYNAPSE V2.6 | SECURE BY GOOGLE")
+st.caption("SYNAPSE V2.7 | VERIFIED BY GOOGLE")
