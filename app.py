@@ -43,7 +43,7 @@ if 'authenticated' not in st.session_state:
 
 if not st.session_state.authenticated:
     st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE ACCESS CONTROL</h2>", unsafe_allow_html=True)
-    try: st.image("logo2.jpg", width=200)
+    try: st.image("logo2.jpg", width=300)
     except: pass
     with st.form("Login"):
         u_id = st.text_input("Enter your ID / ใส่ ID")
