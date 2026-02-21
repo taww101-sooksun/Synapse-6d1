@@ -49,8 +49,9 @@ except Exception as e:
     chat_messages = {}
     st.sidebar.warning("Database connection issues.")
 
-# --- 3. STYLE (CSS) ---
+# ---  STYLE (CSS) ---
 st.markdown("""
+
     <style>
     @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
     .stApp { background: linear-gradient(270deg, #1a1a1a, #001f3f, #000000); background-size: 400% 400%; animation: RainbowFlow 20s ease infinite; }
