@@ -54,8 +54,8 @@ st.markdown("""
 
 # --- 4. HEADER & LOGO CHECK ---
 # ตรวจสอบไฟล์โลโก้ ถ้าไม่มีให้ใช้ Text Header แทน
-if os.path.exists("logo.jpg"):
-    st.image("logo.jpg", width=200)
+if os.path.exists("logo2.jpg"):
+    st.image("logo2.jpg", width=300)
 else:
     st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 
@@ -124,7 +124,7 @@ else: st.info("💡 โปรดอนุญาต GPS")
 
 # --- 8. ACTIVE CALL ---
 if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 5px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
     if st.button("❌ END CALL"):
         db.reference(f'/calls/{st.session_state.call_target}').delete()
         del st.session_state.active_room
