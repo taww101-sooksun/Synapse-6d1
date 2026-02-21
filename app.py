@@ -12,18 +12,30 @@ import uuid
 # --- 1. INITIALIZE FIREBASE ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
-if not firebase_admin._apps:
-    try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/',
-            'storageBucket': 'notty-101.firebasestorage.app' 
-        })
-    except Exception as e:
-        st.error(f"Firebase Connection Error: {e}")
+# --- 1. INITIALIZE FIREBASE ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
-bucket = storage.bucket()
+# ฟังก์ชันสำหรับเชื่อมต่อ Firebase และดึง Bucket
+def get_firebase_bucket():
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_service_account"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app',
+                'storageBucket': 'notty-101.firebasestorage.app' 
+            })
+        except Exception as e:
+            st.error(f"Firebase Connection Error: {e}")
+            return None
+    # ใส่ชื่อ Bucket ลงในวงเล็บนี้เพื่อแก้ Error ตัวหนังสือสีแดง
+    return storage.bucket('notty-101.firebasestorage.app')
+
+# เรียกใช้งานฟังก์ชันเพื่อสร้างตัวแปร bucket
+bucket = get_firebase_bucket()
+
+# --- 2. SECURITY GATE (ต่อจากนี้ใช้โค้ดเดิมของคุณได้เลย) ---
+
 
 # --- 2. SECURITY GATE ---
 if 'authenticated' not in st.session_state:
