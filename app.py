@@ -1,141 +1,127 @@
 import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-import folium
-from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
-import os
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import time
+import streamlit.components.v1 as components
 
-# --- 1. INITIALIZE FIREBASE ---
-if not firebase_admin._apps:
-    try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-        })
-    except Exception as e:
-        st.error(f"Firebase Error: {e}")
+# --- 1. SETTING & DARK MODE STYLE ---
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", page_icon="🛰️")
 
-# --- 2. STYLE & RAINBOW (60s) ---
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 60s ease infinite; }
-    .info-box { background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; border: 1px solid #00ff00; color: white; margin-bottom: 10px; }
+    .stApp { background: #0e1117; color: #00ff00; }
+    div[data-testid="stVerticalBlock"] > div {
+        background: rgba(0, 30, 0, 0.3);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #00ff00;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    }
+    .my-msg { text-align: right; color: #00ff00; background: rgba(0,255,0,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-right: 4px solid #00ff00; }
+    .other-msg { text-align: left; color: #ffffff; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 4px solid #ffffff; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. LOGO (บังคับหาไฟล์ logo2.jpg ตามภาพที่ส่งมา) ---
-logo_path = "logo2.jpg" 
-if os.path.exists(logo_path):
-    st.image(logo_path, width=300)
-else:
-    # ถ้าหาไฟล์ในโฟลเดอร์ไม่เจอ ให้ลองดึงผ่าน URL ของนายเอง (GitHub Raw)
-    st.image("https://raw.githubusercontent.com/taww101/สี-app/main/logo2.jpg", width=300)
-
-# --- 4. LOGIN SYSTEM ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    with st.form("Login"):
-        u_id = st.text_input("ID / ไอดี")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "9999999" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
-    st.stop()
-
-my_id = st.session_state.my_id
-all_users = db.reference('/users').get() or {}
-
-# --- 5. TACTICAL RADAR & GLOBAL TIME ---
-st.subheader("📡 RADAR SYSTEM / ระบบเรดาร์")
-location = get_geolocation()
-
-if location:
-    coords = location.get('coords', {})
-    lat, lon = coords.get('latitude'), coords.get('longitude')
-    
-    if lat and lon:
-        # คำนวณเวลา (Time Calculation)
-        tf = TimezoneFinder()
-        tz_name = tf.timezone_at(lng=lon, lat=lat)
-        local_tz = pytz.timezone(tz_name)
-        time_local = datetime.now(local_tz).strftime('%H:%M:%S')
-        time_global = datetime.now(pytz.utc).strftime('%H:%M:%S UTC') # เวลาสากลให้เพื่อน
-
-        # อัปเดตขึ้น Firebase
-        db.reference(f'/users/{my_id}/location').update({
-            'lat': lat, 'lon': lon,
-            'time': f"{time_local} ({tz_name})",
-            'utc': time_global
-        })
-
-        # แสดงกล่องข้อมูลด้านบนแผนที่เพื่อให้เห็นชัดๆ
-        st.markdown(f"""
-        <div class="info-box">
-            <b>Your Location:</b> {lat:.4f}, {lon:.4f}<br>
-            <b>Local Time (TH):</b> {time_local}<br>
-            <b>Global Time (UK/UTC):</b> {time_global}
-        </div>
-        """, unsafe_allow_html=True)
-
-        # แผนที่ (Map 500px)
-        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
+# --- 2. FIREBASE CONNECTION (ใช้ Service Account ที่คุณให้มา) ---
+if not firebase_admin._apps:
+    try:
+        # ดึงจาก Secrets (ต้องไปแปะในหน้า Dashboard ของ Streamlit ก่อน)
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         
-        for user_id, user_data in all_users.items():
-            loc = user_data.get('location', {})
-            u_lat, u_lon = loc.get('lat'), loc.get('lon')
-            if u_lat and u_lon:
-                is_me = (user_id == my_id)
-                color = 'red' if is_me else 'blue'
-                
-                # รายละเอียดในมุด (Popup)
-                popup_text = f"ID: {user_id}<br>Time: {loc.get('time')}<br>UTC: {loc.get('utc')}"
-                
-                folium.Marker(
-                    [u_lat, u_lon],
-                    popup=folium.Popup(popup_text, max_width=200),
-                    tooltip=user_id,
-                    icon=folium.Icon(color=color, icon='user', prefix='fa')
-                ).add_to(m)
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {
+            'databaseURL': 'https://sooksun1-default-rtdb.asia-southeast1.firebasedatabase.app/'
+        })
+    except Exception as e:
+        st.error(f"⚠️ Firebase Connection Error: {e}")
 
-                # ชื่อลอย (Floating Name)
-                folium.map.Marker(
-                    [u_lat, u_lon],
-                    icon=folium.features.DivIcon(
-                        icon_size=(150,36),
-                        html=f'<div style="font-size: 12pt; color: {color}; font-weight: bold; text-shadow: 2px 2px black;">{user_id}</div>',
-                    )
-                ).add_to(m)
+# --- 3. AGORA CONFIG (ข้อมูลล่าสุดของคุณ) ---
+AGORA_APP_ID = "84d8f5f05b0c49e181837f40d7688967"
+AGORA_TOKEN = "007eJxTYDjNVVmy0Oluq8PFx7OrOp1l86+W2W9aez+Ir2Fz8pT1+TEKDBYmKRZppmkGpkkGySaWqYYWhhbG5mkmBinmZhYWlmbmcRFrMhsCGRkc/rcxMTJAIIivwOCcn1eWr+voqRtQlJ+Vmlyia2BmamRqqmtgbmBsZGBkxsAAAF8oJtY="
+CHANNEL_NAME = "Synapse_Main"
 
-        st_folium(m, use_container_width=True, height=500, key="radar_v27")
-    else:
-        st.warning("🛰️ Waiting for GPS Signal... / รอพิกัด...")
-else:
-    st.info("💡 Please Allow GPS Access / โปรดอนุญาต GPS")
+# --- 4. SIDEBAR PANEL ---
+with st.sidebar:
+    st.title("🛰️ COMMAND PANEL")
+    my_id = st.text_input("ระบุตัวตน (ID):", value="Ta101")
+    st.write("---")
+    st.subheader("🎵 SYNAPSE PLAYER")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    components.html(
+        f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={playlist_id}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>',
+        height=220
+    )
+    st.caption("🎧 'อยู่นิ่งๆ ไม่เจ็บตัว' | BY Ta101")
 
-# --- 6. MESSENGER & YOUTUBE ---
-st.write("---")
-friend_list = [u for u in all_users.keys() if u != my_id]
-target = st.selectbox("💬 Select Friend / เลือกเพื่อน", ["-- Select --"] + friend_list)
+# --- 5. MAIN INTERFACE ---
+st.title("SYNAPSE COMMAND CENTER")
+tabs = st.tabs(["🚀 RADAR & GPS", "💬 CHAT ROOM", "📞 TELE-CALL"])
 
-if target != "-- Select --":
-    st.success(f"Connected to: {target}")
-    # ส่วนแชทเดิม (ตัดเพื่อความสั้นในการรัน) ...
+# TAB 1: RADAR & GPS
+with tabs[0]:
+    st.subheader("📍 LIVE TRACKING")
+    loc = get_geolocation()
+    if loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        st.success(f"พิกัดปัจจุบัน: {lat}, {lon}")
+        if st.button("🛰️ บันทึกตำแหน่งลงเรดาร์"):
+            db.reference(f'users/{my_id}').update({
+                'lat': lat, 'lon': lon, 'last_update': time.time()
+            })
+            st.toast("อัปเดตตำแหน่งแล้ว!", icon="✅")
+    
+    # แสดงแผนที่ (Google Hybrid)
+    m = folium.Map(location=[13.75, 100.5], zoom_start=12, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+    try:
+        users = db.reference('users').get() or {}
+        for name, info in users.items():
+            if 'lat' in info:
+                color = 'green' if (time.time() - info.get('last_update', 0)) < 600 else 'red'
+                folium.Marker([info['lat'], info['lon']], tooltip=name, icon=folium.Icon(color=color)).add_to(m)
+    except: pass
+    st_folium(m, width="100%", height=400)
 
-# YouTube 150px ตามสั่ง
-st.write("---")
-yt_url = "https://www.youtube.com/embed?listType=playlist&list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&autoplay=1&mute=1"
-st.markdown(f'<iframe width="100%" height="150" src="{yt_url}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', unsafe_allow_html=True)
+# TAB 2: CHAT ROOM
+with tabs[1]:
+    st.subheader("💬 ENCRYPTED CHAT")
+    chat_ref = db.reference('chats/main_room')
+    
+    # แสดงข้อความ 15 ข้อความล่าสุด
+    messages = chat_ref.order_by_child('timestamp').limit_to_last(15).get() or {}
+    with st.container(height=300):
+        for mid, msg in sorted(messages.items(), key=lambda x: x[1].get('timestamp', 0)):
+            css_class = "my-msg" if msg.get('user') == my_id else "other-msg"
+            st.markdown(f"<div class='{css_class}'><b>{msg.get('user')}</b>: {msg.get('text')}</div>", unsafe_allow_html=True)
 
-st.caption("SYNAPSE V2.7 | GLOBAL SYNC | NO LIES")
+    with st.form("chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([8, 2])
+        msg_input = col1.text_input("พิมพ์ข้อความ...", label_visibility="collapsed")
+        if col2.form_submit_button("ส่ง 🚀") and msg_input:
+            chat_ref.push({'user': my_id, 'text': msg_input, 'timestamp': time.time()})
+            st.rerun()
+
+# TAB 3: TELE-CALL (Agora Integration)
+with tabs[2]:
+    st.subheader("📞 AGORA VIDEO CALL")
+    agora_js = f"""
+    <div id="video-container" style="width: 100%; height: 450px; background: #000; border: 2px solid #00ff00; border-radius: 10px; overflow: hidden;">
+        <div id="local-player" style="width: 100%; height: 100%;"></div>
+    </div>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.11.0.js"></script>
+    <script>
+        async function start() {{
+            const client = AgoraRTC.createClient({{ mode: "rtc", codec: "vp8" }});
+            await client.join("{AGORA_APP_ID}", "{CHANNEL_NAME}", "{AGORA_TOKEN}", null);
+            const [audio, video] = await AgoraRTC.createMicrophoneAndCameraTracks();
+            video.play('local-player');
+            await client.publish([audio, video]);
+        }}
+        start();
+    </script>
+    """
+    components.html(agora_js, height=500)
+    st.info(f"Connected to Channel: {CHANNEL_NAME}")
