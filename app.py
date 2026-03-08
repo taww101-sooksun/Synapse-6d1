@@ -1,122 +1,170 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
+import requests
+from streamlit_js_eval import get_geolocation
+from datetime import datetime
+import pytz
+from timezonefinder import TimezoneFinder
+from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
-import time
-import streamlit.components.v1 as components
+import firebase_admin
+from firebase_admin import credentials, db
+import os
 
-# --- 1. SETTING & DARK MODE (Green Glow) ---
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", page_icon="🛰️")
+# --- 1. INITIALIZE FIREBASE ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
+if not firebase_admin._apps:
+    try:
+        fb_creds = dict(st.secrets["firebase_service_account"])
+        cred = credentials.Certificate(fb_creds)
+        firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except: pass
+
+# --- 2. MULTI-LANGUAGE DICTIONARY ---
+texts = {
+    "TH": {
+        "call_h": "📞 ระบบติดต่อสื่อสาร (CLICK TO OPEN)",
+        "call_btn": "🚀 เริ่มการเชื่อมต่อสัญญาณ",
+        "status": "'อยู่นิ่งๆ ไม่เจ็บตัว'",
+        "time_label": "⏰ เวลาตำแหน่งจริง",
+        "weather": "🌡️ อุณหภูมิ", "wind": "💨 ลม"
+    },
+    "EN": {
+        "call_h": "📞 COMMUNICATION SYSTEM (CLICK TO OPEN)",
+        "call_btn": "🚀 START CONNECTION",
+        "status": "'Stay Still & No Pain'",
+        "time_label": "⏰ Local Time",
+        "weather": "🌡️ Temp", "wind": "💨 Wind"
+    }
+}
+
+if 'lang' not in st.session_state: st.session_state.lang = "TH"
+t = texts[st.session_state.lang]
+
+# --- 3. STYLE (ดำเงา + รุ้ง) ---
 st.markdown("""
     <style>
-    .stApp { background: #0e1117; color: #00ff00; }
-    div[data-testid="stVerticalBlock"] > div {
-        background: rgba(0, 30, 0, 0.4);
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #00ff00;
-        box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
-    }
-    .my-msg { text-align: right; color: #00ff00; background: rgba(0,255,0,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-right: 4px solid #00ff00; }
-    .other-msg { text-align: left; color: #ffffff; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 4px solid #ffffff; }
+    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
+    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
+    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. FIREBASE CONNECTION ---
-if not firebase_admin._apps:
-    try:
-        if "firebase" in st.secrets:
-            fb_dict = dict(st.secrets["firebase"])
-            # จัดการเรื่องขึ้นบรรทัดใหม่ของ Private Key ให้ถูกต้อง
-            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-            creds = credentials.Certificate(fb_dict)
-            
-            # เชื่อมต่อด้วย URL ของคุณจริงๆ
-            firebase_admin.initialize_app(creds, {
-                'databaseURL': 'https://sooksun1-default-rtdb.asia-southeast1.firebasedatabase.app/'
-            })
-            st.toast("📡 เชื่อมต่อฐานข้อมูลสำเร็จ", icon="✅")
-        else:
-            st.error("🔑 ไม่พบข้อมูล 'firebase' ใน Streamlit Secrets")
-    except Exception as e:
-        st.error(f"⚠️ Firebase Connection Error: {e}")
-
-# --- 3. SIDEBAR ---
-with st.sidebar:
-    st.title("🛰️ COMMAND PANEL")
-    my_id = st.text_input("รหัส (ID):", value="Ta101")
-    st.write("---")
-    st.subheader("🎵 SYNAPSE PLAYER")
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    components.html(
-        f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={playlist_id}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>',
-        height=220
-    )
-    st.caption("🎧 'อยู่นิ่งๆ ไม่เจ็บตัว' | BY Ta101")
-
-# --- 4. CORE SYSTEM (Tabs) ---
-st.title("SYNAPSE COMMAND CENTER")
-tabs = st.tabs(["🚀 RADAR & GPS", "💬 LIVE CHAT"])
-
-# TAB 1: RADAR & GPS
-with tabs[0]:
-    loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        st.success(f"📍 พิกัดปัจจุบัน: {lat}, {lon}")
-        
-        if st.button("🛰️ บันทึกพิกัดลงเรดาร์"):
-            try:
-                db.reference(f'users/{my_id}').update({
-                    'lat': lat, 'lon': lon, 'last_update': time.time()
-                })
-                st.toast("พิกัดถูกบันทึกแล้ว!", icon="🛰️")
-            except Exception as e:
-                st.error(f"⚠️ Error: {e}")
-        
-        # แสดงแผนที่ 
-        m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
-        folium.Marker([lat, lon], popup=f"Me: {my_id}", icon=folium.Icon(color='green')).add_to(m)
-        st_folium(m, width=700, height=400)
-    else:
-        st.info("⏳ กำลังค้นหาสัญญาณดาวเทียม... (อย่าลืมกด Allow Location บนเบราว์เซอร์ด้วยนะ)")
-
-# TAB 2: LIVE CHAT ROOM
-with tabs[1]:
-    st.subheader("💬 REAL-TIME CHAT")
-    
-    # เช็คว่าต่อ Firebase ติดแล้วค่อยดึงข้อมูลมาแสดง
-    if firebase_admin._apps:
-        chat_ref = db.reference('chat')
-        
-        # กล่องพิมพ์ข้อความ
-        with st.container():
-            msg_input = st.text_input("พิมพ์ข้อความที่นี่...", key="chat_in")
-            if st.button("ส่งข้อความ") and msg_input:
-                chat_ref.push({
-                    'user': my_id,
-                    'msg': msg_input,
-                    'time': time.time()
-                })
+# --- 4. SECURITY GATE ---
+if 'authenticated' not in st.session_state: st.session_state.authenticated = False
+if not st.session_state.authenticated:
+    st.markdown("<div class='glossy-card'>", unsafe_allow_html=True)
+    st.subheader("🔐 SYNAPSE ACCESS")
+    with st.form("login_form"):
+        u_id = st.text_input("ID")
+        u_pw = st.text_input("Password", type="password")
+        if st.form_submit_button("UNLOCK"):
+            if u_pw == "99999999" and u_id:
+                st.session_state.authenticated = True
+                st.session_state.my_id = u_id
                 st.rerun()
+            else: st.error("Unauthorized!")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
 
-        st.write("---")
-        
-        # ดึง 10 ข้อความล่าสุดมาแสดง
-        try:
-            messages = chat_ref.order_by_child('time').limit_to_last(10).get()
-            if messages:
-                # เรียงเวลาให้ชัวร์ว่าข้อความเก่าอยู่บน ข้อความใหม่อยู่ล่าง
-                sorted_msgs = sorted(messages.values(), key=lambda x: x.get('time', 0))
-                for val in sorted_msgs:
-                    cls = "my-msg" if val['user'] == my_id else "other-msg"
-                    st.markdown(f'<div class="{cls}"><b>{val["user"]}</b>: {val["msg"]}</div>', unsafe_allow_html=True)
-            else:
-                st.caption("ยังไม่มีข้อความในระบบ เริ่มทักทายได้เลย!")
-        except Exception as e:
-            st.error(f"ไม่สามารถดึงข้อความได้: {e}")
-    else:
-        st.warning("⚠️ ระบบแชตยังไม่พร้อมใช้งาน (เช็คการตั้งค่า Firebase)")
+# --- LOGO ---
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    try:
+        st.image("logo2.jpg", use_container_width=True)
+    except:
+        st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
+
+# --- 5. HEADER ---
+c1, c2 = st.columns([4, 1])
+with c1: st.title("🛰️ COMMAND CENTER")
+with c2: 
+    if st.button("🌐 TH/EN"):
+        st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
+        st.rerun()
+
+# --- 6. REALITY CORE (GPS + MAP) ---
+# จุดนี้ปรับเพื่อให้แผนที่แสดงผลได้จริง
+location = get_geolocation()
+
+if location and location.get('coords'):
+    lat = location['coords']['latitude']
+    lon = location['coords']['longitude']
+    
+    # เวลาโลก
+    tf = Timezon
+🌐 SYNAPSE CONTROL
+🛰️ GPS: 🟢 CONNECTED
+
+🎵 MUSIC: 🟢 ONLINE
+
+🔥 DB: 🟢 SYNCED
+
+🌐 SYNAPSE
+NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+Traceback:
+File "/mount/src/taww101/สี app.py", line 39, in <module>
+    if os.path.exists("logo3.jpg"):
+       ^^
+🌐 SYNAPSE CONTROL
+🛰️ GPS: 🟢 CONNECTED
+
+🎵 MUSIC: 🟢 ONLINE
+
+🔥 DB: 🟢 SYNCED
+
+🌐 SYNAPSE
+NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+Traceback:
+File "/mount/src/taww101/สี app.py", line 39, in <module>
+    if os.path.exists("logo3.jpg"):
+       ^^eFinder()
+    tz_name = tf.timezone_at(lng=lon, lat=lat)
+    now = datetime.now(pytz.timezone(tz_name if tz_name else 'Asia/Bangkok')).strftime('%H:%M:%S')
+
+    # ที่อยู่
+    try:
+        geo = Nominatim(user_agent="synapse_v3_agent")
+        loc_data = geo.reverse(f"{lat}, {lon}", timeout=10)
+        addr = loc_data.raw['address']
+        detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🏙️ {addr.get('province', '')}"
+    except: detail = f"📍 {lat:.4f}, {lon:.4f}"
+
+    # สภาพอากาศ
+    try:
+        w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
+        temp, wind = w['temperature'], w['windspeed']
+    except: temp, wind = "--", "--"
+
+    st.markdown(f"""
+    <div class="glossy-card">
+        <p style='color: #00ff00; font-weight: bold; font-size: 1.2rem;'>{detail}</p>
+        <hr>
+        <div style='display: flex; justify-content: space-around; font-size: 1.1rem;'>
+            <span>{t['weather']}: {temp}°C</span>
+            <span>{t['wind']}: {wind}km/h</span>
+            <span style='color: yellow;'>{t['time_label']}: {now}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # แผนที่ (ใส่ Key ป้องกันแผนที่หายเวลา Refresh)
+    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
+    folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
+    st_folium(m, use_container_width=True, height=400, key="synapse_map_v3")
+else:
+    st.info("📡 กำลังรอการยืนยันพิกัด... (โปรดกด Allow Location บนบราวเซอร์)")
+
+# --- 7. JITSI ---
+with st.expander(t["call_h"]):
+    call_room = st.text_input("กรอกรหัสห้อง", "synapse_private_room")
+    if st.button(t["call_btn"]):
+        room_name = f"SYNAPSE_{call_room}"
+        st.markdown(f'<iframe src="https://meet.jit.si/{room_name}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+
+# --- 8. FOOTER ---
+st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
+pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0"></iframe>', unsafe_allow_html=True)
