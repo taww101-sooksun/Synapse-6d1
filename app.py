@@ -1,170 +1,207 @@
 import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-from geopy.geocoders import Nominatim
-import folium
-from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
+import datetime
 import os
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
+# --- 1. SETTING & CUSTOM NEON UI ---
+st.set_page_config(page_title="SYNAPSE - Ultra Control", layout="wide")
 
-if not firebase_admin._apps:
-    try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
-
-# --- 2. MULTI-LANGUAGE DICTIONARY ---
-texts = {
-    "TH": {
-        "call_h": "📞 ระบบติดต่อสื่อสาร (CLICK TO OPEN)",
-        "call_btn": "🚀 เริ่มการเชื่อมต่อสัญญาณ",
-        "status": "'อยู่นิ่งๆ ไม่เจ็บตัว'",
-        "time_label": "⏰ เวลาตำแหน่งจริง",
-        "weather": "🌡️ อุณหภูมิ", "wind": "💨 ลม"
-    },
-    "EN": {
-        "call_h": "📞 COMMUNICATION SYSTEM (CLICK TO OPEN)",
-        "call_btn": "🚀 START CONNECTION",
-        "status": "'Stay Still & No Pain'",
-        "time_label": "⏰ Local Time",
-        "weather": "🌡️ Temp", "wind": "💨 Wind"
-    }
-}
-
-if 'lang' not in st.session_state: st.session_state.lang = "TH"
-t = texts[st.session_state.lang]
-
-# --- 3. STYLE (ดำเงา + รุ้ง) ---
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
-    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
-    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
+    /* พื้นหลังแบบล้ำสมัย */
+    .stApp {
+        background: radial-gradient(circle at top right, #0a2342, #0e1117);
+        color: #ffffff;
+    }
+    
+    /* กล่อง Glassmorphism */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        border: 1px solid rgba(0, 242, 254, 0.2);
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* ปุ่มกดสไตล์ Neon Glow */
+    .stButton>button {
+        width: 100%;
+        border-radius: 50px;
+        background: transparent;
+        color: #00f2fe;
+        border: 2px solid #00f2fe;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        padding: 12px 20px;
+        transition: all 0.4s ease;
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+    }
+    
+    .stButton>button:hover {
+        background: #00f2fe;
+        color: #0e1117;
+        box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
+        transform: scale(1.02);
+    }
+
+    /* ตกแต่ง Chat Bubble */
+    .chat-bubble {
+        padding: 12px 18px;
+        border-radius: 20px;
+        margin-bottom: 10px;
+        max-width: 85%;
+        line-height: 1.4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SECURITY GATE ---
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if not st.session_state.authenticated:
-    st.markdown("<div class='glossy-card'>", unsafe_allow_html=True)
-    st.subheader("🔐 SYNAPSE ACCESS")
-    with st.form("login_form"):
-        u_id = st.text_input("ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "99999999" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
-            else: st.error("Unauthorized!")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-
-# --- LOGO ---
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+# --- 2. FIREBASE CONNECTION ---
+if not firebase_admin._apps:
     try:
-        st.image("logo2.jpg", use_container_width=True)
-    except:
-        st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
+        if "firebase" in st.secrets:
+            fb_dict = dict(st.secrets["firebase"])
+            if "private_key" in fb_dict:
+                fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            creds = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(creds, {
+                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+            })
+    except Exception as e:
+        st.error(f"Firebase Connection Error: {e}")
 
-# --- 5. HEADER ---
-c1, c2 = st.columns([4, 1])
-with c1: st.title("🛰️ COMMAND CENTER")
-with c2: 
-    if st.button("🌐 TH/EN"):
-        st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
-        st.rerun()
-
-# --- 6. REALITY CORE (GPS + MAP) ---
-# จุดนี้ปรับเพื่อให้แผนที่แสดงผลได้จริง
+# --- 3. GET LOCATION ---
 location = get_geolocation()
 
-if location and location.get('coords'):
-    lat = location['coords']['latitude']
-    lon = location['coords']['longitude']
-    
-    # เวลาโลก
-    tf = Timezon
-🌐 SYNAPSE CONTROL
-🛰️ GPS: 🟢 CONNECTED
-
-🎵 MUSIC: 🟢 ONLINE
-
-🔥 DB: 🟢 SYNCED
-
-🌐 SYNAPSE
-NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/taww101/สี app.py", line 39, in <module>
-    if os.path.exists("logo3.jpg"):
-       ^^
-🌐 SYNAPSE CONTROL
-🛰️ GPS: 🟢 CONNECTED
-
-🎵 MUSIC: 🟢 ONLINE
-
-🔥 DB: 🟢 SYNCED
-
-🌐 SYNAPSE
-NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/taww101/สี app.py", line 39, in <module>
-    if os.path.exists("logo3.jpg"):
-       ^^eFinder()
-    tz_name = tf.timezone_at(lng=lon, lat=lat)
-    now = datetime.now(pytz.timezone(tz_name if tz_name else 'Asia/Bangkok')).strftime('%H:%M:%S')
-
-    # ที่อยู่
-    try:
-        geo = Nominatim(user_agent="synapse_v3_agent")
-        loc_data = geo.reverse(f"{lat}, {lon}", timeout=10)
-        addr = loc_data.raw['address']
-        detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🏙️ {addr.get('province', '')}"
-    except: detail = f"📍 {lat:.4f}, {lon:.4f}"
-
-    # สภาพอากาศ
-    try:
-        w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
-        temp, wind = w['temperature'], w['windspeed']
-    except: temp, wind = "--", "--"
-
-    st.markdown(f"""
-    <div class="glossy-card">
-        <p style='color: #00ff00; font-weight: bold; font-size: 1.2rem;'>{detail}</p>
-        <hr>
-        <div style='display: flex; justify-content: space-around; font-size: 1.1rem;'>
-            <span>{t['weather']}: {temp}°C</span>
-            <span>{t['wind']}: {wind}km/h</span>
-            <span style='color: yellow;'>{t['time_label']}: {now}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # แผนที่ (ใส่ Key ป้องกันแผนที่หายเวลา Refresh)
-    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-    folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
-    st_folium(m, use_container_width=True, height=400, key="synapse_map_v3")
+# --- 4. HEADER SECTION ---
+if os.path.exists("logo3.jpg"):
+    col_l, col_m, col_r = st.columns([1, 1, 1])
+    with col_m:
+        st.image("logo3.jpg", use_container_width=True)
 else:
-    st.info("📡 กำลังรอการยืนยันพิกัด... (โปรดกด Allow Location บนบราวเซอร์)")
+    st.markdown("<h1 style='text-align: center; color: #00f2fe; text-shadow: 0 0 20px rgba(0,242,254,0.5);'>SYNAPSE CONTROL</h1>", unsafe_allow_html=True)
 
-# --- 7. JITSI ---
-with st.expander(t["call_h"]):
-    call_room = st.text_input("กรอกรหัสห้อง", "synapse_private_room")
-    if st.button(t["call_btn"]):
-        room_name = f"SYNAPSE_{call_room}"
-        st.markdown(f'<iframe src="https://meet.jit.si/{room_name}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+# Dashboard
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+c1, c2, c3 = st.columns(3)
+with c1: st.markdown(f"🛰️ **GPS STATUS:** {'<span style=\"color:#00f2fe\">ONLINE</span>' if location else '<span style=\"color:red\">OFFLINE</span>'}", unsafe_allow_html=True)
+with c2: st.markdown("🎵 **SYSTEM:** <span style='color:#00f2fe'>STABLE</span>", unsafe_allow_html=True)
+with c3: st.markdown(f"🔥 **DATABASE:** {'<span style=\"color:#00f2fe\">SYNCED</span>' if firebase_admin._apps else '<span style=\"color:red\">ERROR</span>'}", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 8. FOOTER ---
-st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
-pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0"></iframe>', unsafe_allow_html=True)
+# --- 5. TABS ---
+tab1, tab2, tab3 = st.tabs(["🚀 EXPERIENCE", "📊 GLOBAL MONITOR", "💬 NEON CHAT"])
+
+with tab1:
+    if 'my_name' not in st.session_state: st.session_state.my_name = ""
+    
+    st.markdown("### 👤 USER IDENTIFICATION")
+    name_input = st.text_input("ระบุตัวตนของคุณ:", value=st.session_state.my_name, placeholder="NAME / CODE NAME")
+    
+    if st.button("🚀 ACTIVATE STATUS"):
+        if name_input and location:
+            st.session_state.my_name = name_input
+            db.reference(f'users/{name_input}').set({
+                'lat': location['coords']['latitude'],
+                'lon': location['coords']['longitude'],
+                'time': datetime.datetime.now().strftime("%H:%M")
+            })
+            st.success(f"ACCESS GRANTED: {name_input}")
+    
+    st.markdown("---")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
+    st.components.v1.html(f'<iframe width="100%" height="250" src="{embed_url}" frameborder="0" style="border-radius:15px;" allow="autoplay; encrypted-media"></iframe>', height=270)
+
+with tab2:
+    st.subheader("📍 LIVE GEOLOCATION")
+    if firebase_admin._apps:
+        if st.button("🗑️ CLEAR ALL DATA"):
+            db.reference('users').delete()
+            st.rerun()
+            
+        users_data = db.reference('users').get()
+        if users_data:
+            center = [location['coords']['latitude'], location['coords']['longitude']] if location else [13.75, 100.5]
+            m = folium.Map(location=center, zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
+            for name, info in users_data.items():
+                if isinstance(info, dict) and 'lat' in info:
+                    folium.Marker([info['lat'], info['lon']], popup=name, icon=folium.Icon(color='blue', icon='info-sign')).add_to(m)
+            st_folium(m, width="100%", height=550)
+
+with tab3:
+    my_name = st.session_state.get('my_name', "")
+    if not my_name:
+        st.warning("โปรดระบุตัวตนที่หน้า 🚀 EXPERIENCE ก่อนเข้าสู่ระบบแชท")
+    else:
+        all_u = db.reference('users').get()
+        col_list, col_chat = st.columns([1, 2])
+
+        with col_list:
+            st.markdown("### 👥 ONLINE")
+            if all_u:
+                for f_name in all_u.keys():
+                    if f_name != my_name:
+                        if st.button(f"⚡ {f_name}", key=f"btn-{f_name}"):
+                            pair = sorted([my_name, f_name])
+                            st.session_state.private_room = f"secret_{pair[0]}_{pair[1]}"
+                            st.session_state.target_name = f_name
+            else: st.write("Searching for users...")
+
+        with col_chat:
+            room = st.session_state.get('private_room', None)
+            target = st.session_state.get('target_name', None)
+            
+            if room and target:
+                st.markdown(f"#### 🔒 ENCRYPTED: {target}")
+                
+                # VIDEO CALL v12
+                webrtc_streamer(
+                    key=f"call-v12-{room}",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration={"iceServers": [
+                        {"urls": ["stun:stun.l.google.com:19302"]},
+                        {"urls": ["stun:global.stun.twilio.com:3478"]},
+                        {"urls": ["stun:stun.services.mozilla.com"]}
+                    ]},
+                    media_stream_constraints={"video": True, "audio": True},
+                    async_processing=True
+                )
+                
+                st.markdown("---")
+                chat_ref = db.reference(f'chats/{room}')
+                
+                # Chat Input
+                msg_in = st.chat_input(f"Send message to {target}...")
+                if msg_in:
+                    chat_ref.push({'name': my_name, 'msg': msg_in, 'ts': datetime.datetime.now().timestamp()})
+                    st.rerun()
+                
+                # Message Display
+                msgs = chat_ref.order_by_child('ts').limit_to_last(20).get()
+                if msgs:
+                    for m_id in msgs:
+                        d = msgs[m_id]
+                        is_me = d.get('name') == my_name
+                        align = "right" if is_me else "left"
+                        bg = "rgba(0, 242, 254, 0.3)" if is_me else "rgba(255, 255, 255, 0.08)"
+                        st.markdown(f"""
+                            <div style='text-align: {align};'>
+                                <div class='chat-bubble' style='display: inline-block; background: {bg}; border: 1px solid rgba(0,242,254,0.1);'>
+                                    <small style='color:#00f2fe; font-size:10px;'>{d.get('name')}</small><br>{d.get('msg')}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                
+                if st.button("🗑️ CLEAR ROOM"):
+                    chat_ref.delete()
+                    st.rerun()
+            else:
+                st.info("👈 SELECT A USER TO START SECURE CHAT")
