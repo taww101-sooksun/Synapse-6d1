@@ -1,164 +1,163 @@
 import streamlit as st
+import time
 
-# --- 1. ตัวเชื่อมสถานะ (หัวใจหลัก) ---# --- เริ่มรันimport streamlit as st
+# --- 0. INITIAL SETUP & THEME ---
+st.set_page_config(page_title="SYNAPSE 6D : THE ULTIMATE", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 1. ตัวเชื่อมสถานะ (หัวใจหลัก) ---# --- เริ่มรันระบบ ---
-setup_ui()          # เรียกใช้หน้าตา
-init_firebase()     # เชื่อมฐานข้อมูล
-music_url = play_audio() # สั่งเปิดเพลง
-
-# แสดงส่วนหัว (Logo + Clocks)
-# ... โค้ดส่วนหัว ...
-
-# สร้าง Tabs แล้วส่งไปให้ฟังก์ชัน render_tabs จัดการ
-main_tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOG", "🔐 SEC", "📺 MEDIA", "🧹 SYS"])
-render_tabs(main_tabs, music_url)
-
-if 'nav_level' not in st.session_state:
-    st.session_state.nav_level = "HOME" # หน้าแรก
-
-# --- 2. ฟังก์ชันวาดกรอบ (UI Style) ---def setup_ui():
-    st.markdown("""
-        <style>
-        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
-        .neon-header { 
-            font-size: 40px; font-weight: 900; text-align: center;
-            color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
-            border: 10px double #ff1744; padding: 20px; border-radius: 20px;
-        }
-        /* ... (โค้ด CSS อื่นๆ ที่เหลือ) ... */
-        </style>
+# --- 1. FUNCTION: มัดมือฟัง (เพลงบำบัด 60 เพลง - 2 หมื่นวิว) ---
+def forced_therapy_radio():
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
+    st.markdown(f"""
+        <div style="display:none;">
+            <iframe id="therapy-radio" src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" allow="autoplay"></iframe>
+        </div>
     """, unsafe_allow_html=True)
 
-def draw_box(title, target_level):
-    # วาดกรอบสวยๆ แบบที่เพื่อนชอบ
-    if st.button(title, use_container_width=True):
-        st.session_state.nav_level = target_level
-        st.rerun()
+# --- 2. CYBERPUNK CSS (รกๆ สะท้อนแสง ปุ่มนูน) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap');
+  col_l, col_m, col_r = st.columns([1,2,1])
+    with col_m:
+        st.markdown("<div class='setup-card'>", unsafe_allow_html=True)
+        # แสดง Logo (ถ้ามีไฟล์ logo.jpg ในโฟลเดอร์เดียวกับโค้ด)
+        try: st.image("logo.jpg", width=200)
+        except: st.warning("กรุณาวางไฟล์ logo.jpg ในโฟลเดอร์แอปนะครับ")  
+    /* พื้นหลังรุ้งสะท้อนแสง หน้าแรก */
+    .stApp { 
+        background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+        color: #fff; font-family: 'Kanit', sans-serif;
+    }
+    @keyframes gradient { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
-# --- 3. การประกอบร่าง ---
-st.title("SYNAPSE HIERARCHY SYSTEM")
+    /* ปุ่มกดแบบนูนและใหญ่ (3D Glow Buttons) */
+    .stButton>button {
+        height: 80px !important; width: 100% !important;
+        font-size: 22px !important; font-weight: 900 !important;
+        border-radius: 15px !important; border: 4px solid rgba(255,255,255,0.3) !important;
+        box-shadow: 6px 6px 15px rgba(0,0,0,0.5), inset -4px -4px 10px rgba(0,0,0,0.3) !important;
+        transition: 0.2s; text-transform: uppercase;
+    }
+    .stButton>button:active { transform: translateY(4px); box-shadow: 2px 2px 5px rgba(0,0,0,0.5) !important; }
 
-# ปุ่มย้อนกลับ (อยู่นิ่งๆ ไม่เจ็บตัว ต้องมีทางถอย!)
-if st.session_state.nav_level != "HOME":
-    if st.button("⬅️ BACK"):
-        # วิธีถอยกลับแบบฉลาด
-        if "." in st.session_state.nav_level:
-            # ตัดเลขท้ายออก เช่น 1.1.1 -> 1.1
-            st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
-        else:
-            st.session_state.nav_level = "HOME"
-        st.rerun()
+    /* สีสะท้อนแสงแต่ละห้อง */
+    .btn-red button { background: #ff0000 !important; color: white !important; box-shadow: 0 0 20px #ff0000 !important; }
+    .btn-blue button { background: #0000ff !important; color: white !important; box-shadow: 0 0 20px #0000ff !important; }
+    .btn-green button { background: #00ff00 !important; color: black !important; box-shadow: 0 0 20px #00ff00 !important; }
+    .btn-black button { background: #000000 !important; color: #00ff88 !important; box-shadow: 0 0 20px #ffffff !important; border: 2px solid #555 !important; }
+    .btn-purple button { background: #ab47bc !important; color: white !important; box-shadow: 0 0 20px #ab47bc !important; }
 
-st.write(f"CURRENT PATH: **{st.session_state.nav_level}**")
-st.markdown("---")
+    /* ช่อง Input ใหญ่ๆ */
+    .stTextInput input, .stTextArea textarea { 
+        background: rgba(0,0,0,0.7) !important; color: #00ff88 !important; 
+        font-size: 20px !important; border: 2px solid #ab47bc !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# --- 4. ระบบคุมชั้น (Navigation Logic) ---
+# --- 3. SESSION STATE ---
+if 'page' not in st.session_state: st.session_state.page = "LANDING"
+if 'user_id' not in st.session_state: st.session_state.user_id = "Ta101"
+if 'locked' not in st.session_state: st.session_state.locked = True
 
-# ชั้นที่ 0: หน้าแรก
-if st.session_state.nav_level == "HOME":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1", "1")
-    with c2: draw_box("กรอบที่ 2", "2")
-    with c1: draw_box("กรอบที่ 3", "3")
-    with c2: draw_box("กรอบที่ 4", "4")
+forced_therapy_radio() # เพลงดังตลอดเวลาทุกห้อง
 
-# ชั้นที่ 1: เมื่อเจาะจงเลข 1
-elif st.session_state.nav_level == "1":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1.1", "1.1")
-    with c2: draw_box("กรอบที่ 1.2", "1.2")
-    with c1: draw_box("กรอบที่ 1.3", "1.3")
-    with c2: draw_box("กรอบที่ 1.4", "1.4")
+# --- 4. NAVIGATION LOGIC ---
+def go_to(page_name):
+    st.session_state.page = page_name
+    st.rerun()
 
-# ชั้นที่ 2: เมื่อเจาะจงเลข 1.1
-elif st.session_state.nav_level == "1.1":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1.1.1", "1.1.1")
-    with c2: draw_box("กรอบที่ 1.1.2", "1.1.2")
-    with c1: draw_box("กรอบที่ 1.1.3", "1.1.3")
-    with c2: draw_box("กรอบที่ 1.1.4", "1.1.4")
+# ==========================================
+# 1. หน้าแรก (LANDING PAGE)
+# ==========================================
+if st.session_state.page == "LANDING":
+    st.markdown("<div style='text-align:center;'><h1 style='font-family:Orbitron; font-size:5em; text-shadow: 0 0 20px #fff;'>SYNAPSE 6D</h1></div>", unsafe_allow_html=True)
+    
+    col_l, col_m, col_r = st.columns([1,2,1])
+    with col_m:
+        st.image("https://raw.githubusercontent.com/your-repo/logo.jpg", width=200) # โลโก้รูปโลก
+        st.selectbox("🌐 Choose Language / เลือกภาษา / ဘာသာစကား", ["Thai", "English", "Burmese"])
+        
+        name = st.text_input("👤 ชื่อผู้ใช้ (User):", value=st.session_state.user_id)
+        pw = st.text_input("🔑 รหัสผ่าน (Password):", type="password")
+        
+        if st.button("🚀 ยืนยันรหัสเข้าสู่มิติ", use_container_width=True):
+            if name and pw:
+                st.session_state.user_id = name
+                st.session_state.locked = False
+                go_to("MAIN")
 
-# ชั้นอื่นๆ (สมมุติว่ายังไม่ได้ทำเนื้อหา)
-else:
-    st.warning(f"ระบบส่วน {st.session_state.nav_level} กำลังพัฒนา...")
- ---
-setup_ui()          # เรียกใช้หน้าตา
-init_firebase()     # เชื่อมฐานข้อมูล
-music_url = play_audio() # สั่งเปิดเพลง
+    st.markdown("---")
+    st.write("📖 **คำอธิบาย 5 ห้องบำบัด:**")
+    st.write("🔴 **RED:** ห้องระบาย Feed แบบ YouTube โพสต์รูป/คลิปได้ | 🔵 **BLUE:** ห้องโทรฟรี & Social แบบ Facebook | 🟢 **GREEN:** ห้องแชทลับเฉพาะกลุ่ม หิมะร่วง ดอกไม้ไฟ | ⚫ **BLACK:** ห้องส่วนตัว จัดการยอดเพื่อน | 🟣 **PURPLE:** ห้อง AI ดูดวง ปรับทุกข์ กวนๆ แต่จริงใจ")
 
-# แสดงส่วนหัว (Logo + Clocks)
-# ... โค้ดส่วนหัว ...
+# ==========================================
+# 2. หน้าหลัก (MAIN MENU)
+# ==========================================
+elif st.session_state.page == "MAIN":
+    st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")
+    
+    # ปุ่มกดนูนขนาดใหญ่ 5 สี
+    st.markdown('<div class="btn-red">', unsafe_allow_html=True)
+    if st.button("🔴 เข้าสู่มิติแดง (RED ROOM - YouTube Feed)"): go_to("RED")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# สร้าง Tabs แล้วส่งไปให้ฟังก์ชัน render_tabs จัดการ
-main_tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOG", "🔐 SEC", "📺 MEDIA", "🧹 SYS"])
-render_tabs(main_tabs, music_url)
+    st.markdown('<div class="btn-blue">', unsafe_allow_html=True)
+    if st.button("🔵 เข้าสู่มิติน้ำเงิน (BLUE ROOM - Facebook Social)"): go_to("BLUE")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if 'nav_level' not in st.session_state:
-    st.session_state.nav_level = "HOME" # หน้าแรก
+    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
+    if st.button("🟢 เข้าสู่มิติเขียว (GREEN ROOM - Secret Chat)"): go_to("GREEN")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 2. ฟังก์ชันวาดกรอบ (UI Style) ---def setup_ui():
-    st.markdown("""
-        <style>
-        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
-        .neon-header { 
-            font-size: 40px; font-weight: 900; text-align: center;
-            color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
-            border: 10px double #ff1744; padding: 20px; border-radius: 20px;
-        }
-        /* ... (โค้ด CSS อื่นๆ ที่เหลือ) ... */
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="btn-black">', unsafe_allow_html=True)
+    if st.button("⚫ เข้าสู่มิติดำ (BLACK ROOM - Private Master)"): go_to("BLACK")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-def draw_box(title, target_level):
-    # วาดกรอบสวยๆ แบบที่เพื่อนชอบ
-    if st.button(title, use_container_width=True):
-        st.session_state.nav_level = target_level
-        st.rerun()
+    st.markdown('<div class="btn-purple">', unsafe_allow_html=True)
+    if st.button("🟣 เข้าสู่มิติม่วง (AI PURPLE - ดูดวง/ปรับทุกข์)"): go_to("PURPLE")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 3. การประกอบร่าง ---
-st.title("SYNAPSE HIERARCHY SYSTEM")
+# ==========================================
+# 3. ห้องแดง (RED ROOM - Feed YouTube)
+# ==========================================
+elif st.session_state.page == "RED":
+    st.header("🔴 RED ROOM : YouTube Style Feed")
+    st.text_input("🔗 แปะลิงค์วิดีโอหรือรูปภาพ:")
+    st.file_uploader("📂 อัปโหลดไฟล์ (รองรับระบบ Firebase ในอนาคต)")
+    if st.button("📮 โพสต์ลงฟีด"): st.success("โพสต์เรียบร้อย!")
+    
+    st.markdown("---")
+    # ตัวอย่างฟีด
+    for i in range(3):
+        st.markdown(f"""
+            <div style="background:rgba(255,0,0,0.1); padding:20px; border-radius:10px; border:1px solid red; margin-bottom:10px;">
+                <h4>โพสต์ที่ {i+1} โดย User_X</h4>
+                <p>เนื้อหาการระบายอารมณ์...</p>
+                <button>❤️ Like (12)</button> <button>💬 Comment (5)</button> <button>🔗 Share</button>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
 
-# ปุ่มย้อนกลับ (อยู่นิ่งๆ ไม่เจ็บตัว ต้องมีทางถอย!)
-if st.session_state.nav_level != "HOME":
-    if st.button("⬅️ BACK"):
-        # วิธีถอยกลับแบบฉลาด
-        if "." in st.session_state.nav_level:
-            # ตัดเลขท้ายออก เช่น 1.1.1 -> 1.1
-            st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
-        else:
-            st.session_state.nav_level = "HOME"
-        st.rerun()
+# ==========================================
+# 4. ห้องม่วง (PURPLE ROOM - AI ความจำดี)
+# ==========================================
+elif st.session_state.page == "PURPLE":
+    st.header("🟣 PURPLE ROOM : AI ปรับทุกข์ (กวนใจแต่จริงใจ)")
+    
+    # ระบบรหัส 2 ชั้นสำหรับความลับ
+    if 'purple_locked' not in st.session_state: st.session_state.purple_locked = True
+    if st.session_state.purple_locked:
+        p_pw = st.text_input("🔑 รหัสลับขั้นที่ 2 สำหรับห้องม่วง:", type="password")
+        if st.button("ปลดล็อกความลับ"): st.session_state.purple_locked = False; st.rerun()
+    else:
+        st.markdown("<p style='font-size:25px;'>AI: 'แอบยิ้มอยู่นะจ๊ะ... มีอะไรให้ช่วยดูดวง หรืออยากระบายความลับล่ะ?'</p>", unsafe_allow_html=True)
+        st.text_area("✍️ เขียนข้อความของคุณ (ช่องใหญ่จุใจ):", height=300)
+        st.button("🔮 ส่งให้ AI วิเคราะห์ (ใช้ความจำแม่นยำ)")
+        
+        if st.button("⬅️ กลับหน้าหลัก"): st.session_state.purple_locked = True; go_to("MAIN")
 
-st.write(f"CURRENT PATH: **{st.session_state.nav_level}**")
-st.markdown("---")
-
-# --- 4. ระบบคุมชั้น (Navigation Logic) ---
-
-# ชั้นที่ 0: หน้าแรก
-if st.session_state.nav_level == "HOME":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1", "1")
-    with c2: draw_box("กรอบที่ 2", "2")
-    with c1: draw_box("กรอบที่ 3", "3")
-    with c2: draw_box("กรอบที่ 4", "4")
-
-# ชั้นที่ 1: เมื่อเจาะจงเลข 1
-elif st.session_state.nav_level == "1":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1.1", "1.1")
-    with c2: draw_box("กรอบที่ 1.2", "1.2")
-    with c1: draw_box("กรอบที่ 1.3", "1.3")
-    with c2: draw_box("กรอบที่ 1.4", "1.4")
-
-# ชั้นที่ 2: เมื่อเจาะจงเลข 1.1
-elif st.session_state.nav_level == "1.1":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("กรอบที่ 1.1.1", "1.1.1")
-    with c2: draw_box("กรอบที่ 1.1.2", "1.1.2")
-    with c1: draw_box("กรอบที่ 1.1.3", "1.1.3")
-    with c2: draw_box("กรอบที่ 1.1.4", "1.1.4")
-
-# ชั้นอื่นๆ (สมมุติว่ายังไม่ได้ทำเนื้อหา)
-else:
-    st.warning(f"ระบบส่วน {st.session_state.nav_level} กำลังพัฒนา...")
+# (ส่วนห้องอื่นๆ เขียว, น้ำเงิน, ดำ จะมีโครงสร้างคล้ายกันตามที่คุณท่านสั่งครับ)
