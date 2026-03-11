@@ -1,163 +1,174 @@
 import streamlit as st
-import time
+import firebase_admin
+from firebase_admin import credentials, db
+import datetime
+import os
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
 
-# --- 0. INITIAL SETUP & THEME ---
-st.set_page_config(page_title="SYNAPSE 6D : THE ULTIMATE", layout="wide", initial_sidebar_state="collapsed")
+# 1. ตั้งค่าหน้าเว็บ
+st.set_page_config(page_title="SYNAPSE - Admin Secure", layout="wide")
 
-# --- 1. FUNCTION: มัดมือฟัง (เพลงบำบัด 60 เพลง - 2 หมื่นวิว) ---
-def forced_therapy_radio():
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO" 
-    st.markdown(f"""
-        <div style="display:none;">
-            <iframe id="therapy-radio" src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&mute=0" allow="autoplay"></iframe>
-        </div>
-    """, unsafe_allow_html=True)
+# 2. เชื่อมต่อ Firebase (เช็คความถูกต้องของ Key)
+if not firebase_admin._apps:
+    try:
+        if "firebase" in st.secrets:
+            fb_dict = dict(st.secrets["firebase"])
+            # แก้ไขเรื่องขึ้นบรรทัดใหม่ใน Private Key ที่มักจะมีปัญหาบน Cloud
+            if "private_key" in fb_dict:
+                fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            creds = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(creds, {
+                'databaseURL': st.secrets["firebase"]["databaseURL"]
+            })
+    except Exception as e:
+        st.error(f"Firebase Setup Error: {e}")
 
-# --- 2. CYBERPUNK CSS (รกๆ สะท้อนแสง ปุ่มนูน) ---
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Kanit:wght@300;500&display=swap');
-  col_l, col_m, col_r = st.columns([1,2,1])
-    with col_m:
-        st.markdown("<div class='setup-card'>", unsafe_allow_html=True)
-        # แสดง Logo (ถ้ามีไฟล์ logo.jpg ในโฟลเดอร์เดียวกับโค้ด)
-        try: st.image("logo.jpg", width=200)
-        except: st.warning("กรุณาวางไฟล์ logo.jpg ในโฟลเดอร์แอปนะครับ")  
-    /* พื้นหลังรุ้งสะท้อนแสง หน้าแรก */
-    .stApp { 
-        background: linear-gradient(135deg, #ff0000, #00ff88, #0000ff, #ffff00, #ab47bc);
-        background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
-        color: #fff; font-family: 'Kanit', sans-serif;
-    }
-    @keyframes gradient { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+# ฟังก์ชันคำนวณเวลาจากพิกัด (อิงจากเส้นลองจิจูด)
+def get_time_by_coords(lon):
+    try:
+        if lon is None: return datetime.datetime.now()
+        offset = round(float(lon) / 15)
+        # ใช้ timezone-aware datetime เพื่อความแม่นยำ
+        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=offset)
+    except:
+        return datetime.datetime.now()
 
-    /* ปุ่มกดแบบนูนและใหญ่ (3D Glow Buttons) */
-    .stButton>button {
-        height: 80px !important; width: 100% !important;
-        font-size: 22px !important; font-weight: 900 !important;
-        border-radius: 15px !important; border: 4px solid rgba(255,255,255,0.3) !important;
-        box-shadow: 6px 6px 15px rgba(0,0,0,0.5), inset -4px -4px 10px rgba(0,0,0,0.3) !important;
-        transition: 0.2s; text-transform: uppercase;
-    }
-    .stButton>button:active { transform: translateY(4px); box-shadow: 2px 2px 5px rgba(0,0,0,0.5) !important; }
+# --- ส่วนหัว ---
+col1, col2 = st.columns([1, 5])
+with col1:
+    if os.path.exists("logo3.jpg"): 
+        st.image("logo3.jpg", width=150) # ปรับขนาดให้พอดี
+    else: 
+        st.write("### 🌐 SYNAPSE")
+with col2:
+    st.title("SYNAPSE - Music Therapy")
 
-    /* สีสะท้อนแสงแต่ละห้อง */
-    .btn-red button { background: #ff0000 !important; color: white !important; box-shadow: 0 0 20px #ff0000 !important; }
-    .btn-blue button { background: #0000ff !important; color: white !important; box-shadow: 0 0 20px #0000ff !important; }
-    .btn-green button { background: #00ff00 !important; color: black !important; box-shadow: 0 0 20px #00ff00 !important; }
-    .btn-black button { background: #000000 !important; color: #00ff88 !important; box-shadow: 0 0 20px #ffffff !important; border: 2px solid #555 !important; }
-    .btn-purple button { background: #ab47bc !important; color: white !important; box-shadow: 0 0 20px #ab47bc !important; }
+# ดึงพิกัด (อาจใช้เวลาโหลดนิดนึง)
+location = get_geolocation()
 
-    /* ช่อง Input ใหญ่ๆ */
-    .stTextInput input, .stTextArea textarea { 
-        background: rgba(0,0,0,0.7) !important; color: #00ff88 !important; 
-        font-size: 20px !important; border: 2px solid #ab47bc !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- ระบบแจ้งเตือน (Notification) ---
+if 'last_chat_count' not in st.session_state:
+    st.session_state.last_chat_count = 0
 
-# --- 3. SESSION STATE ---
-if 'page' not in st.session_state: st.session_state.page = "LANDING"
-if 'user_id' not in st.session_state: st.session_state.user_id = "Ta101"
-if 'locked' not in st.session_state: st.session_state.locked = True
+def check_notifications():
+    try:
+        chats_ref = db.reference('chats').get()
+        if chats_ref:
+            current_count = len(chats_ref)
+            if current_count > st.session_state.last_chat_count:
+                if st.session_state.last_chat_count != 0:
+                    st.toast("💬 มีข้อความใหม่!", icon="🔔")
+                    if os.path.exists("notification.mp3"):
+                        # แอบใส่เสียงเตือน (แต่ Browser อาจจะบล็อกถ้ายังไม่มีการ Interact)
+                        st.audio("notification.mp3", format="audio/mp3", autoplay=True)
+                st.session_state.last_chat_count = current_count
+    except: 
+        pass
 
-forced_therapy_radio() # เพลงดังตลอดเวลาทุกห้อง
+check_notifications()
 
-# --- 4. NAVIGATION LOGIC ---
-def go_to(page_name):
-    st.session_state.page = page_name
-    st.rerun()
+# 3. Tabs
+tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน & ฟังเพลง", "📊 แผนที่", "💬 ห้องสนทนา"])
 
-# ==========================================
-# 1. หน้าแรก (LANDING PAGE)
-# ==========================================
-if st.session_state.page == "LANDING":
-    st.markdown("<div style='text-align:center;'><h1 style='font-family:Orbitron; font-size:5em; text-shadow: 0 0 20px #fff;'>SYNAPSE 6D</h1></div>", unsafe_allow_html=True)
-    
-    col_l, col_m, col_r = st.columns([1,2,1])
-    with col_m:
-        st.image("https://raw.githubusercontent.com/your-repo/logo.jpg", width=200) # โลโก้รูปโลก
-        st.selectbox("🌐 Choose Language / เลือกภาษา / ဘာသာစကား", ["Thai", "English", "Burmese"])
+with tab1:
+    user_display_name = st.text_input("ระบุชื่อของคุณ:", placeholder="เช่น Ta101", key="user_input")
+    admin_key = st.text_input("รหัสผ่านผู้ดูแล (Admin Only):", type="password")
+
+    if st.button("Start Journey"):
+        if not user_display_name:
+            st.warning("กรุณาใส่ชื่อก่อนเพื่อน!")
+        elif location and 'coords' in location:
+            lat, lon = location['coords']['latitude'], location['coords']['longitude']
+            true_dt = get_time_by_coords(lon)
+            true_time_str = true_dt.strftime("%H:%M")
+            
+            # บันทึกข้อมูลลง Firebase
+            try:
+                db.reference(f'users/{user_display_name}').set({
+                    'last_seen': true_time_str, 
+                    'lat': lat, 
+                    'lon': lon,
+                    'timestamp': datetime.datetime.now().timestamp()
+                })
+                st.success(f"เช็คอินสำเร็จ! เวลาพิกัดโลก: {true_time_str}")
+            except Exception as e:
+                st.error(f"บันทึกข้อมูลไม่สำเร็จ: {e}")
+        else:
+            st.error("ไม่สามารถดึงพิกัดได้ กรุณากดยอมรับการแชร์ Location บน Browser")
+
+    # --- เช็คสิทธิ์แอดมิน ---
+    if user_display_name == "Ta101" and admin_key == "Ta101@0970801941":
+        st.divider()
+        st.subheader("🎛️ แผงควบคุมดีเจ (Admin Mode)")
         
-        name = st.text_input("👤 ชื่อผู้ใช้ (User):", value=st.session_state.user_id)
-        pw = st.text_input("🔑 รหัสผ่าน (Password):", type="password")
+        # คำนวณเวลาเพื่อเลือกเพลง
+        lon_now = location['coords']['longitude'] if (location and 'coords' in location) else 100
+        true_dt_now = get_time_by_coords(lon_now)
         
-        if st.button("🚀 ยืนยันรหัสเข้าสู่มิติ", use_container_width=True):
-            if name and pw:
-                st.session_state.user_id = name
-                st.session_state.locked = False
-                go_to("MAIN")
-
-    st.markdown("---")
-    st.write("📖 **คำอธิบาย 5 ห้องบำบัด:**")
-    st.write("🔴 **RED:** ห้องระบาย Feed แบบ YouTube โพสต์รูป/คลิปได้ | 🔵 **BLUE:** ห้องโทรฟรี & Social แบบ Facebook | 🟢 **GREEN:** ห้องแชทลับเฉพาะกลุ่ม หิมะร่วง ดอกไม้ไฟ | ⚫ **BLACK:** ห้องส่วนตัว จัดการยอดเพื่อน | 🟣 **PURPLE:** ห้อง AI ดูดวง ปรับทุกข์ กวนๆ แต่จริงใจ")
-
-# ==========================================
-# 2. หน้าหลัก (MAIN MENU)
-# ==========================================
-elif st.session_state.page == "MAIN":
-    st.markdown(f"## ยินดีต้อนรับคุณ {st.session_state.user_id} 🔓")
-    
-    # ปุ่มกดนูนขนาดใหญ่ 5 สี
-    st.markdown('<div class="btn-red">', unsafe_allow_html=True)
-    if st.button("🔴 เข้าสู่มิติแดง (RED ROOM - YouTube Feed)"): go_to("RED")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="btn-blue">', unsafe_allow_html=True)
-    if st.button("🔵 เข้าสู่มิติน้ำเงิน (BLUE ROOM - Facebook Social)"): go_to("BLUE")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
-    if st.button("🟢 เข้าสู่มิติเขียว (GREEN ROOM - Secret Chat)"): go_to("GREEN")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="btn-black">', unsafe_allow_html=True)
-    if st.button("⚫ เข้าสู่มิติดำ (BLACK ROOM - Private Master)"): go_to("BLACK")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="btn-purple">', unsafe_allow_html=True)
-    if st.button("🟣 เข้าสู่มิติม่วง (AI PURPLE - ดูดวง/ปรับทุกข์)"): go_to("PURPLE")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 3. ห้องแดง (RED ROOM - Feed YouTube)
-# ==========================================
-elif st.session_state.page == "RED":
-    st.header("🔴 RED ROOM : YouTube Style Feed")
-    st.text_input("🔗 แปะลิงค์วิดีโอหรือรูปภาพ:")
-    st.file_uploader("📂 อัปโหลดไฟล์ (รองรับระบบ Firebase ในอนาคต)")
-    if st.button("📮 โพสต์ลงฟีด"): st.success("โพสต์เรียบร้อย!")
-    
-    st.markdown("---")
-    # ตัวอย่างฟีด
-    for i in range(3):
-        st.markdown(f"""
-            <div style="background:rgba(255,0,0,0.1); padding:20px; border-radius:10px; border:1px solid red; margin-bottom:10px;">
-                <h4>โพสต์ที่ {i+1} โดย User_X</h4>
-                <p>เนื้อหาการระบายอารมณ์...</p>
-                <button>❤️ Like (12)</button> <button>💬 Comment (5)</button> <button>🔗 Share</button>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    if st.button("⬅️ กลับหน้าหลัก"): go_to("MAIN")
-
-# ==========================================
-# 4. ห้องม่วง (PURPLE ROOM - AI ความจำดี)
-# ==========================================
-elif st.session_state.page == "PURPLE":
-    st.header("🟣 PURPLE ROOM : AI ปรับทุกข์ (กวนใจแต่จริงใจ)")
-    
-    # ระบบรหัส 2 ชั้นสำหรับความลับ
-    if 'purple_locked' not in st.session_state: st.session_state.purple_locked = True
-    if st.session_state.purple_locked:
-        p_pw = st.text_input("🔑 รหัสลับขั้นที่ 2 สำหรับห้องม่วง:", type="password")
-        if st.button("ปลดล็อกความลับ"): st.session_state.purple_locked = False; st.rerun()
+        # เลือกไฟล์เพลงตามช่วงเวลา
+        song_file = "test_morning.mp3" if 6 <= true_dt_now.hour < 18 else "test_evening.mp3"
+        
+        if os.path.exists(song_file):
+            st.audio(song_file, loop=True)
+            st.caption(f"กำลังเล่น: {song_file} (อิงจากเวลา {true_dt_now.strftime('%H:%M')})")
+        else:
+            st.error(f"ไม่พบไฟล์เพลง {song_file} ในระบบ (อย่าลืม Upload ขึ้น GitHub นะ)")
     else:
-        st.markdown("<p style='font-size:25px;'>AI: 'แอบยิ้มอยู่นะจ๊ะ... มีอะไรให้ช่วยดูดวง หรืออยากระบายความลับล่ะ?'</p>", unsafe_allow_html=True)
-        st.text_area("✍️ เขียนข้อความของคุณ (ช่องใหญ่จุใจ):", height=300)
-        st.button("🔮 ส่งให้ AI วิเคราะห์ (ใช้ความจำแม่นยำ)")
-        
-        if st.button("⬅️ กลับหน้าหลัก"): st.session_state.purple_locked = True; go_to("MAIN")
+        if user_display_name:
+            st.divider()
+            st.info("🎧 สถานะ: เพลงบำบัดกำลังทำงานในระบบ... (เฉพาะแอดมินที่เห็นเครื่องเล่น)")
 
-# (ส่วนห้องอื่นๆ เขียว, น้ำเงิน, ดำ จะมีโครงสร้างคล้ายกันตามที่คุณท่านสั่งครับ)
+with tab2:
+    # แสดงแผนที่ผู้ใช้งาน
+    try:
+        users_data = db.reference('users').get()
+        if users_data:
+            # ดึงพิกัดล่าสุดมาตั้งค่า Center ของแผนที่
+            first_user = list(users_data.values())[0]
+            m = folium.Map(location=[first_user.get('lat', 13), first_user.get('lon', 100)], zoom_start=12)
+            
+            for name, info in users_data.items():
+                if 'lat' in info and 'lon' in info:
+                    folium.Marker(
+                        [info['lat'], info['lon']], 
+                        popup=f"{name} ({info.get('last_seen', '??')})",
+                        tooltip=name
+                    ).add_to(m)
+            st_folium(m, width="100%", height=500)
+        else:
+            st.write("ยังไม่มีข้อมูลตำแหน่งผู้ใช้งาน")
+    except Exception as e:
+        st.error(f"โหลดแผนที่พลาด: {e}")
+
+with tab3:
+    st.header("💬 ห้องสนทนา")
+    # ฟอร์มส่งข้อความ
+    with st.form("chat_form", clear_on_submit=True):
+        msg_input = st.text_input("พิมพ์ข้อความที่นี่:")
+        submit_button = st.form_submit_button("ส่ง")
+        
+        if submit_button and user_display_name and msg_input:
+            lon = location['coords']['longitude'] if (location and 'coords' in location) else 100
+            time_now = get_time_by_coords(lon).strftime("%H:%M")
+            db.reference('chats').push({
+                'name': user_display_name, 
+                'msg': msg_input, 
+                'time': time_now,
+                'timestamp': datetime.datetime.now().timestamp()
+            })
+            st.rerun()
+
+    # แสดงข้อความ (ย้อนหลัง 15 ข้อความ)
+    try:
+        chats = db.reference('chats').order_by_child('timestamp').limit_to_last(15).get()
+        if chats:
+            # จัดเรียงให้ข้อความใหม่ล่าสุดอยู่ด้านบน
+            sorted_chats = sorted(chats.items(), key=lambda x: x[1].get('timestamp', 0), reverse=True)
+            for _, data in sorted_chats:
+                st.markdown(f"**{data.get('name')}** <small style='color:gray'>{data.get('time')}</small>", unsafe_allow_html=True)
+                st.write(data.get('msg'))
+                st.divider()
+    except:
+        st.write("เริ่มการสนทนาได้เลย!")
