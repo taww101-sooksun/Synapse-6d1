@@ -1,174 +1,183 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
-import datetime
-import os
-from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import time
+import datetime
+import streamlit.components.v1 as components
 
-# 1. ตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="SYNAPSE - Admin Secure", layout="wide")
+# --- 1. SETTING & UI THEME ---
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", page_icon="🛰️")
 
-# 2. เชื่อมต่อ Firebase (เช็คความถูกต้องของ Key)
+st.markdown("""
+    <style>
+    .stApp { background: #0e1117; color: #00ff00; }
+    /* กล่อง Container หลัก */
+    div[data-testid="stVerticalBlock"] > div {
+        background: rgba(0, 30, 0, 0.4);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #00ff00;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        margin-bottom: 10px;
+    }
+    /* สไตล์ข้อความแชท */
+    .my-msg { text-align: right; color: #00ff00; background: rgba(0,255,0,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-right: 4px solid #00ff00; }
+    .other-msg { text-align: left; color: #ffffff; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 4px solid #ffffff; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. FIREBASE CONNECTION ---
 if not firebase_admin._apps:
     try:
         if "firebase" in st.secrets:
             fb_dict = dict(st.secrets["firebase"])
-            # แก้ไขเรื่องขึ้นบรรทัดใหม่ใน Private Key ที่มักจะมีปัญหาบน Cloud
+            # แก้ไขเรื่อง Private Key ให้รองรับรูปแบบบรรทัดใหม่
             if "private_key" in fb_dict:
                 fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            
             creds = credentials.Certificate(fb_dict)
             firebase_admin.initialize_app(creds, {
-                'databaseURL': st.secrets["firebase"]["databaseURL"]
+                'databaseURL': 'https://sooksun1-default-rtdb.asia-southeast1.firebasedatabase.app/'
             })
+            st.toast("📡 ระบบเชื่อมต่อฐานข้อมูลสำเร็จ", icon="✅")
+        else:
+            st.error("🔑 ไม่พบข้อมูล 'firebase' ใน Secrets! (กรุณาตั้งค่าใน Streamlit Cloud)")
     except Exception as e:
-        st.error(f"Firebase Setup Error: {e}")
+        st.error(f"⚠️ Firebase Connection Error: {e}")
 
-# ฟังก์ชันคำนวณเวลาจากพิกัด (อิงจากเส้นลองจิจูด)
-def get_time_by_coords(lon):
-    try:
-        if lon is None: return datetime.datetime.now()
-        offset = round(float(lon) / 15)
-        # ใช้ timezone-aware datetime เพื่อความแม่นยำ
-        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=offset)
-    except:
-        return datetime.datetime.now()
+# --- 3. CONFIG & PARAMETERS ---
+AGORA_APP_ID = "84d8f5f05b0c49e181837f40d7688967"
+AGORA_TOKEN = "007eJxTYDjNVVmy0Oluq8PFx7OrOp1l86+W2W9aez+Ir2Fz8pT1+TEKDBYmKRZppmkGpkkGySaWqYYWhhbG5mkmBinmZhYWlmbmcRFrMhsCGRkc/rcxMTJAIIivwOCcn1eWr+voqRtQlJ+Vmlyia2BmamRqqmtgbmBsZGBkxsAAAF8oJtY="
+CHANNEL_NAME = "Synapse_Main"
 
-# --- ส่วนหัว ---
-col1, col2 = st.columns([1, 5])
-with col1:
-    if os.path.exists("logo3.jpg"): 
-        st.image("logo3.jpg", width=150) # ปรับขนาดให้พอดี
-    else: 
-        st.write("### 🌐 SYNAPSE")
-with col2:
-    st.title("SYNAPSE - Music Therapy")
+# --- 4. SIDEBAR PANEL ---
+with st.sidebar:
+    st.title("🛰️ COMMAND PANEL")
+    my_id = st.text_input("ระบุรหัส (ID):", value="Ta101")
+    st.divider()
+    
+    st.subheader("🎵 SYNAPSE PLAYER")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    components.html(
+        f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={playlist_id}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>',
+        height=220
+    )
+    st.caption("🎧 'อยู่นิ่งๆ ไม่เจ็บตัว' | BY Ta101")
 
-# ดึงพิกัด (อาจใช้เวลาโหลดนิดนึง)
-location = get_geolocation()
+# --- 5. MAIN INTERFACE ---
+st.title("SYNAPSE COMMAND CENTER")
+tabs = st.tabs(["🚀 RADAR & GPS", "💬 CHAT ROOM", "📞 TELE-CALL"])
 
-# --- ระบบแจ้งเตือน (Notification) ---
-if 'last_chat_count' not in st.session_state:
-    st.session_state.last_chat_count = 0
-
-def check_notifications():
-    try:
-        chats_ref = db.reference('chats').get()
-        if chats_ref:
-            current_count = len(chats_ref)
-            if current_count > st.session_state.last_chat_count:
-                if st.session_state.last_chat_count != 0:
-                    st.toast("💬 มีข้อความใหม่!", icon="🔔")
-                    if os.path.exists("notification.mp3"):
-                        # แอบใส่เสียงเตือน (แต่ Browser อาจจะบล็อกถ้ายังไม่มีการ Interact)
-                        st.audio("notification.mp3", format="audio/mp3", autoplay=True)
-                st.session_state.last_chat_count = current_count
-    except: 
-        pass
-
-check_notifications()
-
-# 3. Tabs
-tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน & ฟังเพลง", "📊 แผนที่", "💬 ห้องสนทนา"])
-
-with tab1:
-    user_display_name = st.text_input("ระบุชื่อของคุณ:", placeholder="เช่น Ta101", key="user_input")
-    admin_key = st.text_input("รหัสผ่านผู้ดูแล (Admin Only):", type="password")
-
-    if st.button("Start Journey"):
-        if not user_display_name:
-            st.warning("กรุณาใส่ชื่อก่อนเพื่อน!")
-        elif location and 'coords' in location:
-            lat, lon = location['coords']['latitude'], location['coords']['longitude']
-            true_dt = get_time_by_coords(lon)
-            true_time_str = true_dt.strftime("%H:%M")
-            
-            # บันทึกข้อมูลลง Firebase
+# --- TAB 1: RADAR & GPS ---
+with tabs[0]:
+    loc = get_geolocation()
+    if loc and 'coords' in loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        st.success(f"📍 พิกัดปัจจุบัน: {lat}, {lon}")
+        if st.button("🛰️ บันทึกพิกัดลงเรดาร์"):
             try:
-                db.reference(f'users/{user_display_name}').set({
-                    'last_seen': true_time_str, 
+                db.reference(f'users/{my_id}').update({
                     'lat': lat, 
-                    'lon': lon,
-                    'timestamp': datetime.datetime.now().timestamp()
+                    'lon': lon, 
+                    'last_update': time.time(),
+                    'time_str': datetime.datetime.now().strftime("%H:%M")
                 })
-                st.success(f"เช็คอินสำเร็จ! เวลาพิกัดโลก: {true_time_str}")
+                st.toast("บันทึกพิกัดแล้ว!", icon="🛰️")
             except Exception as e:
-                st.error(f"บันทึกข้อมูลไม่สำเร็จ: {e}")
-        else:
-            st.error("ไม่สามารถดึงพิกัดได้ กรุณากดยอมรับการแชร์ Location บน Browser")
-
-    # --- เช็คสิทธิ์แอดมิน ---
-    if user_display_name == "Ta101" and admin_key == "Ta101@0970801941":
-        st.divider()
-        st.subheader("🎛️ แผงควบคุมดีเจ (Admin Mode)")
-        
-        # คำนวณเวลาเพื่อเลือกเพลง
-        lon_now = location['coords']['longitude'] if (location and 'coords' in location) else 100
-        true_dt_now = get_time_by_coords(lon_now)
-        
-        # เลือกไฟล์เพลงตามช่วงเวลา
-        song_file = "test_morning.mp3" if 6 <= true_dt_now.hour < 18 else "test_evening.mp3"
-        
-        if os.path.exists(song_file):
-            st.audio(song_file, loop=True)
-            st.caption(f"กำลังเล่น: {song_file} (อิงจากเวลา {true_dt_now.strftime('%H:%M')})")
-        else:
-            st.error(f"ไม่พบไฟล์เพลง {song_file} ในระบบ (อย่าลืม Upload ขึ้น GitHub นะ)")
+                st.error(f"Database Error: {e}")
     else:
-        if user_display_name:
-            st.divider()
-            st.info("🎧 สถานะ: เพลงบำบัดกำลังทำงานในระบบ... (เฉพาะแอดมินที่เห็นเครื่องเล่น)")
+        st.info("💡 กรุณากดยอมรับการเข้าถึง Location เพื่อเปิดระบบเรดาร์")
 
-with tab2:
-    # แสดงแผนที่ผู้ใช้งาน
+    st.subheader("🌐 GLOBAL RADAR MAP")
+    # ตั้งค่าเริ่มต้นที่กรุงเทพฯ
+    m = folium.Map(location=[13.75, 100.5], zoom_start=10, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Satellite")
+    
     try:
         users_data = db.reference('users').get()
         if users_data:
-            # ดึงพิกัดล่าสุดมาตั้งค่า Center ของแผนที่
-            first_user = list(users_data.values())[0]
-            m = folium.Map(location=[first_user.get('lat', 13), first_user.get('lon', 100)], zoom_start=12)
-            
             for name, info in users_data.items():
                 if 'lat' in info and 'lon' in info:
+                    # เช็คสถานะ Active (ภายใน 10 นาที)
+                    is_active = (time.time() - info.get('last_update', 0)) < 600
+                    status_color = 'green' if is_active else 'red'
                     folium.Marker(
                         [info['lat'], info['lon']], 
-                        popup=f"{name} ({info.get('last_seen', '??')})",
-                        tooltip=name
+                        popup=f"{name} ({info.get('time_str', '??')})",
+                        tooltip=f"User: {name}",
+                        icon=folium.Icon(color=status_color, icon='info-sign')
                     ).add_to(m)
-            st_folium(m, width="100%", height=500)
-        else:
-            st.write("ยังไม่มีข้อมูลตำแหน่งผู้ใช้งาน")
-    except Exception as e:
-        st.error(f"โหลดแผนที่พลาด: {e}")
-
-with tab3:
-    st.header("💬 ห้องสนทนา")
-    # ฟอร์มส่งข้อความ
-    with st.form("chat_form", clear_on_submit=True):
-        msg_input = st.text_input("พิมพ์ข้อความที่นี่:")
-        submit_button = st.form_submit_button("ส่ง")
-        
-        if submit_button and user_display_name and msg_input:
-            lon = location['coords']['longitude'] if (location and 'coords' in location) else 100
-            time_now = get_time_by_coords(lon).strftime("%H:%M")
-            db.reference('chats').push({
-                'name': user_display_name, 
-                'msg': msg_input, 
-                'time': time_now,
-                'timestamp': datetime.datetime.now().timestamp()
-            })
-            st.rerun()
-
-    # แสดงข้อความ (ย้อนหลัง 15 ข้อความ)
-    try:
-        chats = db.reference('chats').order_by_child('timestamp').limit_to_last(15).get()
-        if chats:
-            # จัดเรียงให้ข้อความใหม่ล่าสุดอยู่ด้านบน
-            sorted_chats = sorted(chats.items(), key=lambda x: x[1].get('timestamp', 0), reverse=True)
-            for _, data in sorted_chats:
-                st.markdown(f"**{data.get('name')}** <small style='color:gray'>{data.get('time')}</small>", unsafe_allow_html=True)
-                st.write(data.get('msg'))
-                st.divider()
     except:
-        st.write("เริ่มการสนทนาได้เลย!")
+        pass
+    
+    st_folium(m, width="100%", height=400)
+
+# --- TAB 2: CHAT ROOM ---
+with tabs[1]:
+    st.subheader("💬 ENCRYPTED CHAT")
+    try:
+        chat_ref = db.reference('chats/main_room')
+        msgs_data = chat_ref.order_by_child('timestamp').limit_to_last(20).get()
+        
+        # ส่วนแสดงข้อความ
+        with st.container(height=400):
+            if msgs_data:
+                # เรียงข้อความตามเวลา (Firebase บางทีคืนค่าเป็น Dict ที่ไม่เรียง)
+                sorted_msgs = sorted(msgs_data.items(), key=lambda x: x[1].get('timestamp', 0))
+                for m_id, m_val in sorted_msgs:
+                    u_name = m_val.get('user', 'Unknown')
+                    u_text = m_val.get('text', '')
+                    css_class = "my-msg" if u_name == my_id else "other-msg"
+                    st.markdown(f"<div class='{css_class}'><b>{u_name}</b>: {u_text}</div>", unsafe_allow_html=True)
+            else:
+                st.caption("ยังไม่มีข้อความ... เริ่มคุยกันเลย")
+
+        # ส่วนส่งข้อความ
+        with st.form("send_chat", clear_on_submit=True):
+            c1, c2 = st.columns([8, 2])
+            chat_input = c1.text_input("พิมพ์ข้อความ...", label_visibility="collapsed")
+            if c2.form_submit_button("ส่ง 🚀") and chat_input:
+                chat_ref.push({
+                    'user': my_id,
+                    'text': chat_input,
+                    'timestamp': time.time()
+                })
+                st.rerun()
+    except Exception as e:
+        st.warning(f"ระบบแชทขัดข้อง: {e}")
+
+# --- TAB 3: TELE-CALL (Agora Integration) ---
+with tabs[2]:
+    st.subheader("📞 AGORA REAL-TIME CALL")
+    st.warning("⚠️ โปรดทราบ: กล้องจะทำงานเมื่อเข้าถึงผ่าน https:// เท่านั้น")
+    
+    # Agora HTML/JS Component
+    agora_ui = f"""
+    <div id="video-box" style="width: 100%; height: 450px; background: #000; border: 2px solid #00ff00; border-radius: 10px; overflow: hidden; position: relative;">
+        <div id="local-view" style="width: 100%; height: 100%;"></div>
+        <div style="position: absolute; bottom: 10px; left: 10px; color: #00ff00; background: rgba(0,0,0,0.6); padding: 5px; font-family: monospace;">
+            📡 LIVE_STREAM_ID: {my_id}
+        </div>
+    </div>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.11.0.js"></script>
+    <script>
+        async function startCall() {{
+            const client = AgoraRTC.createClient({{ mode: "rtc", codec: "vp8" }});
+            try {{
+                await client.join("{AGORA_APP_ID}", "{CHANNEL_NAME}", "{AGORA_TOKEN}", null);
+                const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+                videoTrack.play('local-view');
+                await client.publish([audioTrack, videoTrack]);
+                console.log("Joined and Published!");
+            }} catch (e) {{
+                console.error("Agora Error:", e);
+            }}
+        }}
+        startCall();
+    </script>
+    """
+    components.html(agora_ui, height=500)
+    st.info(f"🟢 สถานะ: กำลังสแตนด์บายในช่อง {CHANNEL_NAME}")
+
