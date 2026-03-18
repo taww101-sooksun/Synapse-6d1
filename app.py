@@ -5,19 +5,21 @@ import time
 import pandas as pd
 import os
 
-# --- 1. CONFIG & LOGO ---
+# --- 1. CONFIG & LOGO (แก้ลำดับให้ถูกต้องเพื่อกัน NameError) ---
 logo_path = "logo3.jpg"
+# ต้องเช็คไฟล์ก่อนนำไปใช้ใน set_page_config
 logo_exists = os.path.exists(logo_path)
+
 st.set_page_config(
     page_title="SYNAPSE IDENTITY", 
     page_icon=logo_path if logo_exists else "🌐", 
     layout="wide"
 )
 
-# --- 2. INITIALIZE FIREBASE (เชื่อมต่อผ่าน [firebase] ใน Secrets) ---
+# --- 2. INITIALIZE FIREBASE (ดึงข้อมูลจากกลุ่ม [firebase] ใน Secrets) ---
 if not firebase_admin._apps:
     try:
-        # ดึงข้อมูลจากกลุ่ม [firebase] ในหน้า Secrets
+        # ดึงข้อมูลจากกลุ่ม [firebase] ตามที่ตั้งไว้ในหน้า Secrets
         fb_data = st.secrets["firebase"]
         
         fb_config = {
@@ -34,14 +36,15 @@ if not firebase_admin._apps:
         }
         
         cred = credentials.Certificate(fb_config)
-        # ใช้ URL ตรงตามที่ระบบแจ้ง (Asia Southeast)
+        # ใช้ URL ตรงตามที่ระบบต้องการ (Asia Southeast)
         target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
         
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
         st.toast("✅ SYNAPSE CORE CONNECTED")
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
-        st.stop() # หยุดการทำงานหากเชื่อมต่อไม่ได้ เพื่อป้องกัน ValueError
+        st.info("กรุณาตรวจสอบว่าในหน้า Secrets มีหัวข้อ [firebase] ครอบข้อมูลไว้หรือไม่")
+        st.stop()
 
 # --- 3. เพลง AUTO-PLAY ---
 def play_audio():
@@ -72,14 +75,14 @@ def private_chat_logic(my_name, target_name, p_msg=None):
         st.error(f"Chat Logic Error: {e}")
     return []
 
-# --- 5. MULTI-LANGUAGE DATA ---
+# --- 5. MULTI-LANGUAGE DATA (6 ภาษา) ---
 LANG_DATA = {
     "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด", "time": "เวลาของระบบ", "manual": "คู่มือ"},
     "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE", "time": "SYS TIME", "manual": "MANUAL"},
     "JP": {"welcome": "ようこそ", "core": "🚀🖲 コア", "radar": "🛰️📡 レーダー", "comms": "💬📝 通信", "sys": "🧹 システム", "lat": "緯度", "lon": "経度", "time": "システム時間", "manual": "マニュアル"},
     "CN": {"welcome": "欢迎", "core": "🚀🖲 核心", "radar": "🛰️📡 雷达", "comms": "💬📝 通讯", "sys": "🧹 系统", "lat": "纬度", "lon": "经度", "time": "系统时间", "manual": "手册"},
     "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓိက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်", "manual": "လမ်းညွှန်"},
-    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລອງຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
+    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລောင်ຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
 }
 
 # --- 6. SESSION STATE ---
