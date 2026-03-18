@@ -13,7 +13,7 @@ logo_exists = os.path.exists(logo_path)
 
 st.set_page_config(
     page_title="SYNAPSE IDENTITY", 
-    page_icon=logo_path if logo_exists else "🌐", 
+    page_icon=logo_path if logo_exists else "logo3.jpg", 
     layout="wide"
 )
 
