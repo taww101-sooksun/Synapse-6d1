@@ -2,12 +2,23 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 import time
+import pandas as pd
+import os
 
-# --- 1. INITIALIZE FIREBASE (เวอร์ชันแก้ทางเชื่อมให้ตรงกับ [firebase]) ---
+# --- 1. CONFIG & LOGO ---
+logo_path = "logo3.jpg"
+logo_exists = os.path.exists(logo_path)
+st.set_page_config(
+    page_title="SYNAPSE IDENTITY", 
+    page_icon=logo_path if logo_exists else "🌐", 
+    layout="wide"
+)
+
+# --- 2. INITIALIZE FIREBASE (เชื่อมต่อผ่าน [firebase] ใน Secrets) ---
 if not firebase_admin._apps:
     try:
-        # ดึงข้อมูลจากกลุ่ม [firebase] ตามที่คุณตั้งไว้ในหน้า Secrets
-        fb_data = st.secrets["firebase"] 
+        # ดึงข้อมูลจากกลุ่ม [firebase] ในหน้า Secrets
+        fb_data = st.secrets["firebase"]
         
         fb_config = {
             "type": fb_data["type"],
@@ -23,28 +34,14 @@ if not firebase_admin._apps:
         }
         
         cred = credentials.Certificate(fb_config)
-        # ตรวจสอบ URL นี้ให้ตรงกับในหน้า Firebase ของคุณด้วยนะครับ
-        target_url = "https://sooksun1-default-rtdb.firebaseio.com/"
+        # ใช้ URL ตรงตามที่ระบบแจ้ง (Asia Southeast)
+        target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
         
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
-        st.toast("✅ SYNAPSE CORE: CONNECTED")
+        st.toast("✅ SYNAPSE CORE CONNECTED")
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
-        st.stop() # หยุดการทำงานถ้าเชื่อมต่อไม่ได้ เพื่อไม่ให้เกิด Error อื่นตามมา
-
-# --- 2. ทดสอบการเขียน Log (ส่วนที่ทำให้แอปคุณค้างอยู่) ---
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = "AGENT_X"
-
-try:
-    # ทดสอบส่งข้อมูลเข้า logs/activity
-    db.reference('logs/activity').push({
-        'user': st.session_state.user_name, 
-        'ts': time.time()
-    })
-except Exception as e:
-    st.warning(f"⚠️ ไม่สามารถเขียน Log ได้: {e}")
-
+        st.stop() # หยุดการทำงานหากเชื่อมต่อไม่ได้ เพื่อป้องกัน ValueError
 
 # --- 3. เพลง AUTO-PLAY ---
 def play_audio():
@@ -65,16 +62,12 @@ def private_chat_logic(my_name, target_name, p_msg=None):
         ref = db.reference(f'private_rooms/{room_id}')
         
         if p_msg:
-            ref.push({
-                'name': my_name, 
-                'msg': p_msg, 
-                'ts': time.time()
-            })
+            ref.push({'name': my_name, 'msg': p_msg, 'ts': time.time()})
         
-        raw_p_msgs = ref.order_by_child('ts').limit_to_last(15).get()
+        raw_p_msgs = ref.get()
         if raw_p_msgs:
             msgs = list(raw_p_msgs.values()) if isinstance(raw_p_msgs, dict) else [m for m in raw_p_msgs if m]
-            return sorted(msgs, key=lambda x: x.get('ts', 0))
+            return sorted(msgs, key=lambda x: x.get('ts', 0))[-15:]
     except Exception as e:
         st.error(f"Chat Logic Error: {e}")
     return []
@@ -85,8 +78,8 @@ LANG_DATA = {
     "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE", "time": "SYS TIME", "manual": "MANUAL"},
     "JP": {"welcome": "ようこそ", "core": "🚀🖲 コア", "radar": "🛰️📡 レーダー", "comms": "💬📝 通信", "sys": "🧹 システム", "lat": "緯度", "lon": "経度", "time": "システム時間", "manual": "マニュアル"},
     "CN": {"welcome": "欢迎", "core": "🚀🖲 核心", "radar": "🛰️📡 雷达", "comms": "💬📝 通讯", "sys": "🧹 系统", "lat": "纬度", "lon": "经度", "time": "系统时间", "manual": "手册"},
-    "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓิက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်", "manual": "လမ်းညွှန်"},
-    "LA": {"welcome": "ຍີນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລອງຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
+    "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓိက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်", "manual": "လမ်းညွှန်"},
+    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລອງຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
 }
 
 # --- 6. SESSION STATE ---
@@ -148,8 +141,11 @@ with tabs[0]: # แกนหลัก
         </script>
     """, height=100)
     if st.button("📢 BROADCAST SIGNAL"):
-        db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
-        st.toast("Signal Broadcasted to sooksun1!")
+        try:
+            db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
+            st.toast("Signal Broadcasted!")
+        except Exception as e:
+            st.error(f"Broadcast Error: {e}")
 
 with tabs[1]: # เรดาร์
     st.subheader(L["radar"])
@@ -161,6 +157,8 @@ with tabs[1]: # เรดาร์
 with tabs[2]: # สื่อสาร
     st.subheader(L["comms"])
     target = st.text_input("แชทกับใคร:", value="User2")
+    if st.button("📹 VIDEO CALL START"):
+        st.components.v1.html("<video id='v' autoplay playsinline style='width:100%; border:2px solid #00f2fe; border-radius:10px; background:#000;'></video><script>navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(s=>document.getElementById('v').srcObject=s)</script>", height=300)
     
     st.markdown("---")
     msgs = private_chat_logic(st.session_state.user_name, target)
