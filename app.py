@@ -1,215 +1,104 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
-import time
-import pandas as pd
-import os
 import folium
 from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import time
+import os
 
-# --- 1. CONFIG & LOGO ---
-logo_path = "logo3.jpg"
-logo_exists = os.path.exists(logo_path)
+# --- 1. SET UP & THEME ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", page_icon="🛰️")
 
-st.set_page_config(
-    page_title="SYNAPSE IDENTITY", 
-    page_icon=logo_path if logo_exists else "🌐", 
-    layout="wide"
-)
-
-# --- 2. INITIALIZE FIREBASE ---
-if not firebase_admin._apps:
-    try:
-        fb_data = st.secrets["firebase"]
-        fb_config = {
-            "type": fb_data["type"],
-            "project_id": fb_data["project_id"],
-            "private_key_id": fb_data["private_key_id"],
-            "private_key": fb_data["private_key"].replace('\\n', '\n'),
-            "client_email": fb_data["client_email"],
-            "client_id": fb_data["client_id"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": fb_data["client_x509_cert_url"]
-        }
-        cred = credentials.Certificate(fb_config)
-        target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        firebase_admin.initialize_app(cred, {'databaseURL': target_url})
-        st.toast("✅ SYNAPSE CORE CONNECTED")
-    except Exception as e:
-        st.error(f"🚨 Firebase Error: {e}")
-        st.stop()
-
-# --- 3. SESSION STATE (ระบบจำค่าพิกัดและสถานะ) ---
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
-if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
-if 'lang' not in st.session_state: st.session_state.lang = "TH"
-# ตัวแปรเก็บพิกัด Real-time เพื่อส่งไปแผนที่
-if 'cur_lat' not in st.session_state: st.session_state.cur_lat = 13.7500
-if 'cur_lon' not in st.session_state: st.session_state.cur_lon = 100.5100
-
-# --- 4. AUDIO PLAYER (ใช้ลิงก์ตรงจาก Google Drive ของพี่) ---
-def synapse_audio_player():
-    # ลิงก์ตรงที่แปลงมาจาก Google Drive ของพี่ครับ
-    link = "https://docs.google.com/uc?export=download&id=1MfeP1CbRRMI-VSCBoHLoF2kny0cCc2VY"
-    
-    st.sidebar.markdown(f"""
-        <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center; margin-bottom:20px;">
-            <p style="color:{st.session_state.theme_color}; font-weight:bold; margin-bottom:10px;">🎵 SYNAPSE AUDIO SYSTEM</p>
-            <audio id="audio-player" loop controls style="width:100%; filter: invert(100%) hue-rotate(180deg) brightness(1.5);">
-                <source src="{link}" type="audio/mpeg">
-            </audio>
-        </div>
-        <script>
-            var audio = document.getElementById("audio-player");
-            window.parent.document.addEventListener('click', function() {{ 
-                if (audio.paused) {{ audio.play(); }}
-            }}, {{ once: true }});
-        </script>
-    """, unsafe_allow_html=True)
-
-# --- 5. CHAT LOGIC ---
-def private_chat_logic(my_name, target_name, p_msg=None):
-    try:
-        pair = sorted([my_name, target_name])
-        room_id = f"priv_{pair[0]}_{pair[1]}"
-        ref = db.reference(f'private_rooms/{room_id}')
-        if p_msg:
-            ref.push({'name': my_name, 'msg': p_msg, 'ts': time.time()})
-        raw = ref.get()
-        if raw:
-            msgs = list(raw.values()) if isinstance(raw, dict) else [m for m in raw if m]
-            return sorted(msgs, key=lambda x: x.get('ts', 0))[-15:]
-    except: return []
-    return []
-
-# --- 6. LANGUAGE DATA ---
-LANG_DATA = {
-    "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด"},
-    "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE"}
-}
-
-# --- 7. LOGIN UI ---
-if not st.session_state.logged_in:
-    if logo_exists: st.image(logo_path, width=400)
-    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>🌐 SYNAPSE IDENTITY</h1>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        pw = st.text_input("SECURITY KEY", type="password")
-        if st.button("🚀 ENTER SYSTEM"):
-            if pw == "notty101":
-                st.session_state.logged_in = True
-                st.rerun()
-            else: st.error("❌ Access Denied")
-    st.stop()
-
-# --- 8. MAIN APP ---
-L = LANG_DATA.get(st.session_state.lang, LANG_DATA["TH"])
-st.markdown(f"<style>.stApp {{ background: #000; color: {st.session_state.theme_color}; }}</style>", unsafe_allow_html=True)
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#00f2fe" 
 
 with st.sidebar:
-    if logo_exists: st.image(logo_path, use_column_width=True)
-    st.title("🌐 CONTROL")
-    synapse_audio_player()
-    st.session_state.user_name = st.text_input("ID", st.session_state.user_name)
-    st.session_state.lang = st.selectbox("LANGUAGE", list(LANG_DATA.keys()))
-    st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-    if st.button("LOGOUT"):
-        st.session_state.logged_in = False
-        st.rerun()
-
-# --- 9. TABS ---
-tabs = st.tabs([L["core"], L["radar"], L["comms"], L["sys"]])
-
-with tabs[0]: # แกนหลัก (GPS อัปเดตพิกัดแม่นยำ)
-    st.header(f"{L['welcome']}, {st.session_state.user_name}")
-    # ส่วนแสดงผลพิกัดและเวลา
-    st.components.v1.html(f"""
-        <div style="background:rgba(0,0,0,0.8); color:{st.session_state.theme_color}; padding:15px; border-radius:10px; border:1px solid {st.session_state.theme_color}; font-family:monospace;">
-            <div style="display:flex; justify-content:space-between; font-size: 18px;">
-                <div>📍 GPS: <span id="lat_val">...</span>, <span id="lon_val">...</span></div>
-                <div>⏰ TIME: <span id="t_val">00:00:00</span></div>
-            </div>
-        </div>
-        <script>
-            const geoOptions = {{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }};
-            setInterval(() => {{
-                navigator.geolocation.getCurrentPosition(p => {{
-                    const lat = p.coords.latitude.toFixed(6);
-                    const lon = p.coords.longitude.toFixed(6);
-                    document.getElementById('lat_val').innerText = lat;
-                    document.getElementById('lon_val').innerText = lon;
-                }}, null, geoOptions);
-                document.getElementById('t_val').innerText = new Date().toLocaleTimeString('th-TH');
-            }}, 1000);
-        </script>
-    """, height=100)
+    st.markdown("### 🎨 SYNAPSE CUSTOMIZE")
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
+    st.write(f"สถานะระบบ: ONLINE")
+    st.write("---")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
     
-    # ระบบรับค่าพิกัดจากหน้าจอเพื่อบันทึก
-    st.info("💡 นำตัวเลข GPS ด้านบนมาใส่ช่องด้านล่างเพื่อ 'ส่งพิกัด' ไปยังเรดาร์")
-    c1, c2 = st.columns(2)
-    st.session_state.cur_lat = c1.number_input("ยืนยันละติจูด (LAT)", value=st.session_state.cur_lat, format="%.6f")
-    st.session_state.cur_lon = c2.number_input("ยืนยันลองจิจูด (LON)", value=st.session_state.cur_lon, format="%.6f")
+    # --- 2. 🎵 ระบบเสียง (ยักษ์ในตัวฉัน) ---
+    st.markdown("### 🎵 AUDIO SYSTEM")
+    music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.audio(music_url, format="audio/mpeg", loop=True)
 
-    if st.button("📢 BROADCAST SIGNAL TO RADAR"):
-        db.reference('logs/activity').push({
-            'user': st.session_state.user_name, 
-            'lat': st.session_state.cur_lat,
-            'lon': st.session_state.cur_lon,
-            'ts': time.time()
-        })
-        st.success("ส่งพิกัดไปที่หน้าเรดาร์เรียบร้อย!")
+# ฉีด CSS ตามสีที่พี่เลือก
+st.markdown(f"""
+    <style>
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .stButton>button {{ 
+        border: 1px solid {st.session_state.theme_color} !important; 
+        color: {st.session_state.theme_color} !important; 
+        background-color: transparent !important;
+        width: 100%;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-with tabs[1]: # เรดาร์ (Google Hybrid แผนที่ดาวเทียม)
-    st.subheader(L["radar"])
-    # แสดงแผนที่ตามพิกัดล่าสุดที่ยืนยันไว้
-    google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+# --- 3. 🛰️ เชื่อมต่อ FIREBASE ---
+if not firebase_admin._apps:
+    try:
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except:
+        st.error("🚨 ตรวจสอบ Firebase Secrets ใน Setting")
+
+st.title("🛰️ SYNAPSE COMMAND CENTER")
+
+# --- 4. 🚀 ระบบดึงพิกัดจริงด้วย JS_EVAL ---
+loc = get_geolocation()
+
+tabs = st.tabs(["🚀 CORE (แกนหลัก)", "🛰️ RADAR (เรดาร์)"])
+
+with tabs[0]:
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
+        
+        if loc:
+            lat = loc['coords']['latitude']
+            lon = loc['coords']['longitude']
+            st.success(f"📍 ตรวจพบพิกัดจริง: {lat}, {lon}")
+            
+            if st.button("🛰️ บันทึกพิกัดลงฐานข้อมูล"):
+                db.reference(f'users/{my_id}').update({
+                    'lat': lat, 'lon': lon, 'last_update': time.time()
+                })
+                st.balloons()
+                st.toast("บันทึกพิกัดสำเร็จ!")
+        else:
+            st.warning("🚨 กรุณากด 'อนุญาต' (Allow) การเข้าถึงตำแหน่งบนเบราว์เซอร์ เพื่อให้พิกัดตรงจุด")
+
+with tabs[1]:
+    st.subheader("🛰️ ระบบเรดาร์ตรวจจับพิกัดดาวเทียม")
+    all_users = db.reference('users').get()
     
-    m = folium.Map(
-        location=[st.session_state.cur_lat, st.session_state.cur_lon], 
-        zoom_start=18, 
-        tiles=google_hybrid, 
-        attr='Google'
-    )
-    folium.Marker(
-        [st.session_state.cur_lat, st.session_state.cur_lon], 
-        popup=f"AGENT: {st.session_state.user_name}",
-        icon=folium.Icon(color='red', icon='info-sign')
-    ).add_to(m)
-    
-    st_folium(m, width="100%", height=500)
+    # ตั้งค่าแผนที่เริ่มต้น (ถ้าไม่มีพิกัดเรา ให้ไปอ่อนนุชก่อน)
+    view_lat, view_lon = 13.7056, 100.6015
+    if all_users and my_id in all_users:
+        view_lat = all_users[my_id].get('lat', view_lat)
+        view_lon = all_users[my_id].get('lon', view_lon)
 
-with tabs[2]: # สื่อสาร (Jitsi ฆ่าติ่ง Join)
-    st.subheader(L["comms"])
-    target = st.text_input("คู่สาย:", value="User2")
-    if st.button("📹 START ENCRYPTED VIDEO"):
-        room = f"Synapse_{st.session_state.user_name}_{target}"
-        st.components.v1.html(f"""
-        <div id="j" style="height:500px; width:100%; border:2px solid {st.session_state.theme_color}; border-radius:10px;"></div>
-        <script src="https://meet.jit.si/external_api.js"></script>
-        <script>
-            new JitsiMeetExternalAPI('meet.jit.si', {{
-                roomName: '{room}', parentNode: document.querySelector('#j'),
-                configOverwrite: {{ prejoinPageEnabled: false, disableDeepLinking: true, startWithAudioMuted: false, startWithVideoMuted: false }},
-                interfaceConfigOverwrite: {{ SHOW_JITSI_WATERMARK: false, TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'] }}
-            }});
-        </script>
-        """, height=550)
-    
-    st.markdown("---")
-    msgs = private_chat_logic(st.session_state.user_name, target)
-    for m in msgs: st.write(f"**{m['name']}**: {m['msg']}")
-    with st.form("chat_f", clear_on_submit=True):
-        txt = st.text_input("Message...")
-        if st.form_submit_button("Send"):
-            private_chat_logic(st.session_state.user_name, target, txt)
-            st.rerun()
+    # แผนที่ดาวเทียม Google Satellite (lyrs=y)
+    m = folium.Map(location=[view_lat, view_lon], zoom_start=18, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
 
-with tabs[3]: # ระบบ
-    st.subheader("📖 SYSTEM MANUAL")
-    st.write('Slogan: "อยู่นิ่งๆ ไม่เจ็บตัว"')
-    if st.button("REBOOT"):
-        st.cache_resource.clear()
-        st.rerun()
+    if all_users:
+        for name, info in all_users.items():
+            if 'lat' in info and 'lon' in info:
+                # 🔵 ตัวคุณ (Ta101) | 🔴 คนอื่น
+                color = 'blue' if name == my_id else 'red'
+                folium.Marker(
+                    [info['lat'], info['lon']], 
+                    tooltip=f"ID: {name}",
+                    popup=f"พิกัด: {info['lat']}, {info['lon']}",
+                    icon=folium.Icon(color=color, icon='star')
+                ).add_to(m)
+        
+    st_folium(m, width="100%", height=600)
