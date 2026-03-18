@@ -2,35 +2,49 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 import time
-import pandas as pd
-import os
 
-# --- 1. CONFIG & LOGO ---
-logo_path = "logo3.jpg"
-logo_exists = os.path.exists(logo_path)
-st.set_page_config(
-    page_title="SYNAPSE IDENTITY", 
-    page_icon=logo_path if logo_exists else "🌐", 
-    layout="wide"
-)
-
-# --- 2. INITIALIZE FIREBASE (Updated for sooksun1) ---
+# --- 1. INITIALIZE FIREBASE (เวอร์ชันแก้ทางเชื่อมให้ตรงกับ [firebase]) ---
 if not firebase_admin._apps:
     try:
+        # ดึงข้อมูลจากกลุ่ม [firebase] ตามที่คุณตั้งไว้ในหน้า Secrets
+        fb_data = st.secrets["firebase"] 
+        
         fb_config = {
-            "type": "service_account",
-            "project_id": st.secrets["project_id"],
-            "private_key": st.secrets["private_key"].replace('\\n', '\n'),
-            "client_email": st.secrets["client_email"],
+            "type": fb_data["type"],
+            "project_id": fb_data["project_id"],
+            "private_key_id": fb_data["private_key_id"],
+            "private_key": fb_data["private_key"].replace('\\n', '\n'),
+            "client_email": fb_data["client_email"],
+            "client_id": fb_data["client_id"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": fb_data["client_x509_cert_url"]
         }
+        
         cred = credentials.Certificate(fb_config)
-        # ใช้ URL ที่คุณส่งมาให้ล่าสุด
+        # ตรวจสอบ URL นี้ให้ตรงกับในหน้า Firebase ของคุณด้วยนะครับ
         target_url = "https://sooksun1-default-rtdb.firebaseio.com/"
+        
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
-        st.toast("✅ SYNAPSE CORE CONNECTED: SOOKSUN1")
+        st.toast("✅ SYNAPSE CORE: CONNECTED")
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
+        st.stop() # หยุดการทำงานถ้าเชื่อมต่อไม่ได้ เพื่อไม่ให้เกิด Error อื่นตามมา
+
+# --- 2. ทดสอบการเขียน Log (ส่วนที่ทำให้แอปคุณค้างอยู่) ---
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = "AGENT_X"
+
+try:
+    # ทดสอบส่งข้อมูลเข้า logs/activity
+    db.reference('logs/activity').push({
+        'user': st.session_state.user_name, 
+        'ts': time.time()
+    })
+except Exception as e:
+    st.warning(f"⚠️ ไม่สามารถเขียน Log ได้: {e}")
+
 
 # --- 3. เพลง AUTO-PLAY ---
 def play_audio():
