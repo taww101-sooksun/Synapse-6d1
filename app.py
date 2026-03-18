@@ -8,12 +8,12 @@ import folium
 from streamlit_folium import st_folium
 
 # --- 1. CONFIG & LOGO ---
-logo_path = "logo3.jpg"
+logo_path = "logo2.jpg"
 logo_exists = os.path.exists(logo_path)
 
 st.set_page_config(
     page_title="SYNAPSE IDENTITY", 
-    page_icon=logo_path if logo_exists else "logo3.jpg", 
+    page_icon=logo_path if logo_exists else "logo2.jpg", 
     layout="wide"
 )
 
