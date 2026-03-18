@@ -4,10 +4,11 @@ from firebase_admin import credentials, db
 import time
 import pandas as pd
 import os
+import folium
+from streamlit_folium import st_folium
 
-# --- 1. CONFIG & LOGO (แก้ลำดับให้ถูกต้องเพื่อกัน NameError) ---
+# --- 1. CONFIG & LOGO ---
 logo_path = "logo3.jpg"
-# ต้องเช็คไฟล์ก่อนนำไปใช้ใน set_page_config
 logo_exists = os.path.exists(logo_path)
 
 st.set_page_config(
@@ -16,12 +17,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. INITIALIZE FIREBASE (ดึงข้อมูลจากกลุ่ม [firebase] ใน Secrets) ---
+# --- 2. INITIALIZE FIREBASE ---
 if not firebase_admin._apps:
     try:
-        # ดึงข้อมูลจากกลุ่ม [firebase] ตามที่ตั้งไว้ในหน้า Secrets
         fb_data = st.secrets["firebase"]
-        
         fb_config = {
             "type": fb_data["type"],
             "project_id": fb_data["project_id"],
@@ -34,16 +33,12 @@ if not firebase_admin._apps:
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": fb_data["client_x509_cert_url"]
         }
-        
         cred = credentials.Certificate(fb_config)
-        # ใช้ URL ตรงตามที่ระบบต้องการ (Asia Southeast)
         target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
         st.toast("✅ SYNAPSE CORE CONNECTED")
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
-        st.info("กรุณาตรวจสอบว่าในหน้า Secrets มีหัวข้อ [firebase] ครอบข้อมูลไว้หรือไม่")
         st.stop()
 
 # --- 3. เพลง AUTO-PLAY ---
@@ -63,10 +58,8 @@ def private_chat_logic(my_name, target_name, p_msg=None):
         pair = sorted([my_name, target_name])
         room_id = f"priv_{pair[0]}_{pair[1]}"
         ref = db.reference(f'private_rooms/{room_id}')
-        
         if p_msg:
             ref.push({'name': my_name, 'msg': p_msg, 'ts': time.time()})
-        
         raw_p_msgs = ref.get()
         if raw_p_msgs:
             msgs = list(raw_p_msgs.values()) if isinstance(raw_p_msgs, dict) else [m for m in raw_p_msgs if m]
@@ -75,14 +68,14 @@ def private_chat_logic(my_name, target_name, p_msg=None):
         st.error(f"Chat Logic Error: {e}")
     return []
 
-# --- 5. MULTI-LANGUAGE DATA (6 ภาษา) ---
+# --- 5. MULTI-LANGUAGE DATA ---
 LANG_DATA = {
     "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด", "time": "เวลาของระบบ", "manual": "คู่มือ"},
     "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE", "time": "SYS TIME", "manual": "MANUAL"},
     "JP": {"welcome": "ようこそ", "core": "🚀🖲 コア", "radar": "🛰️📡 レーダー", "comms": "💬📝 通信", "sys": "🧹 システム", "lat": "緯度", "lon": "経度", "time": "システム時間", "manual": "マニュアル"},
     "CN": {"welcome": "欢迎", "core": "🚀🖲 核心", "radar": "🛰️📡 雷达", "comms": "💬📝 通讯", "sys": "🧹 系统", "lat": "纬度", "lon": "经度", "time": "系统时间", "manual": "手册"},
     "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓိက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်", "manual": "လမ်းညွှန်"},
-    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລောင်ຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
+    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼัก", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລောင်ຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
 }
 
 # --- 6. SESSION STATE ---
@@ -109,7 +102,6 @@ if not st.session_state.logged_in:
 # --- 8. MAIN APP START ---
 L = LANG_DATA[st.session_state.lang]
 play_audio()
-
 st.markdown(f"<style>.stApp {{ background: #000; color: {st.session_state.theme_color}; }}</style>", unsafe_allow_html=True)
 
 with st.sidebar:
@@ -122,7 +114,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 9. TABS INTEGRATION ---
+# --- 9. TABS ---
 tabs = st.tabs([L["core"], L["radar"], L["comms"], L["sys"]])
 
 with tabs[0]: # แกนหลัก
@@ -144,36 +136,69 @@ with tabs[0]: # แกนหลัก
         </script>
     """, height=100)
     if st.button("📢 BROADCAST SIGNAL"):
-        try:
-            db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
-            st.toast("Signal Broadcasted!")
-        except Exception as e:
-            st.error(f"Broadcast Error: {e}")
+        db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
+        st.toast("Signal Broadcasted!")
 
-with tabs[1]: # เรดาร์
+with tabs[1]: # เรดาร์ (Google Hybrid Map แบบที่พี่ต้องการ)
     st.subheader(L["radar"])
     col_a, col_b = st.columns(2)
-    lat_v = col_a.number_input(L["lat"], value=13.7500)
-    lon_v = col_b.number_input(L["lon"], value=100.5100)
-    st.map(pd.DataFrame({'lat': [lat_v], 'lon': [lon_v]}), color=st.session_state.theme_color)
+    lat_v = col_a.number_input(L["lat"], value=13.7500, format="%.6f")
+    lon_v = col_b.number_input(L["lon"], value=100.5100, format="%.6f")
+    
+    # สูตรลับ Google Hybrid
+    google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+    
+    m = folium.Map(location=[lat_v, lon_v], zoom_start=18, tiles=google_hybrid, attr='Google')
+    folium.Marker(
+        [lat_v, lon_v], 
+        popup=f"ตำแหน่ง: {st.session_state.user_name}",
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+    
+    st_folium(m, width="100%", height=500)
 
-with tabs[2]: # สื่อสาร
+with tabs[2]: # สื่อสาร (Jitsi แบบฆ่าหน้า Join)
     st.subheader(L["comms"])
     target = st.text_input("แชทกับใคร:", value="User2")
+    
+    # Jitsi ฆ่าติ่ง Join
     if st.button("📹 VIDEO CALL START"):
-        st.components.v1.html("<video id='v' autoplay playsinline style='width:100%; border:2px solid #00f2fe; border-radius:10px; background:#000;'></video><script>navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(s=>document.getElementById('v').srcObject=s)</script>", height=300)
+        room_name = f"Synapse_{st.session_state.user_name}_{target}"
+        jitsi_html = f"""
+        <div id="jitsi-container" style="height: 500px; width: 100%; border: 2px solid {st.session_state.theme_color}; border-radius: 10px;"></div>
+        <script src="https://meet.jit.si/external_api.js"></script>
+        <script>
+            const domain = 'meet.jit.si';
+            const options = {{
+                roomName: '{room_name}',
+                parentNode: document.querySelector('#jitsi-container'),
+                configOverwrite: {{
+                    prejoinPageEnabled: false,
+                    disableDeepLinking: true,
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: false,
+                    enableWelcomePage: false,
+                }},
+                interfaceConfigOverwrite: {{
+                    SHOW_JITSI_WATERMARK: false,
+                    HIDE_INVITE_ON_WELCOME_PAGE: true,
+                    TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'chat', 'tileview']
+                }},
+                userInfo: {{ displayName: '{st.session_state.user_name}' }}
+            }};
+            const api = new JitsiMeetExternalAPI(domain, options);
+        </script>
+        """
+        st.components.v1.html(jitsi_html, height=550)
     
     st.markdown("---")
     msgs = private_chat_logic(st.session_state.user_name, target)
-    for m in msgs:
-        st.write(f"**{m['name']}**: {m['msg']}")
-    
+    for m in msgs: st.write(f"**{m['name']}**: {m['msg']}")
     with st.form("chat_f", clear_on_submit=True):
         txt = st.text_input("พิมพ์ข้อความ...")
         if st.form_submit_button("ส่ง"):
-            if txt:
-                private_chat_logic(st.session_state.user_name, target, txt)
-                st.rerun()
+            private_chat_logic(st.session_state.user_name, target, txt)
+            st.rerun()
 
 with tabs[3]: # ระบบ
     st.subheader(f"📖 {L['manual']}")
