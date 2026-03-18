@@ -1,104 +1,168 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 import time
-import datetime
-import streamlit.components.v1 as components
+import pandas as pd
+import os
 
-# --- 1. UI THEME (Cyberpunk Green) ---
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
+# --- 1. CONFIG & LOGO ---
+logo_path = "logo3.jpg"
+logo_exists = os.path.exists(logo_path)
+st.set_page_config(
+    page_title="SYNAPSE IDENTITY", 
+    page_icon=logo_path if logo_exists else "🌐", 
+    layout="wide"
+)
 
-st.markdown("""
-    <style>
-    .stApp { background: #0e1117; color: #00ff00; }
-    div[data-testid="stVerticalBlock"] > div {
-        background: rgba(0, 30, 0, 0.4);
-        padding: 15px; border-radius: 10px; border: 1px solid #00ff00;
-    }
-    .my-msg { text-align: right; color: #00ff00; background: rgba(0,255,0,0.1); padding: 8px; border-radius: 10px; margin-bottom: 5px; border-right: 4px solid #00ff00; }
-    .other-msg { text-align: left; color: #ffffff; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 10px; margin-bottom: 5px; border-left: 4px solid #ffffff; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. CONNECT FIREBASE (แบบใช้ URL ตรงๆ ไม่ต้องเรียก Secret เยอะ) ---
-# ความจริง: ถ้าคุณตั้ง Rules ใน Firebase เป็น true ทั้งหมด คุณแทบไม่ต้องใช้กุญแจเลยในบางกรณี
+# --- 2. INITIALIZE FIREBASE (Updated for sooksun1) ---
 if not firebase_admin._apps:
     try:
-        # ถ้ามี Secrets ก็ใช้ ถ้าไม่มีก็ปล่อยผ่านให้ระบบลองเชื่อมต่อดู
-        if "firebase" in st.secrets:
-            fb_dict = dict(st.secrets["firebase"])
-            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-            creds = credentials.Certificate(fb_dict)
-            firebase_admin.initialize_app(creds, {'databaseURL': fb_dict["databaseURL"]})
-        else:
-            st.warning("⚠️ ยังไม่ได้ใส่กุญแจ Firebase ใน Secrets (ระบบอาจบันทึกข้อมูลไม่ได้)")
+        fb_config = {
+            "type": "service_account",
+            "project_id": st.secrets["project_id"],
+            "private_key": st.secrets["private_key"].replace('\\n', '\n'),
+            "client_email": st.secrets["client_email"],
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+        cred = credentials.Certificate(fb_config)
+        # ใช้ URL ที่คุณส่งมาให้ล่าสุด
+        target_url = "https://sooksun1-default-rtdb.firebaseio.com/"
+        firebase_admin.initialize_app(cred, {'databaseURL': target_url})
+        st.toast("✅ SYNAPSE CORE CONNECTED: SOOKSUN1")
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"🚨 Connection Error: {e}")
 
-# --- 3. MAIN APP ---
-st.title("🛰️ SYNAPSE COMMAND")
+# --- 3. เพลง AUTO-PLAY ---
+def play_audio():
+    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
+        <script>
+            var audio = document.getElementById("synapse-audio");
+            window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
+        </script>
+    """, height=0)
 
-# Sidebar: แค่ใส่ชื่อ ID ก็พอ ไม่ต้องใช้รหัสผ่าน
-with st.sidebar:
-    my_id = st.text_input("USER ID:", value="Ta101")
-    st.divider()
-    st.write("🎵 **AUTO PLAYER**")
-    # ใส่ YouTube Playlist แบบไม่ต้องกดรหัส
-    components.html('<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allow="autoplay"></iframe>', height=200)
-
-tabs = st.tabs(["🚀 RADAR", "💬 CHAT", "📞 CALL"])
-
-with tabs[0]: # RADAR
-    loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        if st.button("🛰️ บันทึกพิกัด"):
-            db.reference(f'users/{my_id}').update({'lat': lat, 'lon': lon, 'last_update': time.time()})
-            st.toast("บันทึกพิกัดแล้ว!")
-    
-    m = folium.Map(location=[13.75, 100.5], zoom_start=10, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+# --- 4. LOGIC แชทส่วนตัว ---
+def private_chat_logic(my_name, target_name, p_msg=None):
     try:
-        users = db.reference('users').get()
-        if users:
-            for name, info in users.items():
-                folium.Marker([info['lat'], info['lon']], tooltip=name).add_to(m)
-    except: pass
-    st_folium(m, width="100%", height=400)
+        pair = sorted([my_name, target_name])
+        room_id = f"priv_{pair[0]}_{pair[1]}"
+        ref = db.reference(f'private_rooms/{room_id}')
+        
+        if p_msg:
+            ref.push({
+                'name': my_name, 
+                'msg': p_msg, 
+                'ts': time.time()
+            })
+        
+        raw_p_msgs = ref.order_by_child('ts').limit_to_last(15).get()
+        if raw_p_msgs:
+            msgs = list(raw_p_msgs.values()) if isinstance(raw_p_msgs, dict) else [m for m in raw_p_msgs if m]
+            return sorted(msgs, key=lambda x: x.get('ts', 0))
+    except Exception as e:
+        st.error(f"Chat Logic Error: {e}")
+    return []
 
-with tabs[1]: # CHAT
-    chat_ref = db.reference('chats/main_room')
-    with st.container(height=300):
-        try:
-            msgs = chat_ref.order_by_child('timestamp').limit_to_last(15).get()
-            if msgs:
-                for m_id, m_val in sorted(msgs.items(), key=lambda x: x[1].get('timestamp', 0)):
-                    css = "my-msg" if m_val.get('user') == my_id else "other-msg"
-                    st.markdown(f"<div class='{css}'><b>{m_val.get('user')}</b>: {m_val.get('text')}</div>", unsafe_allow_html=True)
-        except: st.write("เริ่มแชทเลย...")
+# --- 5. MULTI-LANGUAGE DATA ---
+LANG_DATA = {
+    "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด", "time": "เวลาของระบบ", "manual": "คู่มือ"},
+    "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE", "time": "SYS TIME", "manual": "MANUAL"},
+    "JP": {"welcome": "ようこそ", "core": "🚀🖲 コア", "radar": "🛰️📡 レーダー", "comms": "💬📝 通信", "sys": "🧹 システム", "lat": "緯度", "lon": "経度", "time": "システム時間", "manual": "マニュアル"},
+    "CN": {"welcome": "欢迎", "core": "🚀🖲 核心", "radar": "🛰️📡 雷达", "comms": "💬📝 通讯", "sys": "🧹 系统", "lat": "纬度", "lon": "经度", "time": "系统时间", "manual": "手册"},
+    "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓิက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်", "manual": "လမ်းညွှန်"},
+    "LA": {"welcome": "ຍີນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລອງຕິຈູດ", "time": "ເວລາລະບົບ", "manual": "ຄູ່ມື"}
+}
+
+# --- 6. SESSION STATE ---
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
+if 'lang' not in st.session_state: st.session_state.lang = "TH"
+
+# --- 7. LOGIN UI ---
+if not st.session_state.logged_in:
+    if logo_exists: st.image(logo_path, width=400)
+    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>🌐 SYNAPSE IDENTITY</h1>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        pw = st.text_input("SECURITY KEY", type="password")
+        if st.button("🚀 ENTER SYSTEM"):
+            if pw == "notty101":
+                st.session_state.logged_in = True
+                st.rerun()
+            else: st.error("❌ Access Denied")
+    st.markdown("<p style='text-align:center; color:#444; margin-top:50px;'><i>อยู่นิ่งๆ ไม่เจ็บตัว</i></p>", unsafe_allow_html=True)
+    st.stop()
+
+# --- 8. MAIN APP START ---
+L = LANG_DATA[st.session_state.lang]
+play_audio()
+
+st.markdown(f"<style>.stApp {{ background: #000; color: {st.session_state.theme_color}; }}</style>", unsafe_allow_html=True)
+
+with st.sidebar:
+    if logo_exists: st.image(logo_path, use_column_width=True)
+    st.title("🌐 CONTROL")
+    st.session_state.user_name = st.text_input("ID", st.session_state.user_name)
+    st.session_state.lang = st.selectbox("LANGUAGE", list(LANG_DATA.keys()))
+    st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
+    if st.button("LOGOUT"):
+        st.session_state.logged_in = False
+        st.rerun()
+
+# --- 9. TABS INTEGRATION ---
+tabs = st.tabs([L["core"], L["radar"], L["comms"], L["sys"]])
+
+with tabs[0]: # แกนหลัก
+    st.header(f"{L['welcome']}, {st.session_state.user_name}")
+    st.components.v1.html(f"""
+        <div style="background:rgba(0,0,0,0.8); color:{st.session_state.theme_color}; padding:15px; border-radius:10px; border:1px solid {st.session_state.theme_color}; font-family:monospace;">
+            <div style="display:flex; justify-content:space-between;">
+                <div>📍 LAT/LON: <span id="g">...</span></div>
+                <div>⏰ LOCAL: <span id="t">00:00:00</span></div>
+            </div>
+        </div>
+        <script>
+            setInterval(() => {{
+                navigator.geolocation.getCurrentPosition(p => {{
+                    document.getElementById('g').innerText = p.coords.latitude.toFixed(6) + ", " + p.coords.longitude.toFixed(6);
+                }});
+                document.getElementById('t').innerText = new Date().toLocaleTimeString('th-TH');
+            }}, 1000);
+        </script>
+    """, height=100)
+    if st.button("📢 BROADCAST SIGNAL"):
+        db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
+        st.toast("Signal Broadcasted to sooksun1!")
+
+with tabs[1]: # เรดาร์
+    st.subheader(L["radar"])
+    col_a, col_b = st.columns(2)
+    lat_v = col_a.number_input(L["lat"], value=13.7500)
+    lon_v = col_b.number_input(L["lon"], value=100.5100)
+    st.map(pd.DataFrame({'lat': [lat_v], 'lon': [lon_v]}), color=st.session_state.theme_color)
+
+with tabs[2]: # สื่อสาร
+    st.subheader(L["comms"])
+    target = st.text_input("แชทกับใคร:", value="User2")
     
-    with st.form("chat", clear_on_submit=True):
+    st.markdown("---")
+    msgs = private_chat_logic(st.session_state.user_name, target)
+    for m in msgs:
+        st.write(f"**{m['name']}**: {m['msg']}")
+    
+    with st.form("chat_f", clear_on_submit=True):
         txt = st.text_input("พิมพ์ข้อความ...")
-        if st.form_submit_button("ส่ง") and txt:
-            chat_ref.push({'user': my_id, 'text': txt, 'timestamp': time.time()})
-            st.rerun()
+        if st.form_submit_button("ส่ง"):
+            if txt:
+                private_chat_logic(st.session_state.user_name, target, txt)
+                st.rerun()
 
-with tabs[2]: # CALL (Agora)
-    st.write("🟢 ระบบ Video Call พร้อมใช้งาน (ไม่ต้องใช้รหัส)")
-    agora_html = f"""
-    <div id="v-box" style="width:100%; height:400px; background:#000; border:1px solid #00ff00;"></div>
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.11.0.js"></script>
-    <script>
-        async function start() {{
-            const client = AgoraRTC.createClient({{ mode: "rtc", codec: "vp8" }});
-            await client.join("84d8f5f05b0c49e181837f40d7688967", "Synapse_Main", "007eJxTYDjNVVmy0Oluq8PFx7OrOp1l86+W2W9aez+Ir2Fz8pT1+TEKDBYmKRZppmkGpkkGySaWqYYWhhbG5mkmBinmZhYWlmbmcRFrMhsCGRkc/rcxMTJAIIivwOCcn1eWr+voqRtQlJ+Vmlyia2BmamRqqmtgbmBsZGBkxsAAAF8oJtY=", null);
-            const [a, v] = await AgoraRTC.createMicrophoneAndCameraTracks();
-            v.play('v-box');
-            await client.publish([a, v]);
-        }}
-        start();
-    </script>
-    """
-    components.html(agora_html, height=450)
+with tabs[3]: # ระบบ
+    st.subheader(f"📖 {L['manual']}")
+    st.write(f'Slogan: "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    if st.button("REBOOT CORE"):
+        st.cache_resource.clear()
+        st.rerun()
