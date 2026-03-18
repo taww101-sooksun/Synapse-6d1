@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. INITIALIZE FIREBASE (Asia Southeast 1) ---
+# --- 2. INITIALIZE FIREBASE ---
 if not firebase_admin._apps:
     try:
         fb_data = st.secrets["firebase"]
@@ -38,15 +38,26 @@ if not firebase_admin._apps:
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
         st.toast("✅ SYNAPSE CORE CONNECTED")
     except Exception as e:
-        st.error(f"🚨 Connection Error: {e}")
+        st.error(f"🚨 Firebase Error: {e}")
         st.stop()
 
-# --- 3. AUDIO PLAYER FUNCTION ---
+# --- 3. SESSION STATE (ระบบจำค่าพิกัดและสถานะ) ---
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
+if 'lang' not in st.session_state: st.session_state.lang = "TH"
+# ตัวแปรเก็บพิกัด Real-time เพื่อส่งไปแผนที่
+if 'cur_lat' not in st.session_state: st.session_state.cur_lat = 13.7500
+if 'cur_lon' not in st.session_state: st.session_state.cur_lon = 100.5100
+
+# --- 4. AUDIO PLAYER (ใช้ลิงก์ตรงจาก Google Drive ของพี่) ---
 def synapse_audio_player():
-    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    # ลิงก์ตรงที่แปลงมาจาก Google Drive ของพี่ครับ
+    link = "https://docs.google.com/uc?export=download&id=1MfeP1CbRRMI-VSCBoHLoF2kny0cCc2VY"
+    
     st.sidebar.markdown(f"""
-        <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:15px; border:1px solid {st.session_state.get('theme_color', '#00f2fe')}; text-align:center;">
-            <p style="color:{st.session_state.get('theme_color', '#00f2fe')}; font-weight:bold; margin-bottom:10px;">🎵 SYNAPSE AUDIO</p>
+        <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center; margin-bottom:20px;">
+            <p style="color:{st.session_state.theme_color}; font-weight:bold; margin-bottom:10px;">🎵 SYNAPSE AUDIO SYSTEM</p>
             <audio id="audio-player" loop controls style="width:100%; filter: invert(100%) hue-rotate(180deg) brightness(1.5);">
                 <source src="{link}" type="audio/mpeg">
             </audio>
@@ -59,7 +70,7 @@ def synapse_audio_player():
         </script>
     """, unsafe_allow_html=True)
 
-# --- 4. CHAT LOGIC ---
+# --- 5. CHAT LOGIC ---
 def private_chat_logic(my_name, target_name, p_msg=None):
     try:
         pair = sorted([my_name, target_name])
@@ -67,28 +78,18 @@ def private_chat_logic(my_name, target_name, p_msg=None):
         ref = db.reference(f'private_rooms/{room_id}')
         if p_msg:
             ref.push({'name': my_name, 'msg': p_msg, 'ts': time.time()})
-        raw_p_msgs = ref.get()
-        if raw_p_msgs:
-            msgs = list(raw_p_msgs.values()) if isinstance(raw_p_msgs, dict) else [m for m in raw_p_msgs if m]
+        raw = ref.get()
+        if raw:
+            msgs = list(raw.values()) if isinstance(raw, dict) else [m for m in raw if m]
             return sorted(msgs, key=lambda x: x.get('ts', 0))[-15:]
     except: return []
     return []
 
-# --- 5. MULTI-LANGUAGE ---
+# --- 6. LANGUAGE DATA ---
 LANG_DATA = {
-    "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด", "manual": "คู่มือ"},
-    "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE", "manual": "MANUAL"},
-    "JP": {"welcome": "ようこそ", "core": "🚀🖲 コア", "radar": "🛰️📡 レーダー", "comms": "💬📝 通信", "sys": "🧹 システム", "lat": "緯度", "lon": "経度", "manual": "マニュアル"},
-    "CN": {"welcome": "欢迎", "core": "🚀🖲 核心", "radar": "🛰️📡 雷达", "comms": "💬📝 通讯", "sys": "🧹 系统", "lat": "纬度", "lon": "经度", "manual": "手册"},
-    "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀🖲 အဓိက", "radar": "🛰️📡 ရေဒါ", "comms": "💬📝 ဆက်သွယ်ရေး", "sys": "🧹 စနစ်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "manual": "လမ်းညွှန်"},
-    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀🖲 ແກນຫຼັກ", "radar": "🛰️📡 ເຣດາ", "comms": "💬📝 ສື່ສານ", "sys": "🧹 ລະບົບ", "lat": "ລະຕິຈູด", "lon": "ລောင်ຕິຈູດ", "manual": "ຄູ່ມື"}
+    "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀🖲 แกนหลัก", "radar": "🛰️📡 เรดาร์", "comms": "💬📝 สื่อสาร", "sys": "🧹 ระบบ", "lat": "ละติจูด", "lon": "ลองติจูด"},
+    "EN": {"welcome": "Welcome", "core": "🚀🖲 CORE", "radar": "🛰️📡 RADAR", "comms": "💬📝 COMMS", "sys": "🧹 SYSTEM", "lat": "LATITUDE", "lon": "LONGITUDE"}
 }
-
-# --- 6. SESSION STATE ---
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
-if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
-if 'lang' not in st.session_state: st.session_state.lang = "TH"
 
 # --- 7. LOGIN UI ---
 if not st.session_state.logged_in:
@@ -98,14 +99,14 @@ if not st.session_state.logged_in:
     with col2:
         pw = st.text_input("SECURITY KEY", type="password")
         if st.button("🚀 ENTER SYSTEM"):
-            if pw == "ta101":
+            if pw == "notty101":
                 st.session_state.logged_in = True
                 st.rerun()
             else: st.error("❌ Access Denied")
     st.stop()
 
 # --- 8. MAIN APP ---
-L = LANG_DATA[st.session_state.lang]
+L = LANG_DATA.get(st.session_state.lang, LANG_DATA["TH"])
 st.markdown(f"<style>.stApp {{ background: #000; color: {st.session_state.theme_color}; }}</style>", unsafe_allow_html=True)
 
 with st.sidebar:
@@ -122,56 +123,78 @@ with st.sidebar:
 # --- 9. TABS ---
 tabs = st.tabs([L["core"], L["radar"], L["comms"], L["sys"]])
 
-with tabs[0]: # แกนหลัก (GPS แม่นยำสูง)
+with tabs[0]: # แกนหลัก (GPS อัปเดตพิกัดแม่นยำ)
     st.header(f"{L['welcome']}, {st.session_state.user_name}")
+    # ส่วนแสดงผลพิกัดและเวลา
     st.components.v1.html(f"""
         <div style="background:rgba(0,0,0,0.8); color:{st.session_state.theme_color}; padding:15px; border-radius:10px; border:1px solid {st.session_state.theme_color}; font-family:monospace;">
-            <div style="display:flex; justify-content:space-between;">
-                <div>📍 GPS: <span id="g">...</span></div>
-                <div>⏰ TIME: <span id="t">00:00:00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size: 18px;">
+                <div>📍 GPS: <span id="lat_val">...</span>, <span id="lon_val">...</span></div>
+                <div>⏰ TIME: <span id="t_val">00:00:00</span></div>
             </div>
         </div>
         <script>
-            const options = {{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }};
+            const geoOptions = {{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }};
             setInterval(() => {{
                 navigator.geolocation.getCurrentPosition(p => {{
-                    document.getElementById('g').innerText = p.coords.latitude.toFixed(6) + ", " + p.coords.longitude.toFixed(6);
-                }}, null, options);
-                document.getElementById('t').innerText = new Date().toLocaleTimeString('th-TH');
+                    const lat = p.coords.latitude.toFixed(6);
+                    const lon = p.coords.longitude.toFixed(6);
+                    document.getElementById('lat_val').innerText = lat;
+                    document.getElementById('lon_val').innerText = lon;
+                }}, null, geoOptions);
+                document.getElementById('t_val').innerText = new Date().toLocaleTimeString('th-TH');
             }}, 1000);
         </script>
     """, height=100)
-    if st.button("📢 BROADCAST SIGNAL"):
-        db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
-        st.toast("Signal Broadcasted!")
-
-with tabs[1]: # เรดาร์ (Google Hybrid)
-    st.subheader(L["radar"])
-    col_a, col_b = st.columns(2)
-    lat_v = col_a.number_input(L["lat"], value=13.7500, format="%.6f")
-    lon_v = col_b.number_input(L["lon"], value=100.5100, format="%.6f")
     
-    m = folium.Map(location=[lat_v, lon_v], zoom_start=18, 
-                   tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-    folium.Marker([lat_v, lon_v], icon=folium.Icon(color='red')).add_to(m)
+    # ระบบรับค่าพิกัดจากหน้าจอเพื่อบันทึก
+    st.info("💡 นำตัวเลข GPS ด้านบนมาใส่ช่องด้านล่างเพื่อ 'ส่งพิกัด' ไปยังเรดาร์")
+    c1, c2 = st.columns(2)
+    st.session_state.cur_lat = c1.number_input("ยืนยันละติจูด (LAT)", value=st.session_state.cur_lat, format="%.6f")
+    st.session_state.cur_lon = c2.number_input("ยืนยันลองจิจูด (LON)", value=st.session_state.cur_lon, format="%.6f")
+
+    if st.button("📢 BROADCAST SIGNAL TO RADAR"):
+        db.reference('logs/activity').push({
+            'user': st.session_state.user_name, 
+            'lat': st.session_state.cur_lat,
+            'lon': st.session_state.cur_lon,
+            'ts': time.time()
+        })
+        st.success("ส่งพิกัดไปที่หน้าเรดาร์เรียบร้อย!")
+
+with tabs[1]: # เรดาร์ (Google Hybrid แผนที่ดาวเทียม)
+    st.subheader(L["radar"])
+    # แสดงแผนที่ตามพิกัดล่าสุดที่ยืนยันไว้
+    google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+    
+    m = folium.Map(
+        location=[st.session_state.cur_lat, st.session_state.cur_lon], 
+        zoom_start=18, 
+        tiles=google_hybrid, 
+        attr='Google'
+    )
+    folium.Marker(
+        [st.session_state.cur_lat, st.session_state.cur_lon], 
+        popup=f"AGENT: {st.session_state.user_name}",
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+    
     st_folium(m, width="100%", height=500)
 
 with tabs[2]: # สื่อสาร (Jitsi ฆ่าติ่ง Join)
     st.subheader(L["comms"])
-    target = st.text_input("แชทกับใคร:", value="User2")
-    if st.button("📹 VIDEO CALL START"):
-        room_name = f"Synapse_{st.session_state.user_name}_{target}"
+    target = st.text_input("คู่สาย:", value="User2")
+    if st.button("📹 START ENCRYPTED VIDEO"):
+        room = f"Synapse_{st.session_state.user_name}_{target}"
         st.components.v1.html(f"""
-        <div id="jitsi-container" style="height: 500px; width: 100%; border: 2px solid {st.session_state.theme_color}; border-radius: 10px;"></div>
+        <div id="j" style="height:500px; width:100%; border:2px solid {st.session_state.theme_color}; border-radius:10px;"></div>
         <script src="https://meet.jit.si/external_api.js"></script>
         <script>
-            const options = {{
-                roomName: '{room_name}', parentNode: document.querySelector('#jitsi-container'),
+            new JitsiMeetExternalAPI('meet.jit.si', {{
+                roomName: '{room}', parentNode: document.querySelector('#j'),
                 configOverwrite: {{ prejoinPageEnabled: false, disableDeepLinking: true, startWithAudioMuted: false, startWithVideoMuted: false }},
-                interfaceConfigOverwrite: {{ SHOW_JITSI_WATERMARK: false, TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'] }},
-                userInfo: {{ displayName: '{st.session_state.user_name}' }}
-            }};
-            new JitsiMeetExternalAPI('meet.jit.si', options);
+                interfaceConfigOverwrite: {{ SHOW_JITSI_WATERMARK: false, TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'] }}
+            }});
         </script>
         """, height=550)
     
@@ -179,14 +202,14 @@ with tabs[2]: # สื่อสาร (Jitsi ฆ่าติ่ง Join)
     msgs = private_chat_logic(st.session_state.user_name, target)
     for m in msgs: st.write(f"**{m['name']}**: {m['msg']}")
     with st.form("chat_f", clear_on_submit=True):
-        txt = st.text_input("พิมพ์ข้อความ...")
-        if st.form_submit_button("ส่ง"):
+        txt = st.text_input("Message...")
+        if st.form_submit_button("Send"):
             private_chat_logic(st.session_state.user_name, target, txt)
             st.rerun()
 
 with tabs[3]: # ระบบ
-    st.subheader(f"📖 {L['manual']}")
-    st.write('Philosophy: "อยู่นิ่งๆ ไม่เจ็บตัว"')
-    if st.button("REBOOT CORE"):
+    st.subheader("📖 SYSTEM MANUAL")
+    st.write('Slogan: "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    if st.button("REBOOT"):
         st.cache_resource.clear()
         st.rerun()
