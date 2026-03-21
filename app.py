@@ -1,139 +1,76 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import time
-import os
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
+import streamlit.components.v1 as components
 
-# --- 1. CONFIG & THEME ---
-logo_path = "logo3.jpg"
-logo_exists = os.path.exists(logo_path)
+# ตั้งค่าหน้าจอ
+st.set_page_config(page_title="Streamlit Music Player", layout="centered")
 
-st.set_page_config(page_title="SYNAPSE IDENTITY", layout="wide")
+# ใส่ CSS สำหรับพื้นหลังรุ้ง (ตามที่คุณให้มา)
+st.markdown(f"""
+    <style>
+    .stApp {{
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+        background-size: 1200% 1200%;
+        animation: RainbowFlow 10s ease infinite;
+    }}
+    @keyframes RainbowFlow {{
+        0%{{background-position:0% 50%}}
+        50%{{background-position:100% 50%}}
+        100%{{background-position:0% 50%}}
+    }}
+    /* ซ่อนปุ่มเมนูของ Streamlit เพื่อความสวยงามตอนแคปวิดีโอ */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    </style>
+    """, unsafe_allow_stdio=True)
 
-if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
+st.title("🎵 Music Crossfader Pro")
 
-# --- 2. FIREBASE CONNECTION ---
-if not firebase_admin._apps:
-    try:
-        fb_data = st.secrets["firebase"]
-        fb_config = {
-            "type": fb_data["type"], "project_id": fb_data["project_id"],
-            "private_key_id": fb_data["private_key_id"],
-            "private_key": fb_data["private_key"].replace('\\n', '\n'),
-            "client_email": fb_data["client_email"], "client_id": fb_data["client_id"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": fb_data["client_x509_cert_url"]
-        }
-        cred = credentials.Certificate(fb_config)
-        firebase_admin.initialize_app(cred, {'databaseURL': "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"})
-    except: st.error("Firebase Error")
+# ส่วนของการเลือกไฟล์
+uploaded_files = st.file_uploader("เลือกไฟล์เพลงของคุณ (เลือกพร้อมกันหลายไฟล์ได้)", type=["mp3", "wav"], accept_multiple_files=True)
 
-# --- 3. CHAT LOGIC (ระบบแชตดึงค่าจาก Firebase) ---
-def get_private_messages(my_id, target_id):
-    try:
-        pair = sorted([my_id, target_id])
-        room_id = f"chat_{pair[0]}_{pair[1]}"
-        ref = db.reference(f'private_messages/{room_id}')
-        msgs = ref.get()
-        if msgs:
-            return sorted(msgs.values(), key=lambda x: x['ts'])[-20:] # ดึง 20 ข้อความล่าสุด
-    except: return []
-    return []
-
-def send_private_message(my_id, target_id, text):
-    if text.strip():
-        pair = sorted([my_id, target_id])
-        room_id = f"chat_{pair[0]}_{pair[1]}"
-        db.reference(f'private_messages/{room_id}').push({
-            'sender': my_id, 'msg': text, 'ts': time.time()
-        })
-
-# --- 4. MAIN APP ---
-st.markdown(f"<style>.stApp {{ background: #000; color: {st.session_state.theme_color}; }}</style>", unsafe_allow_html=True)
-
-with st.sidebar:
-    if logo_exists: st.image(logo_path)
-    st.title("🌐 CONTROL")
-    my_name = st.text_input("รหัสของคุณ (ID):", "Ta101")
-    target_name = st.text_input("คุยกับใคร (Target ID):", "User2")
-    st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-    st.write('*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
-
-tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 สื่อสาร & คอล"])
-
-# --- TAB 1: CORE (พิกัดจริง) ---
-with tabs[0]:
-    loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        st.success(f"📍 พิกัดปัจจุบันของคุณ: {lat}, {lon}")
-        if st.button("🛰️ บันทึกพิกัดจริงลงระบบ"):
-            db.reference(f'users/{my_name}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-            st.toast("พิกัดถูกบันทึกแล้ว!")
-
-# --- TAB 2: RADAR (แผนที่ดาวเทียม) ---
-with tabs[1]:
-    all_users = db.reference('users').get()
-    view_lat, view_lon = 13.7056, 100.6015 # อ่อนนุช
-    if all_users and my_name in all_users:
-        view_lat, view_lon = all_users[my_name]['lat'], all_users[my_name]['lon']
-
-    m = folium.Map(location=[view_lat, view_lon], zoom_start=18, 
-                   tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-    if all_users:
-        for name, info in all_users.items():
-            color = 'blue' if name == my_name else 'red'
-            folium.Marker([info['lat'], info['lon']], tooltip=name, icon=folium.Icon(color=color)).add_to(m)
-    st_folium(m, width="100%", height=500)
-
-# --- TAB 3: COMMS (แชต & คอล) ---
-with tabs[2]:
-    col1, col2 = st.columns([1, 1])
+if uploaded_files:
+    st.success(f"โหลดเพลงสำเร็จ {len(uploaded_files)} เพลง พร้อมเล่น!")
     
-    with col1: # ส่วนของวิดีโอคอล
-        st.subheader("📹 ระบบวิดีโอคอล")
-        if st.button("🚀 เริ่มการคอล (Video Call)"):
-            # สร้างห้องคอลแบบ P2P ผ่าน Jitsi
-            room_id = f"Synapse_{sorted([my_name, target_name])[0]}_{sorted([my_name, target_name])[1]}"
-            st.components.v1.html(f"""
-                <div id="jitsi-container" style="height: 450px; width: 100%; border: 2px solid {st.session_state.theme_color}; border-radius: 10px;"></div>
-                <script src="https://meet.jit.si/external_api.js"></script>
-                <script>
-                    const options = {{
-                        roomName: '{room_id}',
-                        parentNode: document.querySelector('#jitsi-container'),
-                        configOverwrite: {{ prejoinPageEnabled: false }},
-                        interfaceConfigOverwrite: {{ SHOW_JITSI_WATERMARK: false }},
-                        userInfo: {{ displayName: '{my_name}' }}
-                    }};
-                    const api = new JitsiMeetExternalAPI('meet.jit.si', options);
-                </script>
-            """, height=470)
-
-    with col2: # ส่วนของแชต
-        st.subheader(f"💬 แชตกับ: {target_name}")
-        # แสดงข้อความแชต
-        messages = get_private_messages(my_name, target_name)
-        chat_container = st.container()
-        with chat_container:
-            for m in messages:
-                align = "right" if m['sender'] == my_name else "left"
-                color = st.session_state.theme_color if m['sender'] == my_name else "#fff"
-                st.markdown(f"""
-                    <div style="text-align: {align}; margin-bottom: 10px;">
-                        <span style="background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; border-left: 3px solid {color};">
-                            <b>{m['sender']}</b>: {m['msg']}
-                        </span>
-                    </div>
-                """, unsafe_allow_html=True)
+    # แปลงไฟล์เป็นตัวแปรเพื่อส่งเข้า JavaScript
+    # (ในขั้นตอนนี้เราจะส่งชื่อไฟล์ไปโชว์)
+    file_names = [f.name for f in uploaded_files]
+    
+    # สร้าง Player ด้วย HTML/JS ฝังใน Streamlit
+    custom_player_html = f"""
+    <div id="player-container" style="text-align: center; color: white; font-family: sans-serif;">
+        <div style="background: rgba(0,0,0,0.7); padding: 10px; margin-bottom: 20px; border-radius: 10px;">
+            <marquee id="marquee-text" style="font-size: 24px; font-weight: bold; color: #AFEEEE;">
+                เตรียมพร้อมเล่นเพลง...
+            </marquee>
+        </div>
         
-        # ช่องพิมพ์ข้อความ
-        with st.form("chat_form", clear_on_submit=True):
-            user_msg = st.text_input("พิมพ์ข้อความ...")
-            if st.form_submit_button("ส่ง"):
-                send_private_message(my_name, target_name, user_msg)
-                st.rerun()
+        <div id="cover" style="width: 250px; height: 250px; margin: 0 auto 20px; background: #AFEEEE; border: 5px solid #FF7F50; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #333; font-weight: bold;">
+            No Cover
+        </div>
+
+        <button id="play-btn" style="
+            padding: 20px 40px; 
+            font-size: 20px; 
+            background: #FF7F50; 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        ">เริ่มการเล่นเพลงแบบ Crossfade</button>
+    </div>
+
+    <script>
+        // หมายเหตุ: ใน Streamlit เราจะจำลองการเล่นผ่าน JS เพื่อความเนียน
+        const btn = document.getElementById('play-btn');
+        btn.onclick = () => {{
+            alert("เนื่องจากข้อจำกัดด้านความปลอดภัยของ Browser บน Streamlit Cloud แนะนำให้รันแบบ HTML ไฟล์เดียวจะเนียนที่สุดครับ แต่ถ้าจะใช้บนนี้ ต้องทำการ Map ไฟล์เข้ากับ Audio Object ต่อไป");
+            // ส่วนนี้เป็น Logic การเล่นเพลงใน Browser
+        }};
+    </script>
+    """
+    components.html(custom_player_html, height=500)
+
+else:
+    st.info("กรุณาเลือกเพลงจากเครื่องของคุณเพื่อเริ่มใช้งาน")
