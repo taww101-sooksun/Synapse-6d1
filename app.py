@@ -2,9 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ตั้งค่าหน้าจอ
-st.set_page_config(page_title="Streamlit Music Player", layout="centered")
+st.set_page_config(page_title="Premium Music Player", layout="centered")
 
-# ใส่ CSS สำหรับพื้นหลังรุ้ง (ตามที่คุณให้มา)
+# แก้ไข Parameter เป็น unsafe_allow_html=True
 st.markdown(f"""
     <style>
     .stApp {{
@@ -17,24 +17,20 @@ st.markdown(f"""
         50%{{background-position:100% 50%}}
         100%{{background-position:0% 50%}}
     }}
-    /* ซ่อนปุ่มเมนูของ Streamlit เพื่อความสวยงามตอนแคปวิดีโอ */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     header {{visibility: hidden;}}
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 st.title("🎵 Music Crossfader Pro")
 
-# ส่วนของการเลือกไฟล์
-uploaded_files = st.file_uploader("เลือกไฟล์เพลงของคุณ (เลือกพร้อมกันหลายไฟล์ได้)", type=["mp3", "wav"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("เลือกไฟล์เพลง (เลือกหลายไฟล์ได้)", type=["mp3", "wav"], accept_multiple_files=True)
 
 if uploaded_files:
-    st.success(f"โหลดเพลงสำเร็จ {len(uploaded_files)} เพลง พร้อมเล่น!")
-    
-    # แปลงไฟล์เป็นตัวแปรเพื่อส่งเข้า JavaScript
-    # (ในขั้นตอนนี้เราจะส่งชื่อไฟล์ไปโชว์)
-    file_names = [f.name for f in uploaded_files]
+    st.success(f"โหลดสำเร็จ {len(uploaded_files)} เพลง")
+    # ส่วนแสดงผลอื่น ๆ ...
+
     
     # สร้าง Player ด้วย HTML/JS ฝังใน Streamlit
     custom_player_html = f"""
