@@ -2,9 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 import base64
 
-st.set_page_config(page_title="Music Crossfader Pro", layout="centered")
+st.set_page_config(page_title="Music Video Player Pro", layout="wide")
 
-# CSS พื้นหลังรุ้ง (ตามที่คุณต้องการเป๊ะๆ)
+# CSS จัดการหน้าจอให้เหมาะกับการแคปวิดีโอ
 st.markdown("""
     <style>
     .stApp {
@@ -18,63 +18,64 @@ st.markdown("""
         100%{background-position:0% 50%}
     }
     #MainMenu, footer, header {visibility: hidden;}
-    .stFileUploader {background: rgba(255,255,255,0.1); border-radius: 15px; padding: 10px;}
+    .stFileUploader {background: rgba(255,255,255,0.2); border-radius: 15px; padding: 20px; color: white;}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎵 Music Crossfader Pro")
+st.title("🎬 Music & Video Crossfader")
 
-uploaded_files = st.file_uploader("เลือกไฟล์เพลง (เลือกหลายไฟล์ได้)", type=["mp3", "wav"], accept_multiple_files=True)
+# ช่องอัปโหลดไฟล์ (เลือกทั้งเพลงและรูปพร้อมกันได้เลย)
+uploaded_files = st.file_uploader("เลือกไฟล์เพลง (MP3) และไฟล์รูปปก (JPG/PNG)", type=["mp3", "jpg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
-    # เตรียมข้อมูลไฟล์ส่งให้ JavaScript
-    audio_data = []
-    for f in uploaded_files:
-        # แปลงไฟล์เป็น Base64 เพื่อให้ส่งเข้าไปเล่นใน HTML ได้โดยตรง
-        b64 = base64.b64encode(f.read()).decode()
-        audio_data.append({"name": f.name, "data": f"data:audio/mp3;base64,{b64}"})
+    songs = []
+    images = []
     
-    # HTML/JS Player แบบ Crossfade 15 วินาที
+    for f in uploaded_files:
+        b64 = base64.b64encode(f.read()).decode()
+        if f.type.startswith("audio"):
+            songs.append({"name": f.name, "data": f"data:audio/mp3;base64,{b64}"})
+        else:
+            images.append(f"data:image/jpeg;base64,{b64}")
+
+    # ถ้าไม่มีรูป ให้ใช้สีพื้นฐาน
+    if not images:
+        images = ["https://via.placeholder.com/500/AFEEEE/000000?text=Enjoy+Music"]
+
     player_html = f"""
-    <div id="wrapper" style="text-align: center; font-family: sans-serif;">
-        <div style="background: rgba(0,0,0,0.7); color: #AFEEEE; padding: 15px; margin-bottom: 20px; border-radius: 10px; overflow: hidden;">
-            <marquee id="marquee" style="font-size: 20px; font-weight: bold;">พร้อมเล่นเพลง... กรุณากดปุ่มด้านล่าง</marquee>
-        </div>
-        
-        <div id="art" style="width: 280px; height: 280px; background: #AFEEEE; border: 8px solid #FF7F50; border-radius: 30px; margin: 0 auto 30px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
-            <span id="art-text">Music Cover</span>
+    <div id="display-container" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: #000;">
+        <div id="visualizer" style="position: absolute; width: 100%; height: 100%; opacity: 0.4;">
+             <div style="width:100%;height:100%; background: radial-gradient(circle, #FF7F50, transparent);"></div>
         </div>
 
-        <button id="main-btn" style="
-            padding: 20px 50px; 
-            font-size: 1.5rem; 
-            background: #FF7F50; 
-            color: white; 
-            border: none; 
-            border-radius: 35% 65% 65% 35% / 30% 35% 65% 70%;
-            cursor: pointer;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            transition: 0.3s;
-        ">เล่นเพลง (START)</button>
+        <div style="position: absolute; top: 0; width: 100%; background: rgba(0,0,0,0.6); color: #AFEEEE; padding: 15px; z-index: 10;">
+            <marquee id="marquee" style="font-size: 24px; font-weight: bold;">กรุณากดปุ่มเพื่อเริ่มรายการ...</marquee>
+        </div>
+
+        <div id="album-cover" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 10px solid #FF7F50; border-radius: 20px; background-size: cover; background-position: center; transition: all 1s ease-in-out; z-index: 5;"></div>
+        
+        <button id="start-btn" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 40px; font-size: 20px; background: #FF7F50; color: white; border: none; border-radius: 50px; cursor: pointer; z-index: 20;">START SESSION</button>
     </div>
 
     <script>
-        const playlist = {audio_data};
+        const playlist = {songs};
+        const covers = {images};
         let currentIndex = 0;
-        const fadeTime = 15; // วินาที
+        const fadeTime = 15;
 
-        const btn = document.getElementById('main-btn');
+        const btn = document.getElementById('start-btn');
         const marquee = document.getElementById('marquee');
-        const art = document.getElementById('art');
+        const albumCover = document.getElementById('album-cover');
 
         function playTrack(index) {{
             if (index >= playlist.length) index = 0;
             const track = playlist[index];
-            
             const audio = new Audio(track.data);
             audio.volume = 0;
             
-            marquee.innerText = "กำลังเล่น: " + track.name + "  >>>  เพลงถัดไป: " + (playlist[index+1] ? playlist[index+1].name : playlist[0].name);
+            // เปลี่ยนรูปปก (วนลูปรูปที่มี)
+            albumCover.style.backgroundImage = "url('" + covers[index % covers.length] + "')";
+            marquee.innerText = "NOW PLAYING: " + track.name + " --- NEXT: " + (playlist[index+1] ? playlist[index+1].name : playlist[0].name);
             
             audio.play();
             fadeIn(audio);
@@ -89,20 +90,14 @@ if uploaded_files:
             }};
         }}
 
-        function fadeIn(audio) {{
+        function fadeIn(a) {{
             let v = 0;
-            const interval = setInterval(() => {{
-                if (v < 1) {{ v += 0.05; audio.volume = Math.min(v, 1); }}
-                else clearInterval(interval);
-            }}, (fadeTime * 1000) / 20);
+            const itv = setInterval(() => {{ if(v<1) {{v+=0.02; a.volume=v;}} else clearInterval(itv); }}, (fadeTime*1000)/50);
         }}
 
-        function fadeOut(audio) {{
+        function fadeOut(a) {{
             let v = 1;
-            const interval = setInterval(() => {{
-                if (v > 0) {{ v -= 0.05; audio.volume = Math.max(v, 0); }}
-                else {{ clearInterval(interval); audio.pause(); }}
-            }}, (fadeTime * 1000) / 20);
+            const itv = setInterval(() => {{ if(v>0) {{v-=0.02; a.volume=v;}} else {{clearInterval(itv); a.pause();}} }}, (fadeTime*1000)/50);
         }}
 
         btn.onclick = () => {{
@@ -111,7 +106,7 @@ if uploaded_files:
         }};
     </script>
     """
-    components.html(player_html, height=600)
+    components.html(player_html, height=550)
 
 else:
-    st.info("💡 กรุณาเลือกไฟล์เพลงก่อนครับ (กดปุ่ม Browse files ด้านบน)")
+    st.info("💡 วิธีใช้: เลือกไฟล์เพลง (.mp3) และไฟล์รูป (.jpg/.png) พร้อมกันหลายๆ ไฟล์ได้เลยครับ")
