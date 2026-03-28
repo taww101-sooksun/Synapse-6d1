@@ -1,112 +1,117 @@
 import streamlit as st
-import streamlit.components.v1 as components
-import base64
+import firebase_admin
+from firebase_admin import credentials, db
+from datetime import datetime
 
-st.set_page_config(page_title="Music Video Player Pro", layout="wide")
+# --- 1. INITIALIZE FIREBASE (ส่วนเชื่อมต่อฐานข้อมูล) ---
+def init_firebase():
+    if not firebase_admin._apps:
+        try:
+            # ดึงข้อมูลจาก Secrets ที่คุณตั้งค่าไว้ใน Streamlit Cloud
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            st.error(f"⚠️ Firebase Connection Error: {e}")
 
-# CSS จัดการหน้าจอให้เหมาะกับการแคปวิดีโอ
-st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
-    }
-    @keyframes RainbowFlow {
-        0%{background-position:0% 50%}
-        50%{background-position:100% 50%}
-        100%{background-position:0% 50%}
-    }
-    #MainMenu, footer, header {visibility: hidden;}
-    .stFileUploader {background: rgba(255,255,255,0.2); border-radius: 15px; padding: 20px; color: white;}
-    </style>
+# --- 2. LOGGING SYSTEM (ฟังก์ชันบันทึกประวัติ) ---
+def save_log(action_details):
+    try:
+        now = datetime.now()
+        date_key = now.strftime("%Y-%m-%d")
+        time_stamp = now.strftime("%H:%M:%S")
+        
+        # บันทึกลง Path: synapse_logs/วันที่/รายการ
+        ref = db.reference(f'synapse_logs/{date_key}')
+        ref.push({
+            'time': time_stamp,
+            'action': action_details,
+            'user': 'Ta101'
+        })
+    except:
+        pass # ป้องกันแอปค้างถ้าเน็ตหลุด
+
+# --- 3. UI & NAVIGATION (ส่วนจัดการหน้าตา) ---
+def setup_ui():
+    st.markdown("""
+        <style>
+        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
+        .neon-header { 
+            font-size: 40px; font-weight: 900; text-align: center;
+            color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
+            border: 10px double #ff1744; padding: 20px; border-radius: 20px;
+            margin-bottom: 25px;
+        }
+        </style>
     """, unsafe_allow_html=True)
 
-st.title("🎬 Music & Video Crossfader")
+def draw_box(title, target_level):
+    if st.button(title, use_container_width=True):
+        st.session_state.nav_level = target_level
+        # บันทึกประวัติการกดลง Firebase ทันที
+        save_log(f"NAVIGATED TO: {title} ({target_level})")
+        st.rerun()
 
-# ช่องอัปโหลดไฟล์ (เลือกทั้งเพลงและรูปพร้อมกันได้เลย)
-uploaded_files = st.file_uploader("เลือกไฟล์เพลง (MP3) และไฟล์รูปปก (JPG/PNG)", type=["mp3", "jpg", "png"], accept_multiple_files=True)
+# --- 4. EXECUTION (เริ่มรันระบบ) ---
+init_firebase()
+setup_ui()
 
-if uploaded_files:
-    songs = []
-    images = []
+# ตรวจสอบสถานะหน้าปัจจุบัน
+if 'nav_level' not in st.session_state:
+    st.session_state.nav_level = "HOME"
+
+# แสดงส่วนหัว
+st.markdown('<div class="neon-header">SYNAPSE COMMAND CENTER</div>', unsafe_allow_html=True)
+
+# สร้าง Tabs
+main_tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOG", "🔐 SEC", "📺 MEDIA", "🧹 SYS"])
+
+# --- Tab 4: LOG (แสดงประวัติการใช้งาน) ---
+with main_tabs[3]:
+    st.subheader("📊 ACTIVITY HISTORY")
+    today = datetime.now().strftime("%Y-%m-%d")
+    logs_ref = db.reference(f'synapse_logs/{today}')
+    logs = logs_ref.get()
+
+    if logs:
+        for log_id in reversed(list(logs.keys())):
+            item = logs[log_id]
+            st.code(f"[{item['time']}] {item['action']}")
+    else:
+        st.info("No activity recorded for today.")
+
+# --- Tab 1: CORE (ระบบ Hierarchy เดิมของคุณ) ---
+with main_tabs[0]:
+    # ปุ่มย้อนกลับ
+    if st.session_state.nav_level != "HOME":
+        if st.button("⬅️ BACK"):
+            if "." in st.session_state.nav_level:
+                st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
+            else:
+                st.session_state.nav_level = "HOME"
+            save_log(f"BACK TO: {st.session_state.nav_level}")
+            st.rerun()
+
+    st.write(f"CURRENT PATH: **{st.session_state.nav_level}**")
+    st.markdown("---")
+
+    # Navigation Logic (ยกมาจากที่คุณเขียน)
+    if st.session_state.nav_level == "HOME":
+        c1, c2 = st.columns(2)
+        with c1: draw_box("กรอบที่ 1", "1")
+        with c2: draw_box("กรอบที่ 2", "2")
     
-    for f in uploaded_files:
-        b64 = base64.b64encode(f.read()).decode()
-        if f.type.startswith("audio"):
-            songs.append({"name": f.name, "data": f"data:audio/mp3;base64,{b64}"})
-        else:
-            images.append(f"data:image/jpeg;base64,{b64}")
+    elif st.session_state.nav_level == "1":
+        c1, c2 = st.columns(2)
+        with c1: draw_box("กรอบที่ 1.1", "1.1")
+        with c2: draw_box("กรอบที่ 1.2", "1.2")
 
-    # ถ้าไม่มีรูป ให้ใช้สีพื้นฐาน
-    if not images:
-        images = ["https://via.placeholder.com/500/AFEEEE/000000?text=Enjoy+Music"]
+    elif st.session_state.nav_level == "1.1":
+        st.success("Welcome to Deep Core 1.1")
+        draw_box("เจาะลึก 1.1.1", "1.1.1")
 
-    player_html = f"""
-    <div id="display-container" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: #000;">
-        <div id="visualizer" style="position: absolute; width: 100%; height: 100%; opacity: 0.4;">
-             <div style="width:100%;height:100%; background: radial-gradient(circle, #FF7F50, transparent);"></div>
-        </div>
+    else:
+        st.warning(f"System {st.session_state.nav_level} is under construction...")
 
-        <div style="position: absolute; top: 0; width: 100%; background: rgba(0,0,0,0.6); color: #AFEEEE; padding: 15px; z-index: 10;">
-            <marquee id="marquee" style="font-size: 24px; font-weight: bold;">กรุณากดปุ่มเพื่อเริ่มรายการ...</marquee>
-        </div>
-
-        <div id="album-cover" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 10px solid #FF7F50; border-radius: 20px; background-size: cover; background-position: center; transition: all 1s ease-in-out; z-index: 5;"></div>
-        
-        <button id="start-btn" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 40px; font-size: 20px; background: #FF7F50; color: white; border: none; border-radius: 50px; cursor: pointer; z-index: 20;">START SESSION</button>
-    </div>
-
-    <script>
-        const playlist = {songs};
-        const covers = {images};
-        let currentIndex = 0;
-        const fadeTime = 15;
-
-        const btn = document.getElementById('start-btn');
-        const marquee = document.getElementById('marquee');
-        const albumCover = document.getElementById('album-cover');
-
-        function playTrack(index) {{
-            if (index >= playlist.length) index = 0;
-            const track = playlist[index];
-            const audio = new Audio(track.data);
-            audio.volume = 0;
-            
-            // เปลี่ยนรูปปก (วนลูปรูปที่มี)
-            albumCover.style.backgroundImage = "url('" + covers[index % covers.length] + "')";
-            marquee.innerText = "NOW PLAYING: " + track.name + " --- NEXT: " + (playlist[index+1] ? playlist[index+1].name : playlist[0].name);
-            
-            audio.play();
-            fadeIn(audio);
-
-            audio.ontimeupdate = function() {{
-                const timeLeft = audio.duration - audio.currentTime;
-                if (timeLeft <= fadeTime && !audio.isFadingOut) {{
-                    audio.isFadingOut = true;
-                    fadeOut(audio);
-                    playTrack(index + 1);
-                }}
-            }};
-        }}
-
-        function fadeIn(a) {{
-            let v = 0;
-            const itv = setInterval(() => {{ if(v<1) {{v+=0.02; a.volume=v;}} else clearInterval(itv); }}, (fadeTime*1000)/50);
-        }}
-
-        function fadeOut(a) {{
-            let v = 1;
-            const itv = setInterval(() => {{ if(v>0) {{v-=0.02; a.volume=v;}} else {{clearInterval(itv); a.pause();}} }}, (fadeTime*1000)/50);
-        }}
-
-        btn.onclick = () => {{
-            btn.style.display = 'none';
-            playTrack(0);
-        }};
-    </script>
-    """
-    components.html(player_html, height=550)
-
-else:
-    st.info("💡 วิธีใช้: เลือกไฟล์เพลง (.mp3) และไฟล์รูป (.jpg/.png) พร้อมกันหลายๆ ไฟล์ได้เลยครับ")
