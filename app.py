@@ -2,50 +2,9 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime
-import time  # ต้องมีตัวนี้ด้วยเพื่อใช้เก็บเวลาส่งข้อความ
-# --- วางไว้บนๆ ของไฟล์ ต่อจากพวก import ---
+import time
 
-import streamlit as st
-# ... import อื่นๆ ...
-
-def play_audio(): # ต้องชิดซ้ายสุดแบบนี้
-    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-    st.components.v1.html(f"""
-        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
-        <script>
-            var audio = document.getElementById("synapse-audio");
-            window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
-        </script>
-    """, height=0)
-    return link
-
-# ค่อยตามด้วยโค้ดส่วนอื่นๆ
-
-# --- ฟังก์ชันจัดการแชทส่วนตัว ---
-def private_chat_logic(my_name, target_name, p_msg=None):
-    # สร้างชื่อห้องแชท
-    pair = sorted([my_name, target_name])
-    room_id = f"priv_{pair[0]}_{pair[1]}"
-    
-    # ถ้ามีการส่งข้อความมา (p_msg ไม่ใช่ None) ให้บันทึกลง Firebase
-    if p_msg:
-        db.reference(f'private_rooms/{room_id}').push({
-            'name': my_name, 
-            'msg': p_msg, 
-            'ts': time.time()
-        })
-    
-    # ดึงข้อความทั้งหมดในห้องนั้นออกมา
-    try:
-        raw_p_msgs = db.reference(f'private_rooms/{room_id}').get()
-        if raw_p_msgs:
-            # เรียงลำดับตามเวลา และเอาแค่ 10 ข้อความล่าสุด
-            return sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]
-    except:
-        pass
-    return []
-
-# --- ส่วนที่ 1: การตั้งค่าระบบ (Setup & Firebase) ---
+# --- 1. SETUP & CONFIGURATION ---
 def init_firebase():
     if not firebase_admin._apps:
         try:
@@ -55,42 +14,8 @@ def init_firebase():
                 'databaseURL': st.secrets["firebase_db_url"]
             })
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Firebase Error: {e}")
 
-def save_log(action_details):
-    """ฟังก์ชันส่งข้อมูลไปเก็บที่ Firebase"""
-    try:
-        now = datetime.now()
-        date_key = now.strftime("%Y-%m-%d")
-        ref = db.reference(f'synapse_logs/{date_key}')
-        ref.push({
-            'time': now.strftime("%H:%M:%S"),
-            'action': action_details,
-            'user': 'Ta101'
-# --- วางไว้ส่วนบนของโค้ด ---
-            
-def play_audio():
-    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-    st.components.v1.html(f"""
-        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
-        <script>
-            var audio = document.getElementById("synapse-audio");
-            window.parent.document.addEventListener('click', function() {{ 
-                audio.play(); 
-            }}, {{ once: true }});
-        </script>
-    """, height=0)
-    return link
-
-# --- เรียกใช้ตอนเริ่มรันระบบ ---
-init_firebase()
-setup_ui()
-music_url = play_audio() # เพลงเริ่มรันทันที
-           
-        })
-    except: pass
-
-# --- ส่วนที่ 2: ฟังก์ชันวาดหน้าตา (UI Components) ---
 def setup_ui():
     st.markdown("""
         <style>
@@ -104,40 +29,61 @@ def setup_ui():
         </style>
     """, unsafe_allow_html=True)
 
+# --- 2. CORE FUNCTIONS (Audio, Log, Chat) ---
+def play_audio():
+    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
+        <script>
+            var audio = document.getElementById("synapse-audio");
+            window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
+        </script>
+    """, height=0)
+
+def save_log(action_details):
+    try:
+        now = datetime.now()
+        date_key = now.strftime("%Y-%m-%d")
+        ref = db.reference(f'synapse_logs/{date_key}')
+        ref.push({
+            'time': now.strftime("%H:%M:%S"),
+            'action': action_details,
+            'user': 'Ta101'
+        })
+    except: pass
+
+def private_chat_logic(my_name, target_name, p_msg=None):
+    pair = sorted([my_name, target_name])
+    room_id = f"priv_{pair[0]}_{pair[1]}"
+    if p_msg:
+        db.reference(f'private_rooms/{room_id}').push({
+            'name': my_name, 'msg': p_msg, 'ts': time.time()
+        })
+    try:
+        raw_p_msgs = db.reference(f'private_rooms/{room_id}').get()
+        if raw_p_msgs:
+            return sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]
+    except: pass
+    return []
+
 def draw_box(title, target_level):
     if st.button(title, use_container_width=True):
         st.session_state.nav_level = target_level
-        save_log(f"NAVIGATED TO: {title}") # บันทึก Log ทุกครั้งที่กดปุ่ม
+        save_log(f"NAVIGATED TO: {title}")
         st.rerun()
 
-# --- ส่วนที่ 3: การรันระบบ (Execution) ---
+# --- 3. EXECUTION ---
 init_firebase()
 setup_ui()
+play_audio()
 
 if 'nav_level' not in st.session_state:
     st.session_state.nav_level = "HOME"
 
 st.markdown('<div class="neon-header">ศูนย์บัญชาการไซแนปส์</div>', unsafe_allow_html=True)
-
-# สร้างเมนู Tabs ตามรูปของคุณ
 main_tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 ประวัติ"])
 
-# --- ส่วนที่ 4: เนื้อหาในแต่ละ Tab ---
-
-# [TAB: ประวัติกิจกรรม]
-with main_tabs[3]:
-    st.markdown("### 📊 ประวัติกิจกรรม")
-    today = datetime.now().strftime("%Y-%m-%d")
-    logs = db.reference(f'synapse_logs/{today}').get()
-    if logs:
-        for log_id in reversed(list(logs.keys())):
-            item = logs[log_id]
-            # แสดงผลเป็นกล่อง Code แบบในรูปที่คุณส่งมา
-            st.code(f"[{item['time']}] {item['action']}")
-    else:
-        st.info("ยังไม่มีบันทึกสำหรับวันนี้")
-
-# [TAB: แกนหลัก (Hierarchy)]
+# --- TAB: แกนหลัก ---
 with main_tabs[0]:
     if st.session_state.nav_level != "HOME":
         if st.button("⬅️ BACK"):
@@ -147,45 +93,37 @@ with main_tabs[0]:
                 st.session_state.nav_level = "HOME"
             save_log(f"BACK TO: {st.session_state.nav_level}")
             st.rerun()
-
-    st.write(f"เส้นทางปัจจุบัน: **{st.session_state.nav_level}**")
     
-    # Logic การคุมชั้น (Hierarchy)
+    st.write(f"เส้นทางปัจจุบัน: **{st.session_state.nav_level}**")
     if st.session_state.nav_level == "HOME":
         c1, c2 = st.columns(2)
         with c1: draw_box("กรอบที่ 1", "1")
         with c2: draw_box("กรอบที่ 2", "2")
     elif st.session_state.nav_level == "1":
         draw_box("เจาะลึก 1.1", "1.1")
-     # --- วางไว้ใน Tab การสื่อสาร ---
-with main_tabs[2]: # Tab "💬 การสื่อสาร"
+    elif st.session_state.nav_level == "1.1":
+        st.success("ACCESS GRANTED: LEVEL 1.1")
+
+# --- TAB: การสื่อสาร ---
+with main_tabs[2]:
     st.subheader("🛰️ PRIVATE COMMUNICATION")
-    
-    # กำหนดชื่อผู้ส่งและผู้รับ (ในที่นี้สมมติว่าเป็นคุณคุยกับระบบ หรือคนอื่น)
-    my_id = "Ta101"
-    target_id = "System_Admin"
-    
-    # ช่องพิมพ์ข้อความ
+    my_id, target_id = "Ta101", "System_Admin"
     chat_input = st.text_input("ระบุข้อความสัญญาณ...", key="chat_in")
-    
     if st.button("SEND SIGNAL"):
         if chat_input:
-            # เรียกใช้ฟังก์ชันที่คุณเขียนมา (ส่งข้อความ)
             private_chat_logic(my_id, target_id, p_msg=chat_input)
-            save_log(f"SENT MSG TO {target_id}") # บันทึกประวัติด้วย
             st.rerun()
-
-    # ดึงข้อความมาโชว์ (10 ข้อความล่าสุด)
     messages = private_chat_logic(my_id, target_id)
-    
-    st.markdown("---")
     for m in messages:
-        sender = m.get('name', 'Unknown')
-        msg_text = m.get('msg', '')
-        # จัดรูปแบบให้ดูเหมือนหน้าจอแชท
-        if sender == my_id:
-            st.markdown(f"🟢 **{sender}:** {msg_text}")
-        else:
-            st.markdown(f"⚪ **{sender}:** {msg_text}")
-   
-    # ... เพิ่มเงื่อนไขอื่นๆ ต่อได้ที่นี่ ...
+        color = "🟢" if m['name'] == my_id else "⚪"
+        st.markdown(f"{color} **{m['name']}:** {m['msg']}")
+
+# --- TAB: ประวัติ ---
+with main_tabs[3]:
+    st.markdown("### 📊 ประวัติกิจกรรม")
+    today = datetime.now().strftime("%Y-%m-%d")
+    logs = db.reference(f'synapse_logs/{today}').get()
+    if logs:
+        for log_id in reversed(list(logs.keys())):
+            item = logs[log_id]
+            st.code(f"[{item['time']}] {item['action']}")
