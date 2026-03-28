@@ -50,6 +50,25 @@ def save_log(action_details):
             'time': now.strftime("%H:%M:%S"),
             'action': action_details,
             'user': 'Ta101'
+ # --- วางไว้ส่วนบนของโค้ด ---
+def play_audio():
+    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
+        <script>
+            var audio = document.getElementById("synapse-audio");
+            window.parent.document.addEventListener('click', function() {{ 
+                audio.play(); 
+            }}, {{ once: true }});
+        </script>
+    """, height=0)
+    return link
+
+# --- เรียกใช้ตอนเริ่มรันระบบ ---
+init_firebase()
+setup_ui()
+music_url = play_audio() # เพลงเริ่มรันทันที
+           
         })
     except: pass
 
