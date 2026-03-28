@@ -95,4 +95,35 @@ with main_tabs[0]:
         with c2: draw_box("กรอบที่ 2", "2")
     elif st.session_state.nav_level == "1":
         draw_box("เจาะลึก 1.1", "1.1")
+     # --- วางไว้ใน Tab การสื่อสาร ---
+with main_tabs[2]: # Tab "💬 การสื่อสาร"
+    st.subheader("🛰️ PRIVATE COMMUNICATION")
+    
+    # กำหนดชื่อผู้ส่งและผู้รับ (ในที่นี้สมมติว่าเป็นคุณคุยกับระบบ หรือคนอื่น)
+    my_id = "Ta101"
+    target_id = "System_Admin"
+    
+    # ช่องพิมพ์ข้อความ
+    chat_input = st.text_input("ระบุข้อความสัญญาณ...", key="chat_in")
+    
+    if st.button("SEND SIGNAL"):
+        if chat_input:
+            # เรียกใช้ฟังก์ชันที่คุณเขียนมา (ส่งข้อความ)
+            private_chat_logic(my_id, target_id, p_msg=chat_input)
+            save_log(f"SENT MSG TO {target_id}") # บันทึกประวัติด้วย
+            st.rerun()
+
+    # ดึงข้อความมาโชว์ (10 ข้อความล่าสุด)
+    messages = private_chat_logic(my_id, target_id)
+    
+    st.markdown("---")
+    for m in messages:
+        sender = m.get('name', 'Unknown')
+        msg_text = m.get('msg', '')
+        # จัดรูปแบบให้ดูเหมือนหน้าจอแชท
+        if sender == my_id:
+            st.markdown(f"🟢 **{sender}:** {msg_text}")
+        else:
+            st.markdown(f"⚪ **{sender}:** {msg_text}")
+   
     # ... เพิ่มเงื่อนไขอื่นๆ ต่อได้ที่นี่ ...
