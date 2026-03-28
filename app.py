@@ -2,6 +2,31 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime
+import time  # ต้องมีตัวนี้ด้วยเพื่อใช้เก็บเวลาส่งข้อความ
+
+# --- ฟังก์ชันจัดการแชทส่วนตัว ---
+def private_chat_logic(my_name, target_name, p_msg=None):
+    # สร้างชื่อห้องแชท
+    pair = sorted([my_name, target_name])
+    room_id = f"priv_{pair[0]}_{pair[1]}"
+    
+    # ถ้ามีการส่งข้อความมา (p_msg ไม่ใช่ None) ให้บันทึกลง Firebase
+    if p_msg:
+        db.reference(f'private_rooms/{room_id}').push({
+            'name': my_name, 
+            'msg': p_msg, 
+            'ts': time.time()
+        })
+    
+    # ดึงข้อความทั้งหมดในห้องนั้นออกมา
+    try:
+        raw_p_msgs = db.reference(f'private_rooms/{room_id}').get()
+        if raw_p_msgs:
+            # เรียงลำดับตามเวลา และเอาแค่ 10 ข้อความล่าสุด
+            return sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]
+    except:
+        pass
+    return []
 
 # --- ส่วนที่ 1: การตั้งค่าระบบ (Setup & Firebase) ---
 def init_firebase():
