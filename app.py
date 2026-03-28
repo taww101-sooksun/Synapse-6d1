@@ -3,6 +3,23 @@ import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime
 import time  # ต้องมีตัวนี้ด้วยเพื่อใช้เก็บเวลาส่งข้อความ
+# --- วางไว้บนๆ ของไฟล์ ต่อจากพวก import ---
+
+import streamlit as st
+# ... import อื่นๆ ...
+
+def play_audio(): # ต้องชิดซ้ายสุดแบบนี้
+    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
+        <script>
+            var audio = document.getElementById("synapse-audio");
+            window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
+        </script>
+    """, height=0)
+    return link
+
+# ค่อยตามด้วยโค้ดส่วนอื่นๆ
 
 # --- ฟังก์ชันจัดการแชทส่วนตัว ---
 def private_chat_logic(my_name, target_name, p_msg=None):
