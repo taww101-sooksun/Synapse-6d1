@@ -23,7 +23,7 @@ if query:
         st.code(image_url_1, language="text")
 
     if image_url:
-    try:
+          try:
         st.image(image_url, caption="ภาพจากลิงก์ของคุณ", use_container_width=True)
         st.success("โหลดรูปภาพสำเร็จ!")  # เขียนแค่แบบนี้พอครับ
     except Exception as e:
