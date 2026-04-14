@@ -13,10 +13,13 @@ if query:
     # สร้างลิงก์ค้นหาจาก Unsplash Source (วิธีที่ง่ายและชัดที่สุด)
     # รูปแบบ: https://unsplash.com?<keyword>
     # หมายเหตุ: ปัจจุบัน Unsplash เปลี่ยนมาใช้ระบบใหม่ แนะนำใช้ลิงก์ด้านล่างนี้แทนครับ
-    search_url = f"https://unsplash.com{query}"
+    # Unsplash source มักใช้รูปแบบนี้
+search_url = f"https://unsplash.com?{query.replace(' ', ',')}"
+
     
     # ลิงก์สำหรับดึงรูปสุ่มตามคีย์เวิร์ดที่ชัดระดับ HD
-    random_image_url = f"https://loremflickr.com{query.replace(' ', ',')}"
+# เพิ่ม / เข้าไปก่อนหน้าคีย์เวิร์ด
+random_image_url = f"https://loremflickr.com{query.replace(' ', ',')}"
 
     col1, col2 = st.columns(2)
 
@@ -28,7 +31,8 @@ if query:
     with col2:
         st.subheader("ผลลัพธ์ที่ 2")
         # ใช้บริการค้นหาของ Unsplash แบบระบุขนาดชัดๆ
-        alt_image_url = f"https://boringavatars.com{query}" # ตัวอย่างบริการอื่น
+        alt_image_url = f"https://boringavatars.com{query}" 
+# ตัวอย่างบริการอื่น
         st.info("คุณสามารถคัดลอกลิงก์ด้านซ้ายไปใส่ในโค้ดหลักของคุณได้เลยครับ")
 
 # ส่วนคำแนะนำ
