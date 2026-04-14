@@ -1,45 +1,48 @@
 import streamlit as st
 
-st.set_page_config(page_title="Image Searcher", layout="wide")
+# ตั้งค่าหน้าจอ
+st.set_page_config(page_title="SYNAPSE - Image Finder", layout="wide")
 
-# ส่วนหัวของแอป
-st.title("🔍 ค้นหารูปภาพระดับ HD")
-st.write("พิมพ์สิ่งที่ต้องการค้นหา เพื่อดึงรูปภาพมาใช้ในโปรเจกต์ของคุณ")
+# ส่วนหัวของแอปตามสไตล์คุณ
+st.title("🔍 SYNAPSE: Search & Preview")
+st.write("อยู่นิ่งๆ ไม่เจ็บตัว - ค้นหารูปภาพที่ใช้งานได้จริง")
 
-# 1. ช่องกรอกคำค้นหา
-query = st.text_input("ค้นหารูปภาพอะไรดี?", placeholder="เช่น: nature, technology, abstract")
+# --- ส่วนที่ 1: ค้นหารูปภาพใหม่ ---
+st.subheader("1. ค้นหารูปภาพจากคีย์เวิร์ด")
+query = st.text_input("พิมพ์สิ่งที่อยากค้นหา (ภาษาอังกฤษ):", placeholder="เช่น: cyberpunk, retro, nature")
 
 if query:
-    # ใช้ Unsplash Source API เพื่อดึงรูปภาพโดยตรง (Direct Link)
-    # ขนาด 800x600 px
-    image_url_1 = f"https://source.unsplash.com/featured/800x600?{query}&1"
-    image_url_2 = f"https://source.unsplash.com/featured/800x600?{query}&2"
-
+    # ใช้ Unsplash Source API เพื่อดึงรูปมาแสดงทันที
+    img_url_1 = f"https://images.unsplash.com/photo-1501504905953-f875d0234446?q=80&w=1000&auto=format&fit=crop" # รูปตัวอย่างถาวรกรณี API เปลี่ยน
+    # ในการใช้งานจริง แนะนำใช้ระบบสุ่มจากคีย์เวิร์ด
+    search_link = f"https://source.unsplash.com/featured/800x600?{query.replace(' ', ',')}"
+    
     col1, col2 = st.columns(2)
-
     with col1:
-        st.subheader("ผลลัพธ์ที่ 1")
-        st.image(image_url_1, caption=f"Keyword: {query}", use_container_width=True)
-        st.code(image_url_1, language="text")
-
-    if image_url:
-          try:
-        st.image(image_url, caption="ภาพจากลิงก์ของคุณ", use_container_width=True)
-        st.success("โหลดรูปภาพสำเร็จ!")  # เขียนแค่แบบนี้พอครับ
-    except Exception as e:
-        st.error(f"ไม่สามารถโหลดรูปภาพได้: {e}")
-
+        st.image(search_link, caption=f"ผลลัพธ์สำหรับ: {query}", use_container_width=True)
+    with col2:
+        st.info("คัดลอกลิงก์ด้านล่างไปใช้งาน")
+        st.code(search_link, language="text")
 
 st.divider()
 
-# 2. ส่วน Preview จากลิงก์ที่คุณมีอยู่แล้ว
-st.title("🖼️ Image Link Previewer")
-image_url_input = st.text_input("วางลิงก์รูปภาพ (Direct Link) ที่นี่:", placeholder="https://example.com/image.jpg")
+# --- ส่วนที่ 2: ตรวจสอบลิงก์ที่มีอยู่แล้ว ---
+st.subheader("2. Image Link Previewer")
+image_url = st.text_input(
+    label="วางลิงก์รูปภาพ (Direct Link) ที่นี่:",
+    placeholder="https://example.com/image.jpg"
+)
 
-if st.button("ตรวจสอบรูปภาพ"):
-    if image_url_input:
+if st.button("แสดงรูปภาพ"):
+    if image_url:
         try:
-            st.image(image_url_input, caption="ตัวอย่างรูปภาพจากลิงก์", use_container_width=True)
-            [span_4](start_span)st.success("โหลดรูปภาพสำเร็จ!")[span_4](end_span)
-        except:
-            [span_5](start_span)st.error("ไม่สามารถโหลดรูปภาพได้: โปรดตรวจสอบว่าเป็น Direct Link (.jpg, .png, .webp)")[span_5](end_span)
+            # จัดระเบียบการย่อหน้าให้เป๊ะตามหลัก Python
+            st.image(image_url, caption="ภาพจากลิงก์ของคุณ", use_container_width=True)
+            st.success("โหลดรูปภาพสำเร็จ!")
+        except Exception as e:
+            st.error("ไม่สามารถโหลดรูปภาพได้: โปรดตรวจสอบว่าเป็น Direct Link ที่ถูกต้อง")
+    else:
+        st.warning("กรุณาใส่ลิงก์รูปภาพก่อนกดปุ่มครับ")
+
+# ส่วน Footer
+st.caption("พัฒนาโดย Bas/Ta | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
