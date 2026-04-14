@@ -22,10 +22,13 @@ if query:
         st.image(image_url_1, caption=f"Keyword: {query}", use_container_width=True)
         st.code(image_url_1, language="text")
 
-    with col2:
-        st.subheader("ผลลัพธ์ที่ 2")
-        st.image(image_url_2, caption=f"Keyword: {query}", use_container_width=True)
-        st.code(image_url_2, language="text")
+    if image_url:
+    try:
+        st.image(image_url, caption="ภาพจากลิงก์ของคุณ", use_container_width=True)
+        st.success("โหลดรูปภาพสำเร็จ!")  # เขียนแค่แบบนี้พอครับ
+    except Exception as e:
+        st.error(f"ไม่สามารถโหลดรูปภาพได้: {e}")
+
 
 st.divider()
 
