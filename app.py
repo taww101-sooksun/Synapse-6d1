@@ -17,22 +17,6 @@ import base64
 import os
 import pandas as pd
 from datetime import datetime, date, timedelta
-# เอาโค้ดนี้ไปแปะเพิ่มในสไตล์ดั้งเดิม ภายในฟังก์ชัน inject_cyberpunk_mainframe()
-st.markdown("""
-    <style>
-        /* บังคับให้แถบเมนูด้านข้างกางออกเสมอ แม้จะเปิดบนมือถือจอเล็ก */
-        [data-testid="stSidebarCollapsedControl"] {
-            display: none !important;
-        }
-        [data-testid="stSidebar"] {
-            left: 0 !important;
-            position: relative !important;
-            transform: none !important;
-            width: 100% !important;
-            display: block !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
 def inject_cyberpunk_mainframe():
     st.markdown("""
@@ -48,52 +32,7 @@ def inject_cyberpunk_mainframe():
             #MainMenu, footer, header { visibility: hidden; }
             .stApp { top: -60px; }
             
-            [data-testid="stSidebar"] {
-                background-color: #03060a !important;
-                border-right: 3px solid #39FF14 !important;
-                box-shadow: 5px 0 15px rgba(57, 255, 20, 0.1);
-            }
-            
-            .stRadio>div { gap: 15px !important; }
-            .stRadio label {
-                font-size: 18px !important;
-                font-weight: bold !important;
-                color: #00e5ff !important;
-                padding: 10px 15px !important;
-                border: 2px solid #101a24 !important;
-                border-radius: 8px !important;
-                background: #060b10 !important;
-                display: block !important;
-                width: 100% !important;
-                cursor: pointer;
-            }
-            .stRadio [data-checked="true"] label {
-                border-color: #39FF14 !important;
-                color: #39FF14 !important;
-                box-shadow: 0 0 10px rgba(57, 255, 20, 0.3) !important;
-                background: rgba(57, 255, 20, 0.05) !important;
-            }
-            
-            .stButton>button {
-                font-size: 18px !important;
-                font-weight: bold !important;
-                padding: 12px 20px !important;
-                border-radius: 8px !important;
-                background: linear-gradient(135deg, #0b151f 0%, #04080c 100%) !important;
-                border: 2px solid #ff00de !important;
-                color: #ff00de !important;
-                text-shadow: 0 0 5px #ff00de;
-                transition: 0.3s;
-                width: 100%;
-                height: 55px;
-            }
-            .stButton>button:hover {
-                border-color: #39FF14 !important;
-                color: #39FF14 !important;
-                text-shadow: 0 0 5px #39FF14;
-                box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
-            }
-            
+            /* สไตล์สำหรับกล่องวิทยุแอนิเมชัน */
             .matrix-box {
                 background-color: #04070a;
                 border: 2px solid #101a24;
@@ -103,8 +42,50 @@ def inject_cyberpunk_mainframe():
                 font-size: 11px;
                 color: #527394;
                 line-height: 1.4;
-                margin-bottom: 10px;
+                margin-bottom: 15px;
                 overflow: hidden;
+            }
+            
+            /* สไตล์สำหรับปุ่มแท็บเลือกห้องด้านบนให้เหมาะกับมือถือ */
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 8px !important;
+                background-color: #020508 !important;
+                padding: 5px !important;
+                border-radius: 10px !important;
+                border: 1px solid #101a24 !important;
+                overflow-x: auto !important; /* เลื่อนซ้ายขวาได้ถ้าจอแคบ */
+            }
+            .stTabs [data-baseweb="tab"] {
+                height: 45px !important;
+                white-space: nowrap !important;
+                background-color: #060b10 !important;
+                border: 2px solid #101a24 !important;
+                border-radius: 8px !important;
+                color: #00e5ff !important;
+                font-weight: bold !important;
+                font-size: 14px !important;
+                padding: 0px 15px !important;
+            }
+            .stTabs [aria-selected="true"] {
+                background-color: rgba(57, 255, 20, 0.05) !important;
+                border-color: #39FF14 !important;
+                color: #39FF14 !important;
+                box-shadow: 0 0 10px rgba(57, 255, 20, 0.2) !important;
+            }
+            
+            /* ปุ่มกดส่งสัญญาณ */
+            .stButton>button {
+                font-size: 16px !important;
+                font-weight: bold !important;
+                padding: 10px !important;
+                border-radius: 8px !important;
+                background: linear-gradient(135deg, #0b151f 0%, #04080c 100%) !important;
+                border: 2px solid #39FF14 !important;
+                color: #39FF14 !important;
+                text-shadow: 0 0 5px #39FF14;
+                transition: 0.3s;
+                width: 100%;
+                height: 50px;
             }
             
             .truth-card-blue {
@@ -123,7 +104,6 @@ def inject_cyberpunk_mainframe():
                 box-shadow: 0 0 20px rgba(255,0,222,0.2);
                 margin-bottom: 15px;
             }
-            
             .giant-number {
                 font-family: 'Orbitron', sans-serif;
                 font-size: 38px !important;
@@ -258,209 +238,179 @@ header_mainframe = f"""
     }}
     .panel-container {{ display: flex; align-items: center; justify-content: center; padding: 10px 0; border-bottom: 2px solid #101a24; background: #020508; margin-bottom: 15px; }}
     .panel-logo {{ width: 65px; height: 65px; animation: logo_pulse 2s infinite ease-in-out; object-fit: contain; }}
-    .panel-title {{ font-family: 'Orbitron', sans-serif; font-weight: bold; font-size: 22px; letter-spacing: 3px; margin-left: 20px; animation: text_wink 2s infinite; }}
+    .panel-title {{ font-family: 'Orbitron', sans-serif; font-weight: bold; font-size: 20px; letter-spacing: 2px; margin-left: 15px; animation: text_wink 2s infinite; }}
 </style>
 <div class="panel-container">
     {f'<img src="data:image/png;base64,{logo_base64}" class="panel-logo">' if logo_base64 else ''}
-    <span class="panel-title">SYNAPSE COMMAND CENTER</span>
+    <span class="panel-title">SYNAPSE SYSTEM</span>
 </div>
 """
 components.html(header_mainframe, height=95)
 
-# =========================================================
-# 7. SIDEBAR MATRIX TERMINAL OPERATOR
-# =========================================================
-with st.sidebar:
-    st.markdown(f"<h3 style='color:#39FF14; font-family:Orbitron; font-size:18px; text-shadow:0 0 5px #39FF14;'>📟 OPERATOR TERMINAL</h3>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#00e5ff; font-size:14px; font-weight:bold; margin-bottom:10px;'>CURRENT AGENT: {st.session_state.user}</div>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div class="matrix-box">
-        >> NET_STATUS: LINK_ESTABLISHED<br>
-        >> NODE: CLOUD_FIREBASE_SYS<br>
-        >> MATRIX_LAT: {st.session_state.user_lat if st.session_state.user_lat else 'NULL'}<br>
-        >> MATRIX_LON: {st.session_state.user_lon if st.session_state.user_lon else 'NULL'}<br>
-        >> SLOGAN_HASH: "อยู่นิ่งๆ ไม่เจ็บตัว"
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.write("---")
-    menu_selection = st.radio(
-        "NAVIGATION_SYSTEM",
-        ["💬 ROOM_01: GLOBAL COMMS", "🛰️ ROOM_02: GPS TARGET", "🔮 ROOM_03: TRUTH SCAN", "🧬 ROOM_04: DESTINY ANALYST", "🎵 ROOM_05: SOUND SYSTEM"],
-        key="main_navigation"
-    )
-    
-    st.write("---")
-    if st.button("🔴 DISCONNECT (LOGOUT)"):
-        st.session_state.logged_in = False
-        st.session_state.user = None
-        st.rerun()
+# แสดงสถานะ Operator และสโลแกนไว้ด้านบนสุดของจอหลักเลย เพื่อความสะดวกบนมือถือ
+st.markdown(f"""
+<div class="matrix-box">
+    AGENT: <b>{st.session_state.user}</b> | STATUS: <b>ONLINE</b> | สโลแกน: <b>"อยู่นิ่งๆ ไม่เจ็บตัว"</b>
+</div>
+""", unsafe_allow_html=True)
 
 # =========================================================
-# 8. HARDWARE WORKSPACE CAPABILITIES
+# 7. MAIN NAVIGATION TABS (แก้ปัญหาจอมือถือ ไม่มีปุ่มกด)
 # =========================================================
-main_content_area = st.empty()
+# สร้างแท็บกดเลือกห้องอันใหญ่ๆ ไว้ตรงกลางหน้าจอหลักเลย จิ้มเปลี่ยนหน้าได้ทันที!
+room_tabs = st.tabs(["💬 ROOM 01", "🛰️ ROOM 02", "🔮 ROOM 03", "🧬 ROOM 04", "🎵 ROOM 05"])
 
-with main_content_area.container():
-    # --- 8.1 ห้องแชทวิทยุกลาง (GLOBAL COMMS) ---
-    if menu_selection == "💬 ROOM_01: GLOBAL COMMS":
-        st.markdown("<h2 style='color:#39FF14; font-family:Orbitron; font-size:22px;'>💬 ROOM_01 // GLOBAL CHATROOM TELEMETRY</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องสื่อสารเครือข่ายย่อยแบบเรียลไทม์ ใช้รับส่งข้อความคลื่นวิทยุและพยานหลักฐานรูปภาพร่วมกับหน่วยข้อมูลอื่น ข้อมูลจะอัปเดตทันทีผ่านระบบ Realtime Datalink</p>", unsafe_allow_html=True)
-        
-        chat_mainframe_html = f"""
-        <style>
-            #screen-frame {{
-                background: rgba(2,5,10,0.98); border: 2px solid {theme_green}; border-radius: 10px;
-                height: 380px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column;
-            }}
-            .bubble {{ padding: 10px 14px; border-radius: 8px; margin: 6px 0; max-width: 85%; color: #fff; font-size: 14px; }}
-            .me {{ background: {theme_green}12; border-right: 4px solid {theme_green}; align-self: flex-end; }}
-            .others {{ background: #101620; border-left: 4px solid #ff00de; align-self: flex-start; }}
-            .notif-capsule {{ background: #0c141c; color: #527394; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-family: 'Orbitron'; }}
-            .signal-alert {{ background: #ff0055 !important; color: white !important; font-weight: bold; }}
-        </style>
+# --- แท็บที่ 1: ROOM_01 (GLOBAL COMMS) ---
+with room_tabs[0]:
+    st.markdown("<h3 style='color:#39FF14; font-family:Orbitron;'>💬 ROOM_01 // GLOBAL CHATROOM TELEMETRY</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#527394; font-size:12px;'>ห้องสื่อสารเครือข่ายย่อยแบบเรียลไทม์ ข้อมูลจะอัปเดตทันทีผ่าน Realtime Datalink</p>", unsafe_allow_html=True)
+    
+    chat_mainframe_html = f"""
+    <style>
+        #screen-frame {{
+            background: rgba(2,5,10,0.98); border: 2px solid {theme_green}; border-radius: 10px;
+            height: 350px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column;
+        }}
+        .bubble {{ padding: 10px 14px; border-radius: 8px; margin: 6px 0; max-width: 85%; color: #fff; font-size: 14px; }}
+        .me {{ background: {theme_green}12; border-right: 4px solid {theme_green}; align-self: flex-end; }}
+        .others {{ background: #101620; border-left: 4px solid #ff00de; align-self: flex-start; }}
+        .notif-capsule {{ background: #0c141c; color: #527394; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-family: 'Orbitron'; }}
+        .signal-alert {{ background: #ff0055 !important; color: white !important; font-weight: bold; }}
+    </style>
 
-        <div id="screen-frame">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #101a24; padding-bottom: 5px;">
-                <span style="color:{theme_green}; font-family:'Orbitron'; font-size:10px;">📡 DATA_STREAM_OPEN</span>
-                <span id="notif-box" class="notif-capsule">0 SIGNAL</span>
-            </div>
-            <div id="msg-terminal-area" style="display:flex; flex-direction:column;"></div>
+    <div id="screen-frame">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #101a24; padding-bottom: 5px;">
+            <span style="color:{theme_green}; font-family:'Orbitron'; font-size:10px;">📡 DATA_STREAM_OPEN</span>
+            <span id="notif-box" class="notif-capsule">0 SIGNAL</span>
         </div>
+        <div id="msg-terminal-area" style="display:flex; flex-direction:column;"></div>
+    </div>
 
-        <audio id="beep-emitter" preload="auto">
-            <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
-        </audio>
+    <audio id="beep-emitter" preload="auto">
+        <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
+    </audio>
 
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-        <script>
-            const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
-            if(!firebase.apps.length) firebase.initializeApp(conf);
-            const d_base = firebase.database();
-            let last_count_val = -1;
-            const sound_node = document.getElementById('beep-emitter');
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
+        if(!firebase.apps.length) firebase.initializeApp(conf);
+        const d_base = firebase.database();
+        let last_count_val = -1;
+        const sound_node = document.getElementById('beep-emitter');
 
-            function force_unlock() {{
-                sound_node.play().then(() => {{ sound_node.pause(); sound_node.currentTime = 0; }});
-                window.removeEventListener('click', force_unlock);
-                window.removeEventListener('touchstart', force_unlock);
-            }}
-            window.addEventListener('click', force_unlock);
-            window.addEventListener('touchstart', force_unlock);
+        function force_unlock() {{
+            sound_node.play().then(() => {{ sound_node.pause(); sound_node.currentTime = 0; }});
+            window.removeEventListener('click', force_unlock);
+            window.removeEventListener('touchstart', force_unlock);
+        }}
+        window.addEventListener('click', force_unlock);
+        window.addEventListener('touchstart', force_unlock);
 
-            d_base.ref('global_chat').limitToLast(20).on('child_added', (snap) => {{
-                const data = snap.val();
-                const area = document.getElementById('msg-terminal-area');
-                const element = document.createElement('div');
-                const checkMe = data.user === "{st.session_state.user}";
-                element.className = "bubble " + (checkMe ? "me" : "others");
-                element.style.alignSelf = checkMe ? 'flex-end' : 'flex-start';
-                
-                let block = `<div style="font-size:10px; color:#527394; font-family:'Orbitron';">${{data.user}}</div>`;
-                if(data.text) block += `<div>${{data.text}}</div>`;
-                if(data.img) block += `<img src="data:image/png;base64,${{data.img}}" style="max-width:100%; border-radius:6px; margin-top:6px;">`;
-                
-                element.innerHTML = block;
-                area.appendChild(element);
-                document.getElementById('screen-frame').scrollTop = 999999;
-            }});
+        d_base.ref('global_chat').limitToLast(20).on('child_added', (snap) => {{
+            const data = snap.val();
+            const area = document.getElementById('msg-terminal-area');
+            const element = document.createElement('div');
+            const checkMe = data.user === "{st.session_state.user}";
+            element.className = "bubble " + (checkMe ? "me" : "others");
+            element.style.alignSelf = checkMe ? 'flex-end' : 'flex-start';
+            
+            let block = `<div style="font-size:10px; color:#527394; font-family:'Orbitron';">${{data.user}}</div>`;
+            if(data.text) block += `<div>${{data.text}}</div>`;
+            if(data.img) block += `<img src="data:image/png;base64,${{data.img}}" style="max-width:100%; border-radius:6px; margin-top:6px;">`;
+            
+            element.innerHTML = block;
+            area.appendChild(element);
+            document.getElementById('screen-frame').scrollTop = 999999;
+        }});
 
-            d_base.ref('chat_notifications/unread_count').on('value', (snap) => {{
-                const current_num = snap.val() || 0;
-                const target_box = document.getElementById('notif-box');
-                target_box.innerText = current_num + " NEW SIGNAL";
-                if(current_num > 0) {{
-                    target_box.classList.add('signal-alert');
-                    if(last_count_val !== -1 && current_num > last_count_val) {{
-                        sound_node.currentTime = 0;
-                        sound_node.play().catch(() => {{}});
-                    }}
-                }} else {{
-                    target_box.classList.remove('signal-alert');
+        d_base.ref('chat_notifications/unread_count').on('value', (snap) => {{
+            const current_num = snap.val() || 0;
+            const target_box = document.getElementById('notif-box');
+            target_box.innerText = current_num + " NEW SIGNAL";
+            if(current_num > 0) {{
+                target_box.classList.add('signal-alert');
+                if(last_count_val !== -1 && current_num > last_count_val) {{
+                    sound_node.currentTime = 0;
+                    sound_node.play().catch(() => {{}});
                 }}
-                last_count_val = current_num;
-            }});
-        </script>
-        """
-        components.html(chat_mainframe_html, height=400)
+            }} else {{
+                target_box.classList.remove('signal-alert');
+            }}
+            last_count_val = current_num;
+        }});
+    </script>
+    """
+    components.html(chat_mainframe_html, height=370)
 
-        with st.container():
-            ctrl1, ctrl2, ctrl3 = st.columns([3, 1, 1])
-            with ctrl1:
-                in_msg = st.text_input("INPUT TRANSMISSION", placeholder="พิมพ์ข้อความคลื่นเสียง...", label_visibility="collapsed", key="chat_tx")
-            with ctrl2:
-                in_file = st.file_uploader("UPLOAD DATA", type=['png','jpg','jpeg'], label_visibility="collapsed", key="chat_img")
-            with ctrl3:
-                if st.button("SEND SIGNAL ⚡", use_container_width=True):
-                    if in_msg or in_file:
-                        payload = {'user': st.session_state.user, 'ts': datetime.now().isoformat()}
-                        if in_msg: payload['text'] = in_msg
-                        if in_file: payload['img'] = base64.b64encode(in_file.read()).decode()
-                        db.reference('global_chat').push(payload)
-                        
-                        notify_count = db.reference('chat_notifications/unread_count').get() or 0
-                        db.reference('chat_notifications').set({'unread_count': notify_count + 1})
-                        st.rerun()
-
-        st.write("---")
-        if st.button("🧼 RESET OVERLOAD SIGNAL COUNT", use_container_width=True):
-            db.reference('chat_notifications').set({'unread_count': 0})
+    in_msg = st.text_input("INPUT TRANSMISSION", placeholder="พิมพ์ข้อความคลื่นเสียง...", label_visibility="collapsed", key="chat_tx")
+    in_file = st.file_uploader("UPLOAD DATA", type=['png','jpg','jpeg'], label_visibility="collapsed", key="chat_img")
+    
+    if st.button("SEND SIGNAL ⚡", use_container_width=True):
+        if in_msg or in_file:
+            payload = {'user': st.session_state.user, 'ts': datetime.now().isoformat()}
+            if in_msg: payload['text'] = in_msg
+            if in_file: payload['img'] = base64.b64encode(in_file.read()).decode()
+            db.reference('global_chat').push(payload)
+            
+            notify_count = db.reference('chat_notifications/unread_count').get() or 0
+            db.reference('chat_notifications').set({'unread_count': notify_count + 1})
             st.rerun()
 
-    # --- 8.2 ห้องเรดาร์ระบุพิกัดดาวเทียม (GPS TARGET) ---
-    elif menu_selection == "🛰️ ROOM_02: GPS TARGET":
-        st.markdown("<h2 style='color:#00e5ff; font-family:Orbitron; font-size:22px;'>🛰️ ROOM_02 // GPS TARGET LOCKING TRACER</h2>", unsafe_allow_html=True)
-        
-        satellite_location = get_geolocation()
-        if satellite_location and 'coords' in satellite_location:
-            st.session_state.user_lat = satellite_location['coords']['latitude']
-            st.session_state.user_lon = satellite_location['coords']['longitude']
-            offset_range = satellite_location['coords'].get('accuracy', 0)
-            st.success(f"🎯 TARGET LOCKED: ตรึงพิกัดดาวเทียมเรียบร้อย! (ความคลาดเคลื่อน: {offset_range:.1f} เมตร)")
-            
-            folium_map = folium.Map(location=[st.session_state.user_lat, st.session_state.user_lon], zoom_start=18)
-            folium.Marker([st.session_state.user_lat, st.session_state.user_lon], icon=folium.Icon(color='red')).add_to(folium_map)
-            st_folium(folium_map, width="100%", height=420)
-        else:
-            st.warning("🛰️ WAITING FOR SIGNAL: โปรดกดเปิดสิทธิ์ยอมรับ GPS บนหน้าจอบราวเซอร์มือถือด้วยครับ")
+    st.write("---")
+    if st.button("🧼 RESET OVERLOAD SIGNAL COUNT", use_container_width=True):
+        db.reference('chat_notifications').set({'unread_count': 0})
+        st.rerun()
 
-    # --- 8.3 ห้องถอดรหัสความจริงควอนตัม (TRUTH SCAN) ---
-    elif menu_selection == "🔮 ROOM_03: TRUTH SCAN":
-        st.markdown("<h2 style='color:#ff00de; font-family:Orbitron; font-size:22px;'>🔮 ROOM_03 // THE QUANTUM TRUTH SCANNER TERMINAL</h2>", unsafe_allow_html=True)
+# --- แท็บที่ 2: ROOM_02 (GPS TARGET) ---
+with room_tabs[1]:
+    st.markdown("<h3 style='color:#00e5ff; font-family:Orbitron;'>🛰️ ROOM_02 // GPS TARGET LOCKING TRACER</h3>", unsafe_allow_html=True)
+    satellite_location = get_geolocation()
+    if satellite_location and 'coords' in satellite_location:
+        st.session_state.user_lat = satellite_location['coords']['latitude']
+        st.session_state.user_lon = satellite_location['coords']['longitude']
+        st.success(f"🎯 TARGET LOCKED: พิกัด [{st.session_state.user_lat}, {st.session_state.user_lon}]")
         
-        birth_date_input = st.date_input("📅 ENTER CHRONO DATE (ป้อนวัน/เดือน/ปีเกิด)", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31))
-        if birth_date_input:
-            scan_res = calculate_quantum_logic(birth_date_input)
-            col_t1, col_t2 = st.columns(2)
-            with col_t1:
-                st.markdown(f'<div class="truth-card-blue">วันเกิด: <b>วัน{scan_res["day"]}</b><br>จันทรคติ: <b>{scan_res["phase"]}</b></div>', unsafe_allow_html=True)
-            with col_t2:
-                st.markdown(f'<div class="truth-card-pink"><div class="giant-number">{scan_res["res"]}</div></div>', unsafe_allow_html=True)
+        folium_map = folium.Map(location=[st.session_state.user_lat, st.session_state.user_lon], zoom_start=18)
+        folium.Marker([st.session_state.user_lat, st.session_state.user_lon], icon=folium.Icon(color='red')).add_to(folium_map)
+        st_folium(folium_map, width="100%", height=350)
+    else:
+        st.warning("🛰️ WAITING FOR SIGNAL: โปรดกดอนุญาตให้ระบบเข้าถึง GPS บนบราวเซอร์มือถือด้วยครับ")
 
-    # --- 8.4 ห้องพยากรณ์วงจรพิกัดชีวิต (DESTINY ANALYST) ---
-    elif menu_selection == "🧬 ROOM_04: DESTINY ANALYST":
-        st.markdown("<h2 style='color:#39FF14; font-family:Orbitron; font-size:22px;'>🧬 ROOM_04 // FULL-CYCLE DESTINY RADAR SCANNERS</h2>", unsafe_allow_html=True)
-        base_dob = st.date_input("👤 SELECT CHRONO PROFILE ORIGIN", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31), key="destiny_dob")
-        if base_dob:
-            st.info("กำลังเปิดระบบเรดาร์กวาดข้อมูล...")
+# --- แท็บที่ 3: ROOM_03 (TRUTH SCAN) ---
+with room_tabs[2]:
+    st.markdown("<h3 style='color:#ff00de; font-family:Orbitron;'>🔮 ROOM_03 // THE QUANTUM TRUTH SCANNER</h3>", unsafe_allow_html=True)
+    birth_date_input = st.date_input("📅 ENTER CHRONO DATE (ป้อนวันเกิด)", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31))
+    if birth_date_input:
+        scan_res = calculate_quantum_logic(birth_date_input)
+        st.markdown(f'<div class="truth-card-blue">วันเกิด: <b>วัน{scan_res["day"]} ({scan_res["zodiac"]})</b><br>จันทรคติ: <b>{scan_res["phase"]}</b></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="truth-card-pink"><div class="giant-number">{scan_res["res"]}</div><div style="text-align:center;font-size:12px;color:#527394;">{scan_res["type"]}</div></div>', unsafe_allow_html=True)
 
-    # --- 8.5 ห้องเครื่องเล่นเพลงและคลื่นเสียง (SOUND SYSTEM) ---
-    elif menu_selection == "🎵 ROOM_05: SOUND SYSTEM":
-        st.markdown("<h2 style='color:#00e5ff; font-family:Orbitron; font-size:22px;'>🎵 ROOM_05 // LOCAL ARCHIVE MP3 AUDIO PLAYER</h2>", unsafe_allow_html=True)
-        execution_directory = os.path.dirname(__file__) if __file__ else "."
-        scanned_mp3_files = [file for file in os.listdir(execution_directory) if file.endswith('.mp3')]
-        
-        if not scanned_mp3_files:
-            st.error("⚠️ ไม่พบไฟล์เสียงเพลงนามสกุล .mp3 ในเครื่องเลยเพื่อน")
-        else:
-            user_picked_song = st.selectbox("เลือกเพลง:", options=scanned_mp3_files)
-            if user_picked_song:
-                st.success(f"กำลังเล่นเพลง: {user_picked_song}")
+# --- แท็บที่ 4: ROOM_04 (DESTINY ANALYST) ---
+with room_tabs[3]:
+    st.markdown("<h3 style='color:#39FF14; font-family:Orbitron;'>🧬 ROOM_04 // DESTINY RADAR SCANNERS</h3>", unsafe_allow_html=True)
+    base_dob = st.date_input("👤 SELECT CHRONO PROFILE ORIGIN", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31), key="destiny_dob")
+    if base_dob:
+        st.info("ระบบเรดาร์กำลังประมวลผลฐานข้อมูล...")
+
+# --- แท็บที่ 5: ROOM_05 (SOUND SYSTEM) ---
+with room_tabs[4]:
+    st.markdown("<h3 style='color:#00e5ff; font-family:Orbitron;'>🎵 ROOM_05 // LOCAL ARCHIVE MP3 PLAYER</h3>", unsafe_allow_html=True)
+    execution_directory = "."
+    scanned_mp3_files = [file for file in os.listdir(execution_directory) if file.endswith('.mp3')]
+    
+    if not scanned_mp3_files:
+        st.error("⚠️ ไม่พบไฟล์เพลง .mp3 ใน Directory ของระบบ")
+    else:
+        user_picked_song = st.selectbox("เลือกไฟล์เสียงเพื่อถอดรหัสสัญญาณ:", options=scanned_mp3_files)
+        if user_picked_song:
+            st.success(f"🔊 LOADING: {user_picked_song}")
 
 # =========================================================
-# 9. FOOTER
+# 8. SYSTEM DISCONNECT (ปุ่มล็อกเอาต์ด้านล่างสุดหน้าหลัก)
 # =========================================================
 st.write("---")
-st.markdown("<p style='text-align: center; color: #527394;'>สโลแกนระบบ: 'อยู่นิ่งๆ ไม่เจ็บตัว'</p>", unsafe_allow_html=True)
+if st.button("🔴 DISCONNECT SYSTEM (ออกจากระบบ)", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.rerun()
