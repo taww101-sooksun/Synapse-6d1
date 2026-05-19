@@ -17,6 +17,22 @@ import base64
 import os
 import pandas as pd
 from datetime import datetime, date, timedelta
+# เอาโค้ดนี้ไปแปะเพิ่มในสไตล์ดั้งเดิม ภายในฟังก์ชัน inject_cyberpunk_mainframe()
+st.markdown("""
+    <style>
+        /* บังคับให้แถบเมนูด้านข้างกางออกเสมอ แม้จะเปิดบนมือถือจอเล็ก */
+        [data-testid="stSidebarCollapsedControl"] {
+            display: none !important;
+        }
+        [data-testid="stSidebar"] {
+            left: 0 !important;
+            position: relative !important;
+            transform: none !important;
+            width: 100% !important;
+            display: block !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 def inject_cyberpunk_mainframe():
     st.markdown("""
