@@ -2,164 +2,159 @@ import streamlit as st
 import os
 import base64
 
-# 1. ตั้งค่าหน้าแอปแบบกว้างและซ่อนเมนู Streamlit แท้ๆ
-st.set_page_config(
-    page_title="SYNAPSE COMMAND CENTER", 
-    layout="wide",
-    initial_sidebar_state="collapsed" # ซ่อนแถบข้างตอนเริ่มเพื่อให้พื้นที่เต็มจอ
-)
+# ตั้งค่าหน้าแอป
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
 
-# ค้นหาไฟล์ในโฟลเดอร์
+# ซ่อนติ่ง Streamlit เหมือนเดิม
+hide_style = """
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    .stApp { background-color: #050505; }
+</style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
+
+# ค้นหาไฟล์
 current_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 mp3_files = [f for f in os.listdir(current_dir) if f.endswith('.mp3')]
-logo_path = os.path.join(current_dir, "logo1.png")
 
-# ฟังก์ชันแปลงรูปภาพเป็น Base64 เพื่อให้เรียกใช้ใน HTML/CSS ได้ชัวร์ๆ
-def get_image_base64(path):
-    if os.path.exists(path):
-        with open(path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode()
-    return ""
+# --- ระบบจำสถานะเอฟเฟกต์ (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้นเป็น NORMAL) ---
+if "current_effect" not in st.session_state:
+    st.session_state.current_effect = "NORMAL"
 
-logo_base64 = get_image_base64(logo_path)
+# --- เช็คสถานะปัจจุบันแล้วเลือกสไตล์ CSS ให้ตรงกับปุ่มที่กด ---
+effect_css = ""
 
-# --- 2. CSS ขั้นเทพ: ลบทุกอย่างที่เป็น Streamlit + ใส่แสงนีออนเคลื่อนไหว (Animation) ---
-custom_css = f"""
+if st.session_state.current_effect == "FLASH":
+    # เอฟเฟกต์ FLASH: ไฟสีเหลือง-ขาว กระพริบถี่ๆ สายตื๊ด
+    effect_css = """
+    @keyframes flashEffect {
+        0% { border-color: #fff; box-shadow: 0 0 40px #fff, inset 0 0 20px #ffcc00; }
+        50% { border-color: #ffcc00; box-shadow: 0 0 10px #ffcc00; }
+        100% { border-color: #fff; box-shadow: 0 0 40px #fff, inset 0 0 20px #ffcc00; }
+    }
+    .player-container { animation: flashEffect 0.3s infinite; border: 5px solid #ffcc00; }
+    """
+elif st.session_state.current_effect == "VIBE":
+    # เอฟเฟกต์ VIBE: ไฟสีม่วงดนตรี R&B สมูทๆ ค่อยๆ เรืองแสง
+    effect_css = """
+    @keyframes vibeEffect {
+        0% { border-color: #9b51e0; box-shadow: 0 0 15px #9b51e0; }
+        100% { border-color: #e051b8; box-shadow: 0 0 35px #e051b8; }
+    }
+    .player-container { animation: vibeEffect 2s infinite alternate; border: 4px solid #9b51e0; }
+    """
+elif st.session_state.current_effect == "NEON":
+    # เอฟเฟกต์ NEON: สีเขียวมินต์สว่างๆ วิบวับกระชากสายตา
+    effect_css = """
+    @keyframes neonEffect {
+        0% { border-color: #00ffcc; box-shadow: 0 0 30px #00ffcc, inset 0 0 15px #00ffcc; }
+        100% { border-color: #0033aa; box-shadow: 0 0 10px #0033aa; }
+    }
+    .player-container { animation: neonEffect 1s infinite alternate; border: 4px solid #00ffcc; }
+    """
+elif st.session_state.current_effect == "TUNNEL":
+    # เอฟเฟกต์ TUNNEL: ไฟสีน้ำเงินไซไฟ วนลูปหลอนๆ
+    effect_css = """
+    @keyframes tunnelEffect {
+        0% { border-color: #0066ff; box-shadow: 0 0 20px #0066ff; }
+        50% { border-color: #ff0055; box-shadow: 0 0 40px #ff0055; }
+        100% { border-color: #0066ff; box-shadow: 0 0 20px #0066ff; }
+    }
+    .player-container { animation: tunnelEffect 4s infinite; border: 4px solid #0066ff; }
+    """
+else:
+    # สถานะธรรมดา (Normal) ไฟวิ่ง RGB ชิลๆ ตอนยังไม่กดอะไร
+    effect_css = """
+    @keyframes neonRainbow {
+        0% { border-color: #ff0055; box-shadow: 0 0 15px #ff0055; }
+        50% { border-color: #00ffcc; box-shadow: 0 0 25px #00ffcc; }
+        100% { border-color: #9b51e0; box-shadow: 0 0 15px #9b51e0; }
+    }
+    .player-container { animation: neonRainbow 5s infinite alternate; border: 4px solid #ff0055; }
+    """
+
+# พ่น CSS ของเอฟเฟกต์ลงหน้าเว็บ
+style_setup = f"""
 <style>
-    /* ลบแถบด้านบน เมนู และปุ่มด้านล่างของ Streamlit ออกให้หมด */
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
-    .stDeployButton {{display:none;}}
-    
-    /* ปรับพื้นหลังแอปให้มืดสนิท เพื่อให้ไฟนีออนเด่น */
-    .stApp {{
-        background-color: #050505;
-    }}
-
-    /* แอนิเมชันเปลี่ยนสีนีออนแบบวนลูป (RGB Rainbow Effect) */
-    @keyframes neonRainbow {{
-        0% {{ border-color: #ff0055; box-shadow: 0 0 15px #ff0055, inset 0 0 15px #ff0055; }}
-        25% {{ border-color: #00ffcc; box-shadow: 0 0 25px #00ffcc, inset 0 0 10px #00ffcc; }}
-        50% {{ border-color: #9b51e0; box-shadow: 0 0 15px #9b51e0, inset 0 0 15px #9b51e0; }}
-        75% {{ border-color: #ffcc00; box-shadow: 0 0 25px #ffcc00, inset 0 0 10px #ffcc00; }}
-        100% {{ border-color: #ff0055; box-shadow: 0 0 15px #ff0055, inset 0 0 15px #ff0055; }}
-    }}
-
-    /* แอนิเมชันโลโก้หมุนขยับไม่ให้อยู่นิ่ง */
-    @keyframes logoPulse {{
-        0% {{ transform: scale(1); filter: drop-shadow(0 0 10px #00ffcc); }}
-        50% {{ transform: scale(1.05); filter: drop-shadow(0 0 25px #ff0055); }}
-        100% {{ transform: scale(1); filter: drop-shadow(0 0 10px #00ffcc); }}
-    }}
-
-    /* กล่องเครื่องเล่นหลัก */
     .player-container {{
-        border: 4px solid #ff0055;
         border-radius: 20px;
         padding: 30px;
         background: rgba(15, 15, 15, 0.9);
         text-align: center;
-        animation: neonRainbow 8s infinite alternate;
-        max-width: 700px;
+        max-width: 600px;
         margin: 0 auto;
     }}
-
-    /* สไตล์โลโก้ */
-    .neon-logo {{
-        width: 150px;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 50%;
-        animation: logoPulse 3s infinite ease-in-out;
-    }}
-
-    /* ตัวหนังสือวิ่งแบบนีออนไล่สี */
     .neon-marquee {{
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
         color: #ffffff;
-        text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc, 0 0 30px #00ffcc;
+        text-shadow: 0 0 10px #00ffcc;
         background: #000000;
-        padding: 10px;
+        padding: 8px;
         border-radius: 10px;
-        border: 1px solid #333;
     }}
-    
-    /* สไตล์ปุ่มกดให้ดูเป็นคลับนีออน */
-    .stButton>button {{
-        background-color: #111;
-        color: #00ffcc;
-        border: 2px solid #00ffcc;
-        border-radius: 10px;
-        box-shadow: 0 0 8px #00ffcc;
-        transition: 0.3s;
-        width: 100%;
-    }}
-    .stButton>button:hover {{
-        background-color: #00ffcc;
-        color: #111;
-        box-shadow: 0 0 20px #00ffcc;
-    }}
+    {effect_css}
 </style>
 """
-st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown(style_setup, unsafe_allow_html=True)
 
 
-# --- 3. ส่วนการแสดงผลบนหน้าจอ (UI) ---
-
+# --- หน้าตาแอป (UI) ---
 st.write("<br>", unsafe_allow_html=True)
 
-# กล่องเครื่องเล่นเพลงหลัก
+# กล่องเครื่องเล่นหลัก (จะเปลี่ยนสีตามปุ่มที่กด)
 st.markdown("<div class='player-container'>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='color:#fff;'>🪐 SYNAPSE COMMAND CENTER</h2>", unsafe_allow_html=True)
+st.markdown(f"<p style='color:#aaa;'>โหมดปัจจุบัน: <b style='color:#00ffcc;'>{st.session_state.current_effect}</b></p>", unsafe_allow_html=True)
 
-# แสดงโลโก้ logo1.png (ถ้ามีไฟล์)
-if logo_base64:
-    st.markdown(f'<img src="data:image/png;base64,{logo_base64}" class="neon-logo">', unsafe_allow_html=True)
-else:
-    # ถ้าไม่มีรูปจะขึ้นเป็นไอคอนนีออนแก้ขัดให้ก่อน
-    st.markdown("<h1 style='font-size:80px; animation: logoPulse 3s infinite;'>🛸</h1>", unsafe_allow_html=True)
-
-st.markdown("<h2 style='color:#fff; text-shadow: 0 0 10px #ff0055;'>SYNAPSE PLAYER</h2>", unsafe_allow_html=True)
-
-# ข้อความวิ่งแบบนีออนหลายสี (ไมู่อยู่นิ่ง)
+# ข้อความวิ่ง
 st.markdown("""
 <div class='neon-marquee'>
-    <marquee scrollamount='8'>🔥 NOW PLAYING • อยู่นิ่งๆ ไม่เจ็บตัว • SYSTEM ACTIVE • SYSTEM ACTIVE • 🔥</marquee>
+    <marquee scrollamount='8'>🔥 SYSTEM ACTIVE • อยู่นิ่งๆ ไม่เจ็บตัว • NOW PLAYING 🔥</marquee>
 </div>
 <br>
 """, unsafe_allow_html=True)
 
-# ตัวเลือกเพลงและเครื่องเล่น
+# ส่วนเลือกเพลง
 if mp3_files:
     selected_song = st.selectbox("🎵 เลือกเพลงที่จะอัดวิดีโอ:", mp3_files)
     song_path = os.path.join(current_dir, selected_song)
-    
     with open(song_path, "rb") as audio_file:
         audio_bytes = audio_file.read()
-    
-    # ตัวเล่นเพลง
     st.audio(audio_bytes, format="audio/mp3")
 else:
-    st.error("❌ ไม่เจอไฟล์ .mp3 ในโฟลเดอร์เลยครับเพื่อน เอาไฟล์มาวางคู่กับโค้ดก่อนนะ")
+    st.error("❌ ไม่เจอไฟล์ .mp3 ในโฟลเดอร์เดียวกับโค้ด")
 
-st.markdown("</div>", unsafe_allow_html=True) # ปิดกล่องเครื่องเล่น
+st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- 4. ปุ่มเอฟเฟกต์วิบวับด้านล่าง ---
-st.write("<br>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align:center; color:#fff;'>🎛️ EFFECT BOARD</h3>", unsafe_allow_html=True)
+# --- 🎛️ EFFECT BOARD (โซนปุ่มกดเปลี่ยนเอฟเฟกต์จริง) ---
+st.write("<br><br>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center; color:#fff;'>🎛️ EFFECT BOARD (กดเพื่อเปลี่ยนแสงไฟ)</h3>", unsafe_allow_html=True)
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
+
 with col1:
     if st.button("⚡ FLASH"):
-        st.toast("EFFECT: FLASH!")
+        st.session_state.current_effect = "FLASH"
+        st.rerun() # สั่งให้หน้าจอรีเฟรชเพื่อเปลี่ยนสีไฟทันที
 with col2:
     if st.button("🔮 VIBE"):
-        st.toast("EFFECT: PURE VIBE")
+        st.session_state.current_effect = "VIBE"
+        st.rerun()
 with col3:
     if st.button("🌌 NEON"):
-        st.toast("EFFECT: NEON GLOW")
+        st.session_state.current_effect = "NEON"
+        st.rerun()
 with col4:
     if st.button("🌀 TUNNEL"):
-        st.toast("EFFECT: WARP")
+        st.session_state.current_effect = "TUNNEL"
+        st.rerun()
+with col5:
+    if st.button("🔄 RESET"):
+        st.session_state.current_effect = "NORMAL"
+        st.rerun()
