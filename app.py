@@ -18,19 +18,11 @@ if location and location['latitude'] is not None:
     st.write(f"🌐 **พิกัดตรงนี้คือ:** {lat}, {lon}")
     st.write("📌 **พื้นที่ปัจจุบันของคุณ:** ตำบลนาโพธิ์ อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด")
     
-    # 2. สร้างแผนที่แบบสว่าง มีชื่อถนน มีชื่อสถานที่ชัดเจนด้วย Folium
-    # โดยตั้งค่าให้ดึงแผนที่มาตรฐานแบบ OpenStreetMap (สว่างและเห็นเส้นทางชัด)
-    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="OpenStreetMap")
-    
-    # ปักหมุดตรงจุดที่เราอยู่ พร้อมป้ายบอก
-    folium.Marker(
-        [lat, lon], 
-        popup="ตำแหน่งจริงของคุณ ณ วินาทีนี้",
-        tooltip="คุณอยู่ที่นี่"
-    ).add_to(m)
-    
-    # สั่งวาดแผนที่ลงหน้าแอป SYNAPSE
-    st_folium(m, width=700, height=500)
+# เปลี่ยนบรรทัดสร้างแผนที่เดิม ให้กลายเป็นแผนที่ดาวเทียม Google Maps ชัดๆ
+m = folium.Map(
+    location=[lat, lon], 
+    zoom_start=18, # ซูมเข้าไปลึกๆ ระดับ 18-19 จะเห็นหลังคาบ้านชัดเจน
+    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", # ลิงก์ดึงภาพดาวเทียม Google
+    attr="Google Satellite"
+)
 
-else:
-    st.info("กำลังรับสัญญาณดาวเทียมเพื่อระบุตำแหน่งพิกัดจริง...")
