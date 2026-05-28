@@ -7,7 +7,6 @@ numpy
 librosa
 soundfile
 pydub
-pydeck
 requests
 streamlit-player
 streamlit-js-eval
