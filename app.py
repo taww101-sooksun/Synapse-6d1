@@ -1,61 +1,60 @@
 import streamlit as st
-from streamlit_geolocation import streamlit_geolocation
-import streamlit as st
-# อิมพอร์ต pydeck เข้ามาตรงๆ ตัวเต็ม
-import pydeck as pdk 
+import pydeck as pdk
 from streamlit_geolocation import streamlit_geolocation
 
-st.title("📍 ศูนย์สั่งการพิกัดพื้นที่จริง (ระบบ Pydeck)")
+# 1. ตั้งค่าหน้าแอปพลิเคชัน
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
-location = streamlit_geolocation()
+st.title("📍 ศูนย์สั่งการพิกัดพื้นที่จริง (SYNAPSE)")
+st.write("---")
 
+# 2. เรียกฟังก์ชันจับพิกัดความจริง (ใส่กุญแจล็อกเพื่อป้องกันการทำงานซ้ำซ้อน)
+location = streamlit_geolocation(key="synapse_command_location")
+
+# 3. ตรรกะเงื่อนไขตรวจสอบค่าพิกัด (โกหกไม่ได้)
 if location and location['latitude'] is not None:
     lat = location['latitude']
     lon = location['longitude']
     
-    st.success("จับพิกัดความจริงได้สำเร็จ!")
-    st.write(f"🌐 **พิกัดปัจจุบัน:** {lat}, {lon}")
+    st.success("🛰️ สัญญาณดาวเทียมระบุตำแหน่งสำเร็จ!")
     
-    # วางโครงสร้างมุมมองแผนที่ (ตั้งค่าพิกัดความจริงของเราลงไป)
+    # แสดงค่าตัวเลขดิบตามจริง
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label="ละติจูด (Latitude)", value=f"{lat:.6f}")
+    with col2:
+        st.metric(label="ลองติจูด (Longitude)", value=f"{lon:.6f}")
+        
+    st.info("📌 **พิกัดพื้นที่ปัจจุบันของคุณ:** ตำบลนาโพธิ์ อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด")
+    st.write("---")
+    
+    # 4. วางโครงสร้างมุมมองแผนที่ความละเอียดสูงของ Pydeck
     view_state = pdk.ViewState(
         latitude=lat,
         longitude=lon,
-        zoom=15,    # ระดับความซูม ยิ่งเยอะยิ่งใกล้หลังคาบ้าน
-        pitch=45,   # ปรับมุมก้ม-เงย (ใส่ 45 จะเห็นเป็นมิติ 3D แบบเอียงๆ สวยมาก)
-        bearing=0   # มุมหันหน้าทิศเหนือทิศใต้
+        zoom=15,    # ระดับความซูม ยิ่งเลขเยอะยิ่งใกล้หลังคาบ้าน
+        pitch=45,   # ปรับมุมก้ม-เงย 45 องศาให้เห็นเป็นมิติ 3D คมชัด
+        bearing=0
     )
     
-    # สั่งวาดแผนที่ความละเอียดสูง
+    # ปักหมุดสีแดงตรงพิกัดจริง
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=[{"lat": lat, "lon": lon}],
+        get_position="[lon, lat]",
+        get_color="[250, 0, 0, 200]", # สีแดงเข้ม
+        get_radius=30,                # ขนาดจุดปักหมุด
+    )
+    
+    # สั่งสร้างแผนที่กราฟิกสว่างคมชัด เห็นเส้นถนนและชื่อสถานที่ชัดเจน
     r = pdk.Deck(
+        layers=[layer],
         initial_view_state=view_state,
-        # ใช้สไตล์แผนที่แบบสว่าง เห็นถนนและชื่อสถานที่ชัดเจนของ Mapbox
-        map_style='mapbox://styles/mapbox/streets-v11', 
+        map_style='mapbox://styles/mapbox/streets-v11' # สไตล์แผนที่สว่างสากล
     )
     
-    # แสดงผลบนหน้าจอแอป SYNAPSE
+    # แสดงผลบนหน้าเว็บแอป
     st.pydeck_chart(r)
 
 else:
-    st.info("กำลังรับสัญญาณดาวเทียมเพื่อระบุตำแหน่งพิกัดจริง...")
-
-location = streamlit_geolocation()
-
-if location and location['latitude'] is not None:
-    lat = location['latitude']
-    lon = location['longitude']
-    
-    # สร้างข้อมูลพิกัดในรูปแบบที่ pydeck เข้าใจ
-    view_state = pdk.ViewState(
-        latitude=lat,
-        longitude=lon,
-        zoom=16, # ระดับความซูม
-        pitch=0
-    )
-    
-    # วาดแผนที่กราฟิกความละเอียดสูง (สไตล์ถนนและสถานที่ชัดเจน)
-    r = pdk.Deck(
-        map_style='mapbox://styles/mapbox/streets-v11', # ใช้สไตล์ถนนที่คมชัดของ Mapbox
-        initial_view_state=view_state
-    )
-    
-    st.pydeck_chart(r)
+    st.warning("📡 กำลังรอการตอบรับพิกัดความจริงจากสัญญาณอุปกรณ์ของคุณ... โปรดกดอนุญาตสิทธิ์เข้าถึงตำแหน่งหากมีป๊อปอัปเด้งขึ้นมา")
