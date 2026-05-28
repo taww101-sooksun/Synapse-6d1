@@ -1,112 +1,81 @@
 import streamlit as st
-import datetime
+from datetime import datetime
 
-# 1. ตั้งค่าหน้าแอปพลิเคชัน
-st.set_page_config(page_title="QUANTUM CALCULATOR", layout="centered")
-st.title("🧮 เครื่องคำนวณรหัสตัวเลขจากดวงดาวและปฏิทิน")
+# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
+st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; color: #00ff00; }
+    h1 { color: #ff00ff; text-shadow: 2px 2px #000000; text-align: center; }
+    .stMetric { background-color: #1e2130; border-radius: 10px; padding: 15px; border: 1px solid #00ff00; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🌌 Cosmic Auto-Decoder")
+st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
+
+# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
+selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
+
+# 3. Logic คำนวณอัตโนมัติ
+# A. วันในสัปดาห์
+day_of_week = selected_date.isoweekday()
+day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
+
+# B. ปีนักษัตร (ไทย)
+thai_year = selected_date.year + 543
+zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+current_zodiac = zodiac_list[thai_year % 12]
+
+# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
+def get_lunar_phase(date):
+    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
+    reference_date = datetime(2000, 1, 6)
+    diff = (date - reference_date.date()).days
+    lunar_cycle = 29.530588853
+    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
+    
+    # แปลงเป็นวันที่ในรอบเดือน (1-29)
+    current_pos = phase_pos * 29.53
+    
+    if current_pos <= 14.76: # ข้างขึ้น
+        step = round(current_pos if current_pos >= 1 else 1)
+        return "ข้างขึ้น (-)", step, -1
+    else: # ข้างแรม
+        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
+        return "ข้างแรม (+)", step, 1
+
+lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
+
+# D. สูตรสมดุลจักรวาล
+PHI = 1.618
+balance_point = lunar_step - 7.5
+lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
+result = (day_of_week * PHI) + lunar_modifier
+
+# 4. แสดงผลโชว์เพื่อน
 st.write("---")
-
-# 2. ส่วนอินพุต: ให้เลือก วัน เดือน ปี
-st.subheader("🔮 เลือกวัน เดือน ปี เพื่อถอดรหัสความจริง")
-selected_date = st.date_input("เลือกวันที่ต้องการคำนวณ:", datetime.date.today())
-
-# แยกองค์ประกอบ วัน เดือน ปี ค.ศ.
-day_of_week = selected_date.isoweekday() # 1=จันทร์, 2=อังคาร, ..., 7=อาทิตย์ (ตรงตามเกณฑ์นาย)
-day_num = selected_date.day
-month_num = selected_date.month
-year_num = selected_date.year
-thai_year = year_num + 543 # แปลงเป็น พ.ศ.
-
-# 3. ตรรกะการแปลงค่า วัน และ เดือน (ตรงไปตรงมา)
-val_day = day_of_week
-day_names = ["", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-day_name_th = day_names[day_of_week]
-
-val_month = month_num
-month_name_th = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"][month_num]
-
-# 4. ล็อกค่าปีนักษัตรตามปี พ.ศ. จริง (ตัดปัญหาสูตรคณิตศาสตร์เพี้ยน)
-# เกณฑ์ของนาย: ชวด=1, ฉลู=2, ขาล=3, เถาะ=4, มะโรง=5, มะเส็ง=6, มะเมีย=7, มะแม=8, วอก=9, ระกา=10, จอ=11, ปีกุล=12
-if thai_year == 2569:
-    zodiac_name = "ปีมะเมีย (ปีม้า)"
-    val_zodiac_num = 7
-elif thai_year == 2568:
-    zodiac_name = "ปีมะเส็ง"
-    val_zodiac_num = 6
-elif thai_year == 2570:
-    zodiac_name = "ปีมะแม"
-    val_zodiac_num = 8
-else:
-    # เผื่อเลือกปีอื่นๆ จะคำนวณแบบล็อกฐานรอบ 12 ปีที่แม่นยำ
-    zodiac_map = {
-        0: ("ปีมะโรง", 5), 1: ("ปีมะเส็ง", 6), 2: ("ปีมะเมีย", 7), 
-        3: ("ปีมะแม", 8), 4: ("ปีวอก", 9), 5: ("ปีระกา", 10), 
-        6: ("ปีจอ", 11), 7: ("ปีกุล", 12), 8: ("ปีชวด", 1), 
-        9: ("ปีฉลู", 2), 10: ("ปีขาล", 3), 11: ("ปีเถาะ", 4)
-    }
-    zodiac_name, val_zodiac_num = zodiac_map[(thai_year - 2564) % 12]
-
-# 5. สูตรทางดาราศาสตร์แกะข้างขึ้นข้างแรมอัตโนมัติ
-ts = (year_num - 2000) * 365.25 + (month_num * 30.6) + day_num
-lunar_cycle = 29.53
-age = (ts - 4.1) % lunar_cycle
-
-if age < 14.765:
-    lunar_type = "ขึ้น"
-    lunar_phase_num = int(age) + 1
-    if lunar_phase_num > 15: lunar_phase_num = 15
-else:
-    lunar_type = "แรม"
-    lunar_phase_num = int(age - 14.765) + 1
-    if lunar_phase_num > 15: lunar_phase_num = 15
-
-# ตรรกะคะแนนข้างขึ้นข้างแรม
-lunar_modifier = 0
-modifier_text = "ค่าคงที่ (0)"
-
-if lunar_type == "แรม":
-    if 1 <= lunar_phase_num <= 6 or 9 <= lunar_phase_num <= 15:
-        lunar_modifier = lunar_phase_num
-        modifier_text = f"+ {lunar_phase_num}"
-    elif 7 <= lunar_phase_num <= 8:
-        lunar_modifier = 0
-        modifier_text = "ค่าคงที่ (0)"
-elif lunar_type == "ขึ้น":
-    if 1 <= lunar_phase_num <= 6 or 9 <= lunar_phase_num <= 15:
-        lunar_modifier = -lunar_phase_num
-        modifier_text = f"- {lunar_phase_num}"
-    elif 7 <= lunar_phase_num <= 8:
-        lunar_modifier = 0
-        modifier_text = "ค่าคงที่ (0)"
-
-# --- แสดงผลลัพธ์หน้าจอขั้นที่ 1 ---
-st.write("---")
-st.subheader("📊 1. ถอดรหัสค่าตัวเลขดิบตามจริง")
+st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
 
 col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric(label=f"วัน{day_name_th}", value=val_day)
-with col2:
-    st.metric(label=f"เดือน{month_name_th}", value=val_month)
-with col3:
-    st.metric(label=f"นักษัตร ({zodiac_name})", value=val_zodiac_num)
+col1.metric("วัน", day_name_th)
+col2.metric("ปีนักษัตร", current_zodiac)
+col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
 
-st.info(f"🌙 **ระบบคำนวณดวงจันทร์วันนี้:** {lunar_type} {lunar_phase_num} ค่ำ -> ส่งผลต่อสมการ: {modifier_text}")
+st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
+st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
 
-# --- แสดงผลลัพธ์หน้าจอขั้นที่ 2 ---
-st.write("---")
-st.subheader("⚡ 2. ผลลัพธ์สมการคณิตศาสตร์ควอนตัม")
+# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
+with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
+    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
+    st.markdown(f"""
+    **วิเคราะห์ตามหลักการ:**
+    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
+    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
+    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
+    """)
+    
+    raw_num = str(abs(result)).replace('.', '')
+    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
 
-base_sum = val_day + val_month + val_zodiac_num
-total_before_factor = base_sum + lunar_modifier
-
-# นำค่าคงที่ 1.618 (คูณ) และ 29.53 (หาร) เข้ามาผูกพันอยู่ตลอดเวลา
-final_result = (total_before_factor * 1.618) / 29.53
-
-st.code(f"สูตรเริ่มต้น: วัน({val_day}) + เดือน({val_month}) + ปีนักษัตร({val_zodiac_num}) = {base_sum}")
-st.code(f"คำนวณข้างขึ้นข้างแรม: {base_sum} ({modifier_text}) = {total_before_factor}")
-st.code(f"สูตรผูกพันค่าคงที่ตลอดเวลา: ({total_before_factor} × 1.618) ÷ 29.53")
-
-st.markdown(f"### 🎯 ค่ารหัสลับสุทธิ: ` {final_result:.4f} `")
-st.write("---")
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | ระบบคำนวณสมการตัวเลขตามสัจธรรมความจริง 2026")
+st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
