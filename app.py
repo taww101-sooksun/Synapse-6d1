@@ -1,37 +1,29 @@
 import streamlit as st
-import folium  # ต้องมีบรรทัดนี้ ไม่งั้นมันจะฟ้อง Error บรรทัดที่ 7 ทันที
+import folium
 from streamlit_folium import st_folium
 from streamlit_geolocation import streamlit_geolocation
 
-# ... แล้วค่อยตามด้วยโค้ดตั้งค่าแผนที่ด้านล่าง ...
+# 1. ตั้งค่าหน้าแอป
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
+st.title("📍 ศูนย์สั่งการพิกัดพื้นที่จริง (SYNAPSE - ดาวเทียม)")
+st.write("---")
 
-import streamlit as st
-# โค้ดส่วนนี้เป็นตัวอย่างการดึงปลั๊กอินพิกัด
-from streamlit_geolocation import streamlit_geolocation
+# 2. เรียกฟังก์ชันจับพิกัดความจริง (ใส่กุญแจแยกเพื่อป้องกันระบบซ้ำซ้อน)
+location = streamlit_geolocation(key="synapse_google_satellite_location_2026")
 
-st.title("📍 ระบบตรวจสอบพิกัดจริงบนโลก (โกหกไม่ได้)")
-# เปลี่ยนบรรทัดสร้างแผนที่เดิม ให้กลายเป็นแผนที่ดาวเทียม Google Maps ชัดๆ
-m = folium.Map(
-    location=[lat, lon], 
-    zoom_start=18, # ซูมเข้าไปลึกๆ ระดับ 18-19 จะเห็นหลังคาบ้านชัดเจน
-    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", # ลิงก์ดึงภาพดาวเทียม Google
-    attr="Google Satellite"
-)
-
-# สั่งให้แอปดึงพิกัดจากชิป GPS หรือสัญญาณอินเทอร์เน็ตของอุปกรณ์
-location = streamlit_geolocation()
-
-# ตรวจสอบว่าได้ค่ามาหรือยัง
+# 3. ต้องเช็คเงื่อนไขและสร้างตัวแปรก่อน ถึงจะเอาไปใช้ในแผนที่ได้ (ห้ามสลับลำดับ)
 if location and location['latitude'] is not None:
+    # สร้างตัวแปรแกะค่าพิกัดจริงออกมารองรับไว้ก่อน
     lat = location['latitude']
     lon = location['longitude']
     
-    st.success("จับสัญญาณพิกัดได้สำเร็จ!")
-    st.write(f"**ละติจูด (Latitude):** {lat}")
-    st.write(f"**ลองติจูด (Longitude):** {lon}")
+    st.success("🛰️ สัญญาณดาวเทียมระบุตำแหน่งสำเร็จ!")
+    st.write(f"🌐 **พิกัดปัจจุบันของคุณ:** {lat}, {lon}")
+    st.info("📌 **พื้นที่ปัจจุบันของคุณ:** ตำบลนาโพธิ์ อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด")
+    st.write("---")
     
-    # เอาตัวเลขพิกัดความจริงนี้ ไปเปิดบนแผนที่โลกให้เห็นตำแหน่งเลย
-    st.map(data=[{"lat": lat, "lon": lon}])
-
-else:
-    st.info("กำลังรอการอนุญาตเข้าถึงพิกัด GPS จากอุปกรณ์ของคุณ...")
+    # 4. พอมีตัวแปร lat, lon แล้ว ถึงจะสั่งสร้างแผนที่ดาวเทียม Google Maps ชัดๆ ได้
+    m = folium.Map(
+        location=[lat, lon], # คอมพิวเตอร์อ่านตรงนี้จะรู้ทันทีว่า lat, lon คืออะไรเพราะสร้างไว้ด้านบนแล้ว
+        zoom_start=18,        # ซูมลึกระดับเห็นหลังคาบ้าน
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", # ภาพดาวเทียมผสมชื่อถนนของ
