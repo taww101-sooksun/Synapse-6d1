@@ -1,5 +1,4 @@
 import streamlit as st
-import pdk  # เป็นแพ็คเกจย่อยของ pydeck ที่มีติดมากับ Streamlit อยู่แล้ว
 from streamlit_geolocation import streamlit_geolocation
 import streamlit as st
 # อิมพอร์ต pydeck เข้ามาตรงๆ ตัวเต็ม
