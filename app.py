@@ -1,8 +1,8 @@
 import streamlit as st
 from datetime import datetime
 
-# 1. สไตล์ Dark Neon อาจารย์ต๊ะ
-st.set_page_config(page_title="Cosmic Truth-Center", layout="centered")
+# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
+st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #00ff00; }
@@ -11,84 +11,71 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🌌 Cosmic Commander")
-st.write("<center>ระบบถอดรหัสรหัสสุทธิ บนฐานความจริง 100%</center>", unsafe_allow_html=True)
+st.title("🌌 Cosmic Auto-Decoder")
+st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
 
-# 2. ป้อนวัน เดือน ปี สากล
-selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", value=datetime.now())
+# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
+selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
 
-# 🆕 3. คลังคลังฐานข้อมูลความจริงแท้ (นายอยากเพิ่มวันไหนให้แม่นยำ 100% เอามาเติมตรงนี้ได้ตลอด)
-truth_table = {
-    "18/05/1984": {"type": "แรม", "step": 3},  # ล็อกค่าตามรูปปฏิทินจริงของนาย
-    "17/08/1996": {"type": "ขึ้น", "step": 4},  # ล็อกค่าตามปฏิทินหลวงจริง
-    "28/05/2026": {"type": "ขึ้น", "step": 12}, # ล็อกค่าของวันนี้เป๊ะๆ
-}
+# 3. Logic คำนวณอัตโนมัติ
+# A. วันในสัปดาห์
+day_of_week = selected_date.isoweekday()
+day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
 
-date_str = selected_date.strftime("%d/%m/%Y")
-
-st.write("---")
-st.subheader("🌙 ตรวจสอบระบบจันทรคติ")
-
-# เช็คว่าวันที่กรอก อยู่ในคลังความจริงของเราไหม
-if date_str in truth_table:
-    st.success(f"🎯 ค้นพบข้อมูลในคลังความจริงสากล! (ล็อกค่าปฏิทินหลวงอัตโนมัติ)")
-    lunar_type = truth_table[date_str]["type"]
-    lunar_step = truth_table[date_str]["step"]
-    st.info(f"ระบบดึงค่าความจริงตรงจากปฏิทิน: **{lunar_type} {lunar_step} ค่ำ**")
-else:
-    # วันอื่นๆ ที่ระบบไม่รู้ ให้สไลเดอร์โผล่มาให้นายควบคุมความจริงด้วยตัวเอง
-    st.warning("⚠️ วันนี้ไม่อยู่ในคลังความจริงด่วน กรุณาเลือกข้างขึ้นแรมตามปฏิทินจริง")
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        lunar_type = st.selectbox("เลือกสถานะดวงจันทร์", ["ขึ้น", "แรม"])
-    with col_l2:
-        lunar_step = st.slider("จำนวนค่ำ (1-15 ค่ำ)", min_value=1, max_value=15, value=1)
-
-
-# 4. ถอดรหัสเลขดิบ (ส่วนนี้คอมพิวเตอร์ทำถูกชัวร์ 100%)
-val_day = selected_date.isoweekday()
-day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][val_day - 1]
-
-val_month = selected_date.month
-month_name_th = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"][val_month]
-
+# B. ปีนักษัตร (ไทย)
 thai_year = selected_date.year + 543
-def get_exact_zodiac(year):
-    zodiac_order = [
-        ("ปีชวด", 1), ("ปีฉลู", 2), ("ปีขาล", 3), ("ปีเถาะ", 4),
-        ("ปีมะโรง", 5), ("ปีมะเส็ง", 6), ("ปีมะเมีย", 7), ("ปีมะแม", 8),
-        ("ปีวอก", 9), ("ปีระกา", 10), ("ปีจอ", 11), ("ปีกุล", 12)
-    ]
-    base_year = 2503
-    index = (year - base_year) % 12
-    return zodiac_order[index]
+zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+current_zodiac = zodiac_list[thai_year % 12]
 
-zodiac_name, val_zodiac = get_exact_zodiac(thai_year)
+# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
+def get_lunar_phase(date):
+    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
+    reference_date = datetime(2000, 1, 6)
+    diff = (date - reference_date.date()).days
+    lunar_cycle = 29.530588853
+    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
+    
+    # แปลงเป็นวันที่ในรอบเดือน (1-29)
+    current_pos = phase_pos * 29.53
+    
+    if current_pos <= 14.76: # ข้างขึ้น
+        step = round(current_pos if current_pos >= 1 else 1)
+        return "ข้างขึ้น (-)", step, -1
+    else: # ข้างแรม
+        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
+        return "ข้างแรม (+)", step, 1
 
+lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
 
-# 5. สมการทองคำของนาย
-base_sum = val_day + val_month + val_zodiac
-lunar_ratio = 29.53 / lunar_step
-total_combined = base_sum + lunar_ratio
-final_result = total_combined * 1.618
+# D. สูตรสมดุลจักรวาล
+PHI = 1.618
+balance_point = lunar_step - 7.5
+lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
+result = (day_of_week * PHI) + lunar_modifier
 
-
-# 6. แสดงหน้าจอผลลัพธ์
+# 4. แสดงผลโชว์เพื่อน
 st.write("---")
+st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
+
 col1, col2, col3 = st.columns(3)
-with col1: st.metric(f"วัน{day_name_th}", f"เลขดิบ: {val_day}")
-with col2: st.metric(f"เดือน{month_name_th}", f"เลขดิบ: {val_month}")
-with col3: st.metric(f"นักษัตร ({zodiac_name})", f"เลขดิบ: {val_zodiac}")
+col1.metric("วัน", day_name_th)
+col2.metric("ปีนักษัตร", current_zodiac)
+col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
 
-st.write("### 🎯 เลขรหัสสุทธิประจำจักรวาล (Cosmic Index)")
-st.metric(label="ค่าพลังงานสุทธิถอดรหัสได้", value=f"{final_result:.4f}")
+st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
+st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
 
-with st.expander("📝 เจาะลึกสมการกระดาษทด"):
+# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
+with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
+    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
     st.markdown(f"""
-    1. **ฐานรวม:** {val_day} + {val_month} + {val_zodiac} = **{base_sum}**
-    2. **อัตราดวงจันทร์ (29.53 ÷ {lunar_step}):** = **{lunar_ratio:.4f}**
-    3. **รวมก้อนแรก:** {base_sum} + {lunar_ratio:.4f} = **{total_combined:.4f}**
-    4. **คูณรหัสทองคำ:** {total_combined:.4f} × 1.618 = **{final_result:.4f}**
+    **วิเคราะห์ตามหลักการ:**
+    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
+    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
+    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
     """)
+    
+    raw_num = str(abs(result)).replace('.', '')
+    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
 
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | ล็อกเป้าความเที่ยงตรง 100% โดยอาจารย์ต๊ะ 2026")
+st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
