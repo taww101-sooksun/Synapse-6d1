@@ -1,4 +1,11 @@
 import streamlit as st
+import folium  # ต้องมีบรรทัดนี้ ไม่งั้นมันจะฟ้อง Error บรรทัดที่ 7 ทันที
+from streamlit_folium import st_folium
+from streamlit_geolocation import streamlit_geolocation
+
+# ... แล้วค่อยตามด้วยโค้ดตั้งค่าแผนที่ด้านล่าง ...
+
+import streamlit as st
 # โค้ดส่วนนี้เป็นตัวอย่างการดึงปลั๊กอินพิกัด
 from streamlit_geolocation import streamlit_geolocation
 
