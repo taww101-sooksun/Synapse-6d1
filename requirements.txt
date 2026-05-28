@@ -1,24 +1,31 @@
-suno-api
-streamlit
+# --- ระบบหลักและการจัดการหน้าต่างแอป ---
 streamlit>=1.35.0
+streamlit-player
+streamlit-js-eval
+streamlit-autorefresh
+
+# --- ระบบพิกัด แผนที่ และความจริงเชิงพื้นที่ ---
+streamlit-geolocation
+folium
+streamlit-folium
+geopy
+timezonefinder
+pytz
+
+# --- ระบบปัญญาประดิษฐ์และการเชื่อมโยงฐานข้อมูล ---
 google-generativeai>=0.8.3
+suno-api
+firebase-admin
+
+# --- ระบบประมวลผลข้อมูล ตัวเลข และเสียงดิบ ---
 pandas
 numpy
 librosa
 soundfile
 pydub
-requests
-streamlit-player
-streamlit-js-eval
-torch
 gTTS
-pytz
-geopy
-firebase-admin
-timezonefinder
+torch
+
+# --- ระบบเครือข่ายและการรับส่งสัญญาณสด ---
+requests
 streamlit-webrtc
-streamlit
-streamlit-autorefresh
-streamlit-geolocation
-folium
-streamlit-folium
