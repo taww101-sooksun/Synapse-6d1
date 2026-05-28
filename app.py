@@ -1,10 +1,6 @@
 import streamlit as st
+import pdk  # เป็นแพ็คเกจย่อยของ pydeck ที่มีติดมากับ Streamlit อยู่แล้ว
 from streamlit_geolocation import streamlit_geolocation
-# เพิ่มเครื่องมือทำแผนที่สว่างและละเอียด (ต้องใส่ใน requirements.txt ด้วยนะ)
-import folium
-from streamlit_folium import st_folium
-
-st.title("📍 ศูนย์สั่งการพิกัดพื้นที่จริง")
 
 location = streamlit_geolocation()
 
@@ -12,17 +8,18 @@ if location and location['latitude'] is not None:
     lat = location['latitude']
     lon = location['longitude']
     
-    st.success("จับพิกัดความจริงได้สำเร็จ!")
+    # สร้างข้อมูลพิกัดในรูปแบบที่ pydeck เข้าใจ
+    view_state = pdk.ViewState(
+        latitude=lat,
+        longitude=lon,
+        zoom=16, # ระดับความซูม
+        pitch=0
+    )
     
-    # 1. แสดงตัวเลขพิกัดที่โกหกไม่ได้
-    st.write(f"🌐 **พิกัดตรงนี้คือ:** {lat}, {lon}")
-    st.write("📌 **พื้นที่ปัจจุบันของคุณ:** ตำบลนาโพธิ์ อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด")
+    # วาดแผนที่กราฟิกความละเอียดสูง (สไตล์ถนนและสถานที่ชัดเจน)
+    r = pdk.Deck(
+        map_style='mapbox://styles/mapbox/streets-v11', # ใช้สไตล์ถนนที่คมชัดของ Mapbox
+        initial_view_state=view_state
+    )
     
-# เปลี่ยนบรรทัดสร้างแผนที่เดิม ให้กลายเป็นแผนที่ดาวเทียม Google Maps ชัดๆ
-m = folium.Map(
-    location=[lat, lon], 
-    zoom_start=18, # ซูมเข้าไปลึกๆ ระดับ 18-19 จะเห็นหลังคาบ้านชัดเจน
-    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", # ลิงก์ดึงภาพดาวเทียม Google
-    attr="Google Satellite"
-)
-
+    st.pydeck_chart(r)
