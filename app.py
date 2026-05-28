@@ -3,6 +3,13 @@ import streamlit as st
 from streamlit_geolocation import streamlit_geolocation
 
 st.title("📍 ระบบตรวจสอบพิกัดจริงบนโลก (โกหกไม่ได้)")
+# เปลี่ยนบรรทัดสร้างแผนที่เดิม ให้กลายเป็นแผนที่ดาวเทียม Google Maps ชัดๆ
+m = folium.Map(
+    location=[lat, lon], 
+    zoom_start=18, # ซูมเข้าไปลึกๆ ระดับ 18-19 จะเห็นหลังคาบ้านชัดเจน
+    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", # ลิงก์ดึงภาพดาวเทียม Google
+    attr="Google Satellite"
+)
 
 # สั่งให้แอปดึงพิกัดจากชิป GPS หรือสัญญาณอินเทอร์เน็ตของอุปกรณ์
 location = streamlit_geolocation()
