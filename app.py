@@ -1,111 +1,137 @@
 import streamlit as st
+from datetime import date, timedelta
 
-# ตั้งค่าหน้าจอแอปให้ดุดัน โทนมืด สบายตาตอนเปิดกลางแดด
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO", page_icon="🚜", layout="centered")
+# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
+def get_step_by_step_data(dt):
+    if dt is None: return None
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic = -7.5
+        l_type = f"ขึ้น {moon_num} ค่ำ"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic = 7.5
+        l_type = f"แรม {moon_num} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
+    zv = z_map[dt.year % 12]
+    z_name = z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
+    return {
+        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
+        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
+        "zn": z_name, "ev": ev, "en": en, "year": dt.year
+    }
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #111827; }
-    h1, h2, h3, p, label, span { color: white !important; }
-    </style>
-""", unsafe_allow_html=True)
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
 
-st.title("🚜 ระบบวัดที่นาสัจจะ (เวอร์ชันแม่นยำสูงสุด)")
-st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
-st.write("---")
+# --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
+st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
 
-st.subheader("🛰️ แผนที่ดาวเทียมสเกลจริงความละเอียดสูง")
-st.caption("คำแนะนำ: ใช้นิ้วจิ้มไอคอนรูป 'ห้าเหลี่ยม' หรือ 'สี่เหลี่ยม' ทางซ้ายมือ แล้วจิ้มลากไปตามขอบคันนาให้รอบ ระบบจะใช้สูตรคำนวณพื้นที่ผิวโลกจริง ไม่คลาดเคลื่อนแน่นอน")
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
 
-# พิกัดเริ่มต้น (สามารถขยับตาม GPS จริงได้)
-default_lat = 15.9513057
-default_lng = 103.5796196
+# --- 👤 TAB 1: วิเคราะห์บุคคล ---
+with tab1:
+    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
+    if u_birth:
+        d = get_step_by_step_data(u_birth)
+        
+        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
+        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
+        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
+        
+        st.write("---")
+        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+        raw_code = (base_sum + d['l_logic']) * 1.618
+        days_alive = (date.today() - u_birth).days
+        final_val = (raw_code + days_alive) / 1.618
+        
+        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
+        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
+        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
 
-# โค้ดแผนที่เวอร์ชันอัปเกรด: ใช้ Turf.js ช่วยคำนวณพื้นที่ระดับสากล + ดึงดาวเทียม Esri World Imagery ที่เห็นคันนาชัดที่สุด
-map_html_code = f"""
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+        digit, grade, color = get_grade_info(final_val)
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        </div>""", unsafe_allow_html=True)
 
-<div id="map" style="width: 100%; height: 400px; border-radius: 12px; border: 2px solid #10b981;"></div>
-<div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
-    <b style="color:#34d399; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
-    <p id="area-text" style="font-size:22px; margin:5px 0; font-weight:bold; color:#f59e0b;">ยังไม่ได้ลากแปลงนา</p>
-</div>
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
 
-<script>
-    // ตั้งค่าแผนที่เริ่มต้น
-    var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
 
-    // ใช้ภาพถ่ายดาวเทียมความละเอียดสูง ซูมเห็นดิน เห็นร่องคันนาชัดเจน
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-        maxZoom: 19
-    }}).addTo(map);
+# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
+with tab2:
+    col1, col2 = st.columns(2)
+    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
+    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+    
+    if birth_a and birth_b:
+        d1 = get_step_by_step_data(birth_a)
+        d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
+        
+        resonance = (r1 + r2) / 1.618
+        digit_p, grade_p, color_p = get_grade_info(resonance)
+        
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
+            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
+            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
+        </div>""", unsafe_allow_html=True)
 
-    // ซ้อนเส้นถนนและชื่อหมู่บ้านภาษาไทยเพื่อให้หาพิกัดง่าย ไม่หลงทิศ
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-
-    // ดึง GPS จริงของมือถือคนขับรถไถทันทีที่เปิดแอป
-    if (navigator.geolocation) {{
-        navigator.geolocation.getCurrentPosition(function(position) {{
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            map.setView([lat, lng], 17); // ซูมเข้าไปใกล้ๆ ที่นาที่อยู่ปัจจุบัน
-            L.marker([lat, lng]).addTo(map).bindPopup('🚜 คุณอยู่ตรงนี้').openPopup();
-        }}, function(err) {{
-            console.log("GPS โหลดช้า หรือไม่ได้เปิดสิทธิ์");
-        }}, {{enableHighAccuracy: true}});
-    }}
-
-    // ระบบวาดเส้นขอบแปลงนา
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var drawControl = new L.Control.Draw({{
-        draw: {{
-            polygon: {{
-                allowIntersection: false, // ห้ามลากเส้นตัดกันเอง (กันการมั่วพิกัด)
-                shapeOptions: {{ color: '#10b981', weight: 3, fillOpacity: 0.3 }}
-            }},
-            rectangle: {{ shapeOptions: {{ color: '#10b981' }} }},
-            polyline: false, circle: false, marker: false, circlemarker: false
-        }},
-        edit: {{ featureGroup: drawnItems }}
-    }});
-    map.addControl(drawControl);
-
-    // เมื่อลากเส้นแปลงนาเสร็จสิ้น
-    map.on(L.Draw.Event.CREATED, function (event) {{
-        var layer = event.layer;
-        drawnItems.clearLayers(); // ล้างแปลงเก่าออก เพื่อไม่ให้พื้นที่ทับซ้อนกัน
-        drawnItems.addLayer(layer);
-
-        // ดึงพิกัดที่ลากไปคำนวณด้วย Turf.js (มาตรฐานสากล)
-        var geojson = layer.toGeoJSON();
-        var areaSqMeters = turf.area(geojson); // คำนวณตารางเมตรแบบอิงผิวโลกโค้งจริง
-
-        if (areaSqMeters > 0) {{
-            // แปลงค่าเป็นระบบหน่วยวัดไทย (ไร่ - งาน - ตารางวา)
-            var totalWa = areaSqMeters / 4;
-            var rai = Math.floor(totalWa / 400);
-            var remainingWa = totalWa % 400;
-            var ngan = Math.floor(remainingWa / 100);
-            var wa = Math.round(remainingWa % 100);
-
-            // แสดงผลลัพธ์แบบชัดๆ ลบข้อกังขา
-            document.getElementById('area-text').innerHTML = 
-                "🌾 พื้นที่นาจริง: <span style='color:#34d399;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#60a5fa;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#f59e0b;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
-        }}
-    }});
-</script>
-"""
-
-st.components.v1.html(map_html_code, height=580, scrolling=False)
-
-st.info("💡 ข้อแนะนำเวลาไปคุยหน้างาน: พอนายลากพื้นที่เสร็จแล้ว ได้ตัวเลขไร่-งานที่เป๊ะแล้ว ให้เปิดหน้าจอนี้ให้เจ้าของนาดูตรงนั้นเลย พูดกันด้วยหลักฐานทางดาวเทียม ใครจะมาหัวหมอบอกนาตัวเองมีน้อยกว่าความจริงก็เถียงไม่ได้แน่นอนเพื่อน!")
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
