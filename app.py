@@ -1,158 +1,111 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, date, timedelta
-import math
 
-# --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
+# ตั้งค่าหน้าจอแอปให้ดุดัน โทนมืด สบายตาตอนเปิดกลางแดด
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO", page_icon="🚜", layout="centered")
 
 st.markdown("""
     <style>
-    .main { background-color: #050a0e; color: #00ff41; }
-    .logic-box { 
-        background-color: #101a24; 
-        padding: 15px; 
-        border-left: 5px solid #00ff41; 
-        border-radius: 10px;
-        margin-bottom: 20px;
-        color: #f0f0f0;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-    }
-    .stMetric { background-color: #0e161f; border: 1px solid #00ff41; border-radius: 10px; }
-    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
-    .guide-text { color: #a0a0a0; font-size: 0.9rem; line-height: 1.6; }
+    .stApp { background-color: #111827; }
+    h1, h2, h3, p, label, span { color: white !important; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- CORE LOGIC (ฟังก์ชันคำนวณ) ---
-def get_detailed_logic(dt):
-    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
+st.title("🚜 ระบบวัดที่นาสัจจะ (เวอร์ชันแม่นยำสูงสุด)")
+st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
+st.write("---")
 
-    # 2. คำนวณตาม Logic (ความจริงทางคณิตศาสตร์)
-    if pos <= 14.765:
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
-        res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
-    else:
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+st.subheader("🛰️ แผนที่ดาวเทียมสเกลจริงความละเอียดสูง")
+st.caption("คำแนะนำ: ใช้นิ้วจิ้มไอคอนรูป 'ห้าเหลี่ยม' หรือ 'สี่เหลี่ยม' ทางซ้ายมือ แล้วจิ้มลากไปตามขอบคันนาให้รอบ ระบบจะใช้สูตรคำนวณพื้นที่ผิวโลกจริง ไม่คลาดเคลื่อนแน่นอน")
 
-    return {
-        "res": round(res, 4), "phase": phase, "day_name": day_name,
-        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
-    }
+# พิกัดเริ่มต้น (สามารถขยับตาม GPS จริงได้)
+default_lat = 15.9513057
+default_lng = 103.5796196
 
-# --- FUTURE SCANNER (ฟังก์ชันพยากรณ์อนาคต) ---
-def scan_destiny(target_res, days=180):
-    future_data = []
-    start_date = date.today()
-    
-    for i in range(days):
-        current_date = start_date + timedelta(days=i)
-        d = get_detailed_logic(current_date)
-        current_gap = abs(d['res'] - target_res)
-        
-        status = ""
-        if current_gap < 0.5: 
-            status = "💎 วันที่รหัสบรรจบ (เจอ/รวมตัว)"
-        elif 3.8 <= current_gap <= 4.2: 
-            status = "🌀 วันที่สัญญาณสะท้อน (ดึงดูดสูง)"
-        elif current_gap > 10.0: 
-            status = "🚩 วันที่รหัสแยกตัว (จาก/อิสระ)"
-        
-        if status:
-            future_data.append({
-                "วันที่": current_date.strftime('%d/%m/%Y'),
-                "พิกัดวัน": d['day_name'],
-                "สถานะ": status,
-                "ค่า Gap": round(current_gap, 4)
-            })
-            
-    return pd.DataFrame(future_data)
+# โค้ดแผนที่เวอร์ชันอัปเกรด: ใช้ Turf.js ช่วยคำนวณพื้นที่ระดับสากล + ดึงดาวเทียม Esri World Imagery ที่เห็นคันนาชัดที่สุด
+map_html_code = f"""
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
-# --- MAIN INTERFACE ---
-st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
-st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
+<div id="map" style="width: 100%; height: 400px; border-radius: 12px; border: 2px solid #10b981;"></div>
+<div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
+    <b style="color:#34d399; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
+    <p id="area-text" style="font-size:22px; margin:5px 0; font-weight:bold; color:#f59e0b;">ยังไม่ได้ลากแปลงนา</p>
+</div>
 
-st.divider()
+<script>
+    // ตั้งค่าแผนที่เริ่มต้น
+    var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
 
-# ส่วนการกรอกข้อมูล
-c1, c2 = st.columns(2)
-with c1:
-    st.subheader("👤 บุคคลที่ 1 (ตัวตั้งต้น)")
-    dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
-with c2:
-    st.subheader("👤 บุคคลที่ 2 (คู่สแกน)")
-    dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
+    // ใช้ภาพถ่ายดาวเทียมความละเอียดสูง ซูมเห็นดิน เห็นร่องคันนาชัดเจน
+    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+        maxZoom: 19
+    }}).addTo(map);
 
-if dob1 and dob2:
-    d1 = get_detailed_logic(dob1)
-    d2 = get_detailed_logic(dob2)
+    // ซ้อนเส้นถนนและชื่อหมู่บ้านภาษาไทยเพื่อให้หาพิกัดง่าย ไม่หลงทิศ
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
 
-    # แสดงผลลัพธ์รายบุคคล
-    res_a, res_b = st.columns(2)
-    with res_a:
-        st.metric("รหัสประจำตัว (1)", d1['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d1['day_name']} ({d1['phase']})<br><b>🧬 สูตร:</b> <code>{d1['formula']}</code><br><b>⚙️ ระบบ:</b> {d1['type']}</div>""", unsafe_allow_html=True)
+    // ดึง GPS จริงของมือถือคนขับรถไถทันทีที่เปิดแอป
+    if (navigator.geolocation) {{
+        navigator.geolocation.getCurrentPosition(function(position) {{
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            map.setView([lat, lng], 17); // ซูมเข้าไปใกล้ๆ ที่นาที่อยู่ปัจจุบัน
+            L.marker([lat, lng]).addTo(map).bindPopup('🚜 คุณอยู่ตรงนี้').openPopup();
+        }}, function(err) {{
+            console.log("GPS โหลดช้า หรือไม่ได้เปิดสิทธิ์");
+        }}, {{enableHighAccuracy: true}});
+    }}
 
-    with res_b:
-        st.metric("รหัสประจำตัว (2)", d2['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
+    // ระบบวาดเส้นขอบแปลงนา
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
 
-    # --- การวิเคราะห์ Gap ปัจจุบัน ---
-    st.divider()
-    gap = abs(d1['res'] - d2['res'])
-    st.subheader(f"🔍 ผลการวิเคราะห์ Gap ปัจจุบัน: {gap:.4f}")
-    
-    progress_val = min(gap / 15.0, 1.0) 
-    st.progress(progress_val)
+    var drawControl = new L.Control.Draw({{
+        draw: {{
+            polygon: {{
+                allowIntersection: false, // ห้ามลากเส้นตัดกันเอง (กันการมั่วพิกัด)
+                shapeOptions: {{ color: '#10b981', weight: 3, fillOpacity: 0.3 }}
+            }},
+            rectangle: {{ shapeOptions: {{ color: '#10b981' }} }},
+            polyline: false, circle: false, marker: false, circlemarker: false
+        }},
+        edit: {{ featureGroup: drawnItems }}
+    }});
+    map.addControl(drawControl);
 
-    if gap < 1.0:
-        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
-    elif 3.5 <= gap <= 4.5:
-        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
-        st.balloons()
-    elif 7.0 <= gap <= 9.0:
-        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
-    else:
-        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
+    // เมื่อลากเส้นแปลงนาเสร็จสิ้น
+    map.on(L.Draw.Event.CREATED, function (event) {{
+        var layer = event.layer;
+        drawnItems.clearLayers(); // ล้างแปลงเก่าออก เพื่อไม่ให้พื้นที่ทับซ้อนกัน
+        drawnItems.addLayer(layer);
 
-    # --- ส่วนที่เพิ่มใหม่: พยากรณ์พิกัดเวลาในอนาคต ---
-    st.divider()
-    st.subheader("🗓️ พยากรณ์พิกัดเวลา (180 วันข้างหน้า)")
-    st.write(f"ค้นหาจังหวะชีวิตที่สอดคล้องกับรหัสประจำตัว: **{d1['res']}**")
-    
-    timeline_df = scan_destiny(d1['res'])
-    
-    if not timeline_df.empty:
-        st.dataframe(timeline_df, use_container_width=True, hide_index=True)
-    else:
-        st.info("ยังไม่พบพิกัดที่สอดคล้องในช่วง 180 วันนี้")
+        // ดึงพิกัดที่ลากไปคำนวณด้วย Turf.js (มาตรฐานสากล)
+        var geojson = layer.toGeoJSON();
+        var areaSqMeters = turf.area(geojson); // คำนวณตารางเมตรแบบอิงผิวโลกโค้งจริง
 
-    # --- คัมภีร์อ่านค่า ---
-    st.divider()
-    with st.expander("📖 คัมภีร์ถอดรหัสความจริง", expanded=False):
-        st.markdown("""
-        * **วันที่จะเจอ (รหัสบรรจบ):** คือวันที่รหัสจักรวาลวิ่งมาทับกับรหัสคุณพอดี
-        * **วันที่จะจาก (รหัสแยกตัว):** คือวันที่พลังงานดีดตัวออกจากกันจนเป็นอิสระ
-        * **สัญญาณสะท้อน:** วันที่เกิดแรงดึงดูดประหลาด (Gap 4) มักมีเรื่องไม่คาดคิดเกิดขึ้น
-        """)
+        if (areaSqMeters > 0) {{
+            // แปลงค่าเป็นระบบหน่วยวัดไทย (ไร่ - งาน - ตารางวา)
+            var totalWa = areaSqMeters / 4;
+            var rai = Math.floor(totalWa / 400);
+            var remainingWa = totalWa % 400;
+            var ngan = Math.floor(remainingWa / 100);
+            var wa = Math.round(remainingWa % 100);
 
-else:
-    st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
+            // แสดงผลลัพธ์แบบชัดๆ ลบข้อกังขา
+            document.getElementById('area-text').innerHTML = 
+                "🌾 พื้นที่นาจริง: <span style='color:#34d399;'>" + rai + " ไร่ </span> " + 
+                "<span style='color:#60a5fa;'>" + ngan + " งาน </span> " + 
+                "<span style='color:#f59e0b;'>" + wa + " ตารางวา</span><br>" +
+                "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
+        }}
+    }});
+</script>
+"""
 
-st.divider()
-st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v2.1 | {date.today().year}")
+st.components.v1.html(map_html_code, height=580, scrolling=False)
+
+st.info("💡 ข้อแนะนำเวลาไปคุยหน้างาน: พอนายลากพื้นที่เสร็จแล้ว ได้ตัวเลขไร่-งานที่เป๊ะแล้ว ให้เปิดหน้าจอนี้ให้เจ้าของนาดูตรงนั้นเลย พูดกันด้วยหลักฐานทางดาวเทียม ใครจะมาหัวหมอบอกนาตัวเองมีน้อยกว่าความจริงก็เถียงไม่ได้แน่นอนเพื่อน!")
