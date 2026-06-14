@@ -1,330 +1,230 @@
 import streamlit as st
-import os 
-import base64
-import random
-import time
-import json
-from datetime import datetime, timedelta
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit.components.v1 as components
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 
-# ==========================================
-# 1. INITIAL SETUP
-# ==========================================
-@st.cache_resource
-def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+# ตั้งค่าหน้าจอแอปให้กว้าง (Wide) เพื่อให้แผนที่ขยายใหญ่ได้เต็มที่
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO", page_icon="🚜", layout="wide")
 
-    if not firebase_admin._apps:
-        try:
-            if "firebase_db_url" not in st.secrets or "firebase_creds" not in st.secrets:
-                st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูลตัวแปรในช่อง Secrets กรุณาตรวจสอบการกรอกข้อมูล TOML ครับ")
-                st.stop()
-                
-            # ดึงข้อมูลกลุ่มของเบาะแส credentials ออกมา
-            creds_dict = dict(st.secrets["firebase_creds"])
-            
-            # บรรทัดนี้สำคัญมาก! แปลงข้อความ \n ในโครงสร้าง TOML กลับมาเป็นบรรทัดจริง เพื่อให้คีย์สมบูรณ์
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            
-            cred = credentials.Certificate(creds_dict)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-        except Exception as e:
-            st.error(f"🛰️ Firebase Connection Error: {e}")
-            st.stop()
-    return True
-
-init_system()
-
-# ==========================================
-# ส่วนของ UI และ ROOM MODULES ด้านล่างใช้ตัวเดิมได้เลยครับนาย...
-# ==========================================
-import streamlit as st
-import os 
-import base64
-import random
-import time
-import json
-from datetime import datetime, timedelta
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit.components.v1 as components
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
-
-# ==========================================
-# 1. INITIAL SETUP (ดึงค่าใบรับรองจากระบบ Secrets รูปแบบ TOML โดยตรง)
-# ==========================================
-@st.cache_resource
-def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
-
-    if not firebase_admin._apps:
-        try:
-            if "firebase_db_url" not in st.secrets or "firebase_creds" not in st.secrets:
-                st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูลตัวแปรในช่อง Secrets กรุณาตรวจสอบการกรอกข้อมูล TOML ครับ")
-                st.stop()
-                
-            # แปลงข้อมูลจาก Secrets มาเป็น Python Dictionary
-            creds_dict = dict(st.secrets["firebase_creds"])
-            
-            # เคลียร์รอยต่อและจัดระเบียบโครงสร้างของ Private Key ให้เข้ารหัสแบบดั้งเดิมสากล
-            creds_dict["private_key"] = creds_dict["private_key"].strip()
-            
-            cred = credentials.Certificate(creds_dict)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-        except Exception as e:
-            st.error(f"🛰️ Firebase Connection Error: {e}")
-            st.stop()
-    return True
-
-init_system()
-
-# ==========================================
-# 2. UI STYLING & NEON THEME
-# ==========================================
-st.set_page_config(page_title="SYNAPSE X", layout="wide")
-st.markdown(f"""
+st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; font-weight: bold; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
+    .stApp { background-color: #111827; }
+    h1, h2, h3, p, label, span { color: white !important; }
+    /* ปรับแต่งปุ่มกดของเป้าเล็งให้เด่นๆ */
+    .map-btn {
+        background-color: #10b981;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .map-btn-danger { background-color: #ef4444; }
+    .map-btn-success { background-color: #f59e0b; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# ==========================================
-# 3. MODULES (ระบบแยกห้องทำงาน)
-# ==========================================
+st.title("🚜 ระบบวัดที่นาสัจจะ (เวอร์ชันกว้างพิเศษ + เป้าเล็งกึ่งกลางแม่นยำสูง)")
+st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
+st.write("---")
 
-def room_core():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🚀 CORE COMMAND</h2>", unsafe_allow_html=True)
-    now = datetime.utcnow() + timedelta(hours=7)
-    st.markdown(f"""
-        <div class="neon-box">
-            <h1 style="margin:0; color:{st.session_state.theme_color};">{now.strftime('%H:%M:%S')}</h1>
-            <p style="margin:0;">AGENT: {st.session_state.user} | 'อยู่นิ่งๆ ไม่เจ็บตัว'</p>
-        </div>
-    """, unsafe_allow_html=True)
-    seconds = (now.hour * 3600) + (now.minute * 60) + now.second
-    progress = seconds / 86400
-    st.write(f"⏳ System Uptime: {progress*100:.2f}%")
-    st.progress(min(progress, 1.0))
+st.subheader("🛰️ แผนที่ดาวเทียมสเกลจริงระบบความแม่นยำสูง")
+st.caption("💡 วิธีการใหม่: เปิดระบบเป้าเล็ง เลื่อนแผนที่ให้มุมคันนาอยู่ตรงเป้าแดงกึ่งกลางจอ แล้วกด 'ปักหมุด' จะแม่นยำกว่าการใช้นิ้วจิ้มธรรมดามาก!")
 
-def room_radar():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🛰️ SATELLITE RADAR</h2>", unsafe_allow_html=True)
-    loc = get_geolocation()
-    lat, lon = 13.7367, 100.5231
-    if loc and 'coords' in loc:
-        try:
-            lat = loc['coords']['latitude']
-            lon = loc['coords']['longitude']
-        except Exception: pass
-            
-    all_users = db.reference('users').get()
-    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
-    folium.Marker([lat, lon], tooltip="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+# พิกัดเริ่มต้น
+default_lat = 15.9513057
+default_lng = 103.5796196
+
+# โค้ด HTML + JavaScript แผนที่ตัวใหม่ ขยายความสูงเป็น 550px และเพิ่มกลไก Crosshair
+map_html_code = f"""
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<style>
+    #map-container {{
+        position: relative;
+        width: 100%;
+    }}
+    /* กล่องแผนที่ใหญ่ขึ้น */
+    #map {{
+        width: 100%;
+        height: 550px; 
+        border-radius: 12px;
+        border: 2px solid #10b981;
+        z-index: 1;
+    }}
+    /* เป้าเล็งกึ่งกลางจอ (Crosshair) */
+    .crosshair {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin-top: -10px;
+        margin-left: -10px;
+        z-index: 9999;
+        pointer-events: none; /* ยอมให้ทะลุไปกดลากแผนที่ข้างหลังได้ */
+        display: none; /* ปิดไว้ก่อน จะเปิดเมื่อผู้ใช้กดปุ่ม */
+    }}
+    .crosshair::before, .crosshair::after {{
+        content: '';
+        position: absolute;
+        background: #ef4444;
+    }}
+    .crosshair::before {{ top: 9px; left: 0; width: 20px; height: 2px; }} /* เส้นแนวนอน */
+    .crosshair::after {{ top: 0; left: 9px; width: 2px; height: 20px; }} /* เส้นแนวตั้ง */
     
-    if all_users and isinstance(all_users, dict):
-        for uid, data in all_users.items():
-            if uid != st.session_state.user and isinstance(data, dict) and data.get('lat'):
-                folium.Marker([data['lat'], data['lon']], tooltip=uid, icon=folium.Icon(color='green')).add_to(m)
-                
-    st_folium(m, width="100%", height=450, key="radar")
-    if st.button("📡 BROADCAST POSITION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-        st.toast("Intelligence Data Transmitted!")
+    .control-panel {{
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }}
+</style>
 
-def room_comms():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
-    t1, t2 = st.tabs(["🌐 PUBLIC FEED", "📞 SECURE CALL"])
-    with t1:
-        with st.form("chat_form", clear_on_submit=True):
-            col1, col2 = st.columns([4, 1])
-            msg = col1.text_input("Enter Signal...")
-            up_file = col2.file_uploader("📁", type=['jpg', 'png', 'mp4'], label_visibility="collapsed")
-            if st.form_submit_button("SEND"):
-                f_b64, f_type = None, None
-                if up_file:
-                    f_b64 = base64.b64encode(up_file.getvalue()).decode()
-                    f_type = up_file.type
-                if msg or f_b64:
-                    db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'f': f_b64, 'ft': f_type, 'ts': time.time()})
-                    st.rerun()
-                    
-        try: msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
-        except Exception: msgs = None
-        if msgs and isinstance(msgs, dict):
-            for v in reversed(list(msgs.values())):
-                if isinstance(v, dict):
-                    st.markdown(f"🟢 **{v.get('u')}**: {v.get('m','')}")
-                    if v.get('f'):
-                        raw = base64.b64decode(v['f'])
-                        if "image" in v.get('ft', ''): st.image(raw, width=300)
-                        elif "video" in v.get('ft', ''): st.video(raw)
-                        
-    with t2:
-        all_u = db.reference('users').get()
-        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u and isinstance(all_u, dict) else []
-        target = st.selectbox("🎯 Target Agent:", [""] + friends)
-        if target:
-            call_js = """
-            <div style="background:#111; padding:15px; border:1px solid %s; border-radius:10px; text-align:center;">
-                <button id="cBtn" style="width:100%%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px; font-family:monospace; font-weight:bold; cursor:pointer;">📞 CALL %s</button>
-                <audio id="rAudio" autoplay></audio>
-            </div>
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <script>
-                const peer = new Peer('%s');
-                peer.on('call', c => { navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ c.answer(s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); })});
-                document.getElementById('cBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ const c=peer.call('%s',s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); });
-                };
-            </script>
-            """ % (st.session_state.theme_color, target, st.session_state.user, target)
-            components.html(call_js, height=200)
+<div id="map-container">
+    <div id="map"></div>
+    <div id="crosshair-target" class="crosshair"></div>
+</div>
 
-def room_music():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
-    songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if not songs:
-        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
-        return
-        
-    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=min(st.session_state.song_index + 1, len(songs)))
-    song_b64, song_name = "", "WAITING FOR SIGNAL..."
-    if s_a != "-- STANDBY --":
-        with open(s_a, "rb") as f: song_b64 = base64.b64encode(f.read()).decode()
-        st.session_state.song_index = songs.index(s_a)
-        song_name = s_a
+<div class="control-panel">
+    <button type="button" class="map-btn" onclick="toggleCrosshair()">🎯 เปิด/ปิด เป้าเล็งกึ่งกลาง</button>
+    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดตรงเป้า</button>
+    <button type="button" class="map-btn map-btn-success" style="background:#60a5fa;" onclick="calculateFromPoints()">💾 คำนวณพื้นที่จริง</button>
+    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
+</div>
 
-    visualizer_html = f"""
-    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
-        <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
-            <p id="mText" style="display: inline-block; padding-left: 100%; font-family: Orbitron, monospace; font-size: 16px; color: white; animation: marquee 12s linear infinite;">
-                <span style="animation: rainbowText 4s linear infinite;">>>></span> {song_name} <span style="animation: rainbowText 4s linear infinite;"><<< ANALYZING... SECURE LINE... >>></span>
-            </p>
-        </div>
-        <canvas id="canvas" style="width: 100%; height: 220px; background: #000; border-radius: 10px;"></canvas>
-        <button id="pBtn" style="width: 100%; margin-top:10px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; font-weight:bold; cursor: pointer;">[ CLICK TO SYNC ]</button>
-        <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
-    </div>
-    <style>
-        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-        @keyframes rainbowText {{ 0%, 100% {{ color: #ff0000; }} 50% {{ color: #00ff00; }} }}
-    </style>
-    <script>
-    const canvas = document.getElementById('canvas'); const ctx = canvas.getContext('2d');
-    const audio = document.getElementById('audio'); const btn = document.getElementById('pBtn'); const mText = document.getElementById('mText');
-    let aCtx, ans, src, data; mText.style.animationPlayState = 'paused';
-    btn.onclick = function() {{
-        if (!aCtx) {{
-            aCtx = new (window.AudioContext || window.webkitAudioContext)(); ans = aCtx.createAnalyser();
-            src = aCtx.createMediaElementSource(audio); src.connect(ans); ans.connect(aCtx.destination);
-            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount); draw();
-        }}
-        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; mText.style.animationPlayState = 'running'; }}
-        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; mText.style.animationPlayState = 'paused'; }}
-    }};
-    function draw() {{
-        requestAnimationFrame(draw); ans.getByteFrequencyData(data);
-        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        let x = 0; const bW = (canvas.width / data.length) * 2;
-        for(let i=0; i<data.length; i++) {{
-            let bH = data[i]*0.9; let h = (i/data.length)*360;
-            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
-            ctx.fillRect(x, canvas.height-bH, bW-2, bH); x += bW;
+<div id="result-box" style="background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
+    <b style="color:#34d399; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
+    <p id="area-text" style="font-size:24px; margin:5px 0; font-weight:bold; color:#f59e0b;">ยังไม่ได้ลากแปลงนา</p>
+</div>
+
+<script>
+    var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
+
+    // ดึงดาวเทียมความละเอียดสูงเห็นคันนาชัดๆ
+    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+        maxZoom: 19
+    }}).addTo(map);
+
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+
+    // เช็ค GPS รถไถด่วนๆ
+    if (navigator.geolocation) {{
+        navigator.geolocation.getCurrentPosition(function(position) {{
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            map.setView([lat, lng], 18); // ซูมใกล้สุดๆ ให้เห็นคันนาชัดขึ้น
+            L.marker([lat, lng]).addTo(map).bindPopup('🚜 คุณอยู่ตรงนี้').openPopup();
+        }}, function(err) {{
+            console.log("GPS โหลดช้า");
+        }}, {{enableHighAccuracy: true}});
+    }}
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // เก็บพิกัดชั่วคราวเวลาใช้ระบบเป้าเล็ง
+    var customPoints = [];
+    var customPolygon = null;
+    var crosshairMode = false;
+
+    // เปิด-ปิด เป้าเล็งกลางจอ
+    function toggleCrosshair() {{
+        var ch = document.getElementById('crosshair-target');
+        crosshairMode = !crosshairMode;
+        if(crosshairMode) {{
+            ch.style.display = 'block';
+        }} else {{
+            ch.style.display = 'none';
         }}
     }}
-    </script>
-    """
-    components.html(visualizer_html, height=420)
 
-def room_sensor():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
-    all_sensors_js = f"""
-    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
-        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
-            <p style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">SYSTEM ONLINE >>> MONITORING REAL-TIME DATA...</p>
-        </div>
-        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
-            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
-                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
-                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
-            </div>
-        </div>
-        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
-            <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
-            <div style="text-align: center; margin-top: 10px;">
-                <small>MAGNITUDE (G)</small><h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
-            </div>
-        </div>
-        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">[ INITIALIZE SENSOR ARRAY ]</button>
-    </div>
-    <script>
-        const btn = document.getElementById('startBtn'); const v_canvas = document.getElementById('visualizer'); const v_ctx = v_canvas.getContext('2d');
-        btn.onclick = async () => {{
-            btn.style.display = 'none';
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-                const aCtx = new (window.AudioContext || window.webkitAudioContext)(); const analyser = aCtx.createAnalyser();
-                const source = aCtx.createMediaStreamSource(stream); analyser.fftSize = 128; source.connect(analyser);
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                function updateAudio() {{
-                    requestAnimationFrame(updateAudio); analyser.getByteFrequencyData(dataArray);
-                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height); let sum = 0, maxV = 0, maxI = 0;
-                    for (let i = 0; i < dataArray.length; i++) {{
-                        let v = dataArray[i]; sum += v; if(v > maxV) {{ maxV = v; maxI = i; }}
-                        v_ctx.fillStyle = '{st.session_state.theme_color}'; v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
-                    }}
-                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
-                    document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
-                }} updateAudio();
-            }} catch(e) {{ alert("Audio Fault: " + e); }}
-            try {{
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {{ await DeviceMotionEvent.requestPermission(); }}
-                window.addEventListener('devicemotion', (e) => {{
-                    const acc = e.accelerationIncludingGravity; if (!acc) return;
-                    let x = acc.x||0, y = acc.y||0, z = acc.z||0;
-                    document.getElementById('mag_val').innerText = (Math.sqrt(x*x + y*y + z*z) / 9.80665).toFixed(3);
-                }});
-            }} catch(err) {{}}
-        }};
-    </script>
-    """
-    components.html(all_sensors_js, height=550)
+    // ระบบปักหมุดจากกึ่งกลางจอ
+    function addPointFromCenter() {{
+        var center = map.getCenter();
+        customPoints.push([center.lat, center.lng]);
 
-def main():
-    with st.sidebar:
-        st.title("⚙️ SYSTEM")
-        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
-        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
-        st.markdown("---")
-        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
-    rooms = [room_core, room_radar, room_comms, room_music, room_sensor]
-    for i, tab in enumerate(tabs):
-        with tab: rooms[i]()
+        // สร้างจุดกลมแดงเล็กๆ ไว้เป็นหลักฐานว่าปักตรงไหนไปแล้วบ้าง
+        L.circleMarker(center, {{radius: 5, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1}}).addTo(drawnItems);
 
-if __name__ == "__main__":
-    main()
+        // วาดเส้นเชื่อมสดๆ ให้เห็นภาพพจน์เลย
+        if (customPoints.length > 1) {{
+            if (customPolygon) {{ map.removeLayer(customPolygon); }}
+            customPolygon = L.polygon(customPoints, {{color: '#10b981', weight: 3, fillOpacity: 0.3}}).addTo(drawnItems);
+        }}
+    }}
+
+    // กดคำนวณเมื่อปักหมุดครบรอบแปลงแล้ว
+    function calculateFromPoints() {{
+        if (customPoints.length < 3) {{
+            alert("เพื่อน! ต้องปักหมุดอย่างน้อย 3 มุมขึ้นไปถึงจะคำนวณเป็นรูปแปลงนาได้นะ");
+            return;
+        }}
+        
+        // เติมจุดแรกเข้าท้ายสุดเพื่อปิดลูปสำหรับ Turf.js
+        var turfCoords = [];
+        customPoints.forEach(function(pt) {{
+            turfCoords.push([pt[1], pt[0]]); // Turf ใช้ [lng, lat]
+        }});
+        turfCoords.push([customPoints[0][1], customPoints[0][0]]); // ปิดหัวท้าย
+
+        var polygonGeoJSON = turf.polygon([turfCoords]);
+        var areaSqMeters = turf.area(polygonGeoJSON);
+        
+        showAreaResult(areaSqMeters);
+    }}
+
+    // ล้างค่าเริ่มใหม่ทั้งหมด
+    function clearAllDrawings() {{
+        drawnItems.clearLayers();
+        customPoints = [];
+        customPolygon = null;
+        document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
+    }}
+
+    // แสดงผลตัวเลขระบบไทย
+    function showAreaResult(areaSqMeters) {{
+        if (areaSqMeters > 0) {{
+            var totalWa = areaSqMeters / 4;
+            var rai = Math.floor(totalWa / 400);
+            var remainingWa = totalWa % 400;
+            var ngan = Math.floor(remainingWa / 100);
+            var wa = Math.round(remainingWa % 100);
+
+            document.getElementById('area-text').innerHTML = 
+                "🌾 พื้นที่นาจริง: <span style='color:#34d399;'>" + rai + " ไร่ </span> " + 
+                "<span style='color:#60a5fa;'>" + ngan + " งาน </span> " + 
+                "<span style='color:#f59e0b;'>" + wa + " ตารางวา</span><br>" +
+                "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
+        }}
+    }}
+
+    // เปิดระบบวาดด้วยนิ้วจิ้มแบบเดิมควบคู่ไปด้วย (เผื่อคนถนัดแบบเก่า)
+    var drawControl = new L.Control.Draw({{
+        draw: {{
+            polygon: {{ allowIntersection: false, shapeOptions: {{ color: '#10b981', weight: 3, fillOpacity: 0.3 }} }},
+            rectangle: {{ shapeOptions: {{ color: '#10b981' }} }},
+            polyline: false, circle: false, marker: false, circlemarker: false
+        }},
+        edit: {{ featureGroup: drawnItems }}
+    }});
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, function (event) {{
+        var layer = event.layer;
+        drawnItems.clearLayers();
+        drawnItems.addLayer(layer);
+        var geojson = layer.toGeoJSON();
+        var areaSqMeters = turf.area(geojson);
+        showAreaResult(areaSqMeters);
+    }});
+</script>
+"""
+
+# ยิง HTML แผนที่ขึ้นจอ (เพิ่มความสูงกล่องสตรีมลิตเป็น 750 เพื่อรองรับแผงควบคุมและกล่องสรุป)
+st.components.v1.html(map_html_code, height=750, scrolling=False)
+
+st.info("📌 หน้าจอปรับเป็นสเกลใหญ่เต็มตาเรียบร้อยแล้วเพื่อน เวลาอยู่หน้างานแค่แพนแผนที่ให้คันนาเข้าเป้าแดงแล้วกดปุ่มปักหมุดได้เลย ทีนี้ใครจะหัวหมอมาโกหกค่าจ้างรถไถไม่ได้แน่นอน!")
