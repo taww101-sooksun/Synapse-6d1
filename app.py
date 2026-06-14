@@ -3,7 +3,7 @@ import os
 import random
 
 # 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v2", page_icon="🚜", layout="wide")
+st.set_page_config(page_title="อยู่นิ้งๆไม่เจ็บตัว SYNAPSE  - วัดพื่นที่สัจจะใครโกหกรู้เรื่อง", page_icon="🚜", layout="wide")
 
 # 2. ปรับแต่งสไตล์และโทนสีแอป (น้ำเงิน แดง ม่วง ขาว เขียวนีออน)
 st.markdown("""
@@ -27,7 +27,7 @@ st.markdown("""
         color: #000000 !important;
         border: 2px solid #00ffcc;
         padding: 12px 20px;
-        font-size: 16px;
+        font-size: 20px;
         font-weight: bold;
         border-radius: 8px;
         cursor: pointer;
@@ -53,7 +53,7 @@ st.markdown("""
     /* กล่องเครื่องเล่นเพลง */
     .music-box {
         background: rgba(26, 11, 46, 0.8);
-        border: 2px solid #9d4edd;
+        border: 6px solid #9d4edd;
         padding: 15px;
         border-radius: 12px;
         margin-bottom: 20px;
@@ -66,7 +66,7 @@ st.markdown("""
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
     if os.path.exists("logo1.png"):
-        st.image("logo1.png", width=120)
+        st.image("logo1.png", width=200)
     else:
         st.write("🛰️ [SYNAPSE]")
 
@@ -78,7 +78,7 @@ st.write("---")
 
 # 4. ระบบเครื่องเล่นเพลงสุ่มอัตโนมัติ
 st.markdown("<div class='music-box'>", unsafe_allow_html=True)
-st.subheader("🎵 SYNAPSE AUDIO STREAM")
+st.subheader("🎵 SYNAPSE  อยู่นิ้งๆไม่เจ็บตัว AUDIO STREAM")
 
 music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
 
@@ -105,14 +105,14 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE 750px)
+# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE 900px)
 st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่พิเศษ (ลากเส้นและเล็งคันนาง่ายขึ้น)")
 st.caption("💡 วิธีใช้งาน: แพนหน้าจอให้มุมแปลงนาอยู่ตรงกลางเป้าแดงพอดีเป๊ะ แล้วกดปุ่มปักหมุดสีม่วง")
 
 default_lat = 15.9513057
 default_lng = 103.5796196
 
-# แก้ไขความสูงของตัว map ใน CSS เป็น 750px เพื่อให้ยาวลงมาเต็มที่หน้าจอมือถือ
+# แก้ไขความสูงของตัว map ใน CSS เป็น 900px เพื่อให้ยาวลงมาเต็มที่หน้าจอมือถือ
 map_html_code = f"""
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
@@ -125,10 +125,10 @@ map_html_code = f"""
         position: relative;
         width: 100%;
     }}
-    /* ขยายความสูงตรงนี้เป็น 750px เพื่อพื้นที่ที่กว้างกว่าเดิม */
+    /* ขยายความสูงตรงนี้เป็น 900px เพื่อพื้นที่ที่กว้างกว่าเดิม */
     #map {{
         width: 100%;
-        height: 750px; 
+        height: 900px; 
         border-radius: 14px;
         border: 2px solid #00ffcc;
         z-index: 1;
