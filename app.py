@@ -42,18 +42,34 @@ try:
         "universe_domain": st.secrets["firebase"]["universe_domain"]
     }
 
-    # เชื่อมต่อตรงไปยัง Firebase URL ของโปรเจกต์ sooksun1
+    # =========================================================
+# [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN-101 ผ่านระบบ Secrets หลังบ้าน ]
+# =========================================================
+import json # ต้องใช้ตัวนี้เพื่อถอดรหัสข้อความ JSON
+
+if firebase_admin._apps:
+    for app_name in list(firebase_admin._apps.keys()):
+        try:
+            firebase_admin.delete_app(firebase_admin._apps[app_name])
+        except Exception:
+            pass
+
+try:
+    # ดึงข้อความ JSON ก้อนใหญ่จาก Secrets มาแปลงเป็นโครงสร้างข้อมูลคอมพิวเตอร์จริง
+    firebase_raw = st.secrets["firebase"]["text"]
+    firebase_cfg = json.loads(firebase_raw)
+
+    # เชื่อมต่อตรงไปยัง Firebase URL ของโปรเจกต์ sooksun-101
     cred = credentials.Certificate(firebase_cfg)
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' # เปลี่ยนให้ตรงกับบนเว็บ Firebase ของต๊ะ
-    }}
+        'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
+    })
     connection_status = True
 except Exception as e:
     connection_status = False
     connection_error = e
 # =========================================================
-
-# --- ค่าเริ่มต้นของระบบธีมสี ---
+ธีมสี ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'custom_theme' not in st.session_state:
