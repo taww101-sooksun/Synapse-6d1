@@ -1,9 +1,10 @@
-import streamlit as st  # แก้ไขจาก Import เป็น import เพื่อให้โค้ดทำงานได้จริง
+import streamlit as st  
 import os
 import pandas as pd
 import math
 import time
 import base64
+import json  # ✅ แก้ไข: เพิ่ม import json เพื่อให้ json.loads() ทำงานได้จริง ไม่เกิด NameError
 import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime, date, timedelta
@@ -17,36 +18,8 @@ import hashlib
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 # =========================================================
-# [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN1 ผ่านระบบ Secrets หลังบ้าน ]
-# =========================================================
-if firebase_admin._apps:
-    for app_name in list(firebase_admin._apps.keys()):
-        try:
-            firebase_admin.delete_app(firebase_admin._apps[app_name])
-        except Exception:
-            pass
-
-try:
-    # ดึงค่ารหัสบัญชีบริการ (Service Account) จากกล่อง Secrets หลังบ้าน Streamlit ป้องกันการโดนขโมยคีย์
-    firebase_cfg = {
-        "type": st.secrets["firebase"]["type"],
-        "project_id": st.secrets["firebase"]["project_id"],
-        "private_key_id": st.secrets["firebase"]["private_key_id"],
-        "private_key": st.secrets["firebase"]["private_key"],
-        "client_email": st.secrets["firebase"]["client_email"],
-        "client_id": st.secrets["firebase"]["client_id"],
-        "auth_uri": st.secrets["firebase"]["auth_uri"],
-        "token_uri": st.secrets["firebase"]["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
-        "universe_domain": st.secrets["firebase"]["universe_domain"]
-    }
-
-    # =========================================================
 # [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN-101 ผ่านระบบ Secrets หลังบ้าน ]
 # =========================================================
-
-
 if firebase_admin._apps:
     for app_name in list(firebase_admin._apps.keys()):
         try:
@@ -68,8 +41,9 @@ try:
 except Exception as e:
     connection_status = False
     connection_error = e
+
 # =========================================================
-ธีมสี ---
+# --- ธีมสี ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'custom_theme' not in st.session_state:
@@ -301,7 +275,7 @@ elif st.session_state.page == "1":
                 <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barB" style="height: 100%; width: 0%; background: #00f3ff;"></div></div>
             </div>
         </div>
-        <div style="display: grid; grid-cols: 2; gap: 10px; margin-top: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
             <button onclick="playAll()" style="width: 100%; padding: 12px; background: none; border: 2px solid #ff0055; color: #ff0055; font-weight: bold; border-radius: 15px; cursor: pointer;">⚡ START MIX</button>
             <button onclick="fade()" style="width: 100%; padding: 12px; background: none; border: 2px solid #00ffcc; color: #00ffcc; font-weight: bold; border-radius: 15px; cursor: pointer; margin-top: 10px;">🔄 CROSSFADE (5s)</button>
         </div>
@@ -501,7 +475,7 @@ elif st.session_state.page == "2":
         v_target = st.selectbox("🎯 เลือกผู้รับคลื่นเสียง:", ["ทุกคน (GLOBAL)"] + (friends if 'friends' in locals() else []))
         voice_b64 = st.text_area("📦 วางโค้ดรหัสคลื่นเสียงที่คัดลอกมาด้านบน:")
         
-        if st.button("📡 อัดสัญญาณเสียงขึ้นคลาวด์", use_container_width=True):
+        if st.button("📡 อัดสัญญาณเสียงขึ้นคลาณด์", use_container_width=True):
             if voice_b64:
                 try:
                     db.reference('voice_transmission').push({
