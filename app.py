@@ -46,7 +46,7 @@ try:
     cred = credentials.Certificate(firebase_cfg)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' # เปลี่ยนให้ตรงกับบนเว็บ Firebase ของต๊ะ
-
+    }}
     connection_status = True
 except Exception as e:
     connection_status = False
