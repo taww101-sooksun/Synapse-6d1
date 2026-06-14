@@ -125,10 +125,10 @@ map_html_code = f"""
         position: relative;
         width: 100%;
     }}
-    /* ขยายความสูงตรงนี้เป็น 900px เพื่อพื้นที่ที่กว้างกว่าเดิม */
+    /* ขยายความสูงตรงนี้เป็น 500px เพื่อพื้นที่ที่กว้างกว่าเดิม */
     #map {{
         width: 100%;
-        height: 900px; 
+        height: 500px; 
         border-radius: 14px;
         border: 2px solid #00ffcc;
         z-index: 1;
