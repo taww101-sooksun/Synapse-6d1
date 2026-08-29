@@ -1,863 +1,239 @@
+
+มันเป็นภาษาแบบนี้อ่านไ่มออกครับ
+
+อ๋อครับ เห็นจากรูปแล้ว ภาษาไทยในหน้าแอปเพี้ยนจริง ครับ ไม่ใช่แค่ฟอนต์อย่างเดียว แต่มีโอกาสสูงว่าไฟล์ที่เอาขึ้น GitHub ถูกตีความ encoding ผิด ทำให้ข้อความอย่าง ชื่อเจ้าของนา กลายเป็นตัวอักษรประหลาด
+
+ผมทำไฟล์แก้ให้ใหม่แล้ว โดย:
+
+🇹🇭 บังคับข้อความภาษาไทยให้ไม่เพี้ยนจาก encoding
+
+ใช้ฟอนต์ที่รองรับภาษาไทย
+
+ยังคงฟังก์ชันเดิมทั้งหมด
+
+ใช้กับ GitHub + Streamlit ได้
+
+ไฟล์ที่แก้แล้ว
+ดาวน์โหลด Ta_app_thai_fixed.py
+
+ให้ทำแบบนี้ครับ:
+
+ลบ Ta_app.py ตัวเก่าใน GitHub
+
+เอาไฟล์นี้ขึ้นไป
+
+เปลี่ยนชื่อเป็น Ta_app.py
+
+logo1.png วางไว้ข้าง ๆ กัน
+
+กด Deploy/Reboot แอป
+
+อีกอย่างหนึ่ง: จากรูปผมเห็นว่าหน้าแอปเดิมมีข้อความเพี้ยนหลายตำแหน่ง ดังนั้นผมแนะนำให้ใช้ไฟล์ใหม่นี้ทั้งไฟล์เลย อย่าเอาโค้ดเก่ามาผสมครับ
+
+ถ้าหลังจากเปลี่ยนแล้ว ภาษาไทยกลับมาอ่านได้ปกติ ขั้นต่อไปผมจะจัดเรื่อง “ลากหมุดได้จริงบนมือถือ + GPS ใช้งานจริง + ใบสรุปสวย ๆ” ให้ต่อครับ 🌾📍 
+
+
+Ta_app_thai_fixed.py
+โค้ด
+
+
+File "/mount/src/taww101/Ta_app.py", line 12
+  จาก pathlib นำเข้า Path
+      ^
+SyntaxError: invalid syntax
+
+ใช่ครับ ปัญหานี้ ไม่ใช่ Shapely แล้ว แต่ไฟล์ที่อยู่บน GitHub ของคุณถูกเปลี่ยนคำสั่ง Python เป็นภาษาไทย เช่น
+
+จาก pathlib นำเข้า Path
+Python อ่านไม่ได้ จึงขึ้น SyntaxError ครับ
+
+ผมตรวจไฟล์ใหม่แล้ว และไฟล์ที่แก้ ผ่านการตรวจ Syntax ของ Python แล้ว ไม่มีปัญหาที่บรรทัด from pathlib import Path ครับ
+
+ดาวน์โหลด Ta_app_thai_fixed.py
+
+ให้ทำแบบนี้เลย
+ใน GitHub:
+
+เปิด Ta_app.py
+
+กด Edit
+
+ลบโค้ดเก่าทั้งหมด
+
+เปิดไฟล์ Ta_app_thai_fixed.py ที่ผมให้
+
+คัดลอก ทั้งหมด ไปวางใน Ta_app.py
+
+กด Commit changes
+
+กลับ Streamlit แล้วกด Reboot app
+
+อย่าแก้คำสั่ง Python เป็นภาษาไทยเด็ดขาด เช่นต้องเป็น:
+
+from pathlib import Path
+import streamlit as st
+ไม่ใช่:
+
+จาก pathlib นำเข้า Path
+นำเข้า streamlit เป็น st
+อีกอย่างครับ จากรูปก่อนหน้านี้ภาษาไทยก็เพี้ยนด้วย ผมจึงทำไฟล์ใหม่ให้ ตัวคำสั่ง Python เป็นมาตรฐาน และข้อความภาษาไทยถูกเก็บอย่างปลอดภัย แล้วครับ
+
+ถ้าต้องการให้จบทีเดียว ผมแนะนำว่า ใช้ไฟล์ใหม่ทั้งไฟล์ ไม่เอาโค้ดเก่ามาผสม ครับ 🌾👍
+
+
+Ta_app_thai_fixed.py
+โค้ด
+
+
+File "/mount/src/taww101/Ta_app.py", line 12
+  จาก pathlib นำเข้า Path
+      ^
+SyntaxError: invalid syntax
+
+เข้าใจแล้วครับ — ตอนนี้ Streamlit ยังรัน Ta_app.py ตัวเก่าที่อยู่ใน GitHub อยู่ ไม่ได้รันไฟล์ที่ผมแก้ให้ครับ
+
+Error นี้ยืนยันเลย:
+
+จาก pathlib นำเข้า Path
+มันต้องเป็น:
+
+from pathlib import Path
+ผมตรวจไฟล์ใหม่ของผมด้วย Python แล้ว ผ่าน Syntax Check เรียบร้อย และในไฟล์ไม่มีคำสั่ง จาก pathlib นำเข้า Path ครับ
+
+ทำตามนี้แบบตรง ๆ ครับ
+ใน GitHub Repository taww101:
+
+เข้าไฟล์ Ta_app.py
+
+กดปุ่ม ✏️ Edit this file
+
+กด Ctrl+A / เลือกโค้ดทั้งหมด
+
+ลบของเดิมออกให้หมด
+
+เอาโค้ดจากไฟล์นี้ไปแทนทั้งหมด:
+
+ดาวน์โหลด Ta_app_thai_fixed.py
+
+ใน GitHub ตั้งชื่อไฟล์เป็น Ta_app.py
+
+กด Commit changes
+
+กลับ Streamlit → Reboot app
+
+สำคัญมาก
+อย่าแก้บรรทัด Python เองเป็นภาษาไทยเด็ดขาดครับ เช่น
+
+❌ ผิด
+
+จาก pathlib นำเข้า Path
+✅ ถูก
+
+from pathlib import Path
+และ
+
+❌
+
+นำเข้า streamlit เป็น st
+✅
+
+import streamlit as st
+ส่วนข้อความที่แสดงบนหน้าจอเป็นภาษาไทยได้ตามปกติ ไม่ต้องแปลคำสั่ง Python ครับ
+
+ถ้าคุณต้องการ ผมสามารถทำให้ต่อเป็น โค้ดเวอร์ชันสุดท้ายที่ไม่ใช้คำสั่งภาษาไทยในตัวโค้ดเลย และเน้นมือถือโดยเฉพาะ เพื่อเอาไปวาง GitHub แบบคัดลอกครั้งเดียวจบได้ครับ.
+
+
+Ta_app_thai_fixed.py
+โค้ด
+
+
+ไม่ได้เลือกไฟล์ใด
+ไลบรารี
+/
+Ta_app_thai_fixed.py
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+# -*- coding: utf-8 -*-
+# Ta_app.py
+# \u0e41\u0e2d\u0e1b\u0e27\u0e31\u0e14\u0e1e\u0e37\u0e49\u0e19\u0e17\u0e35\u0e48\u0e19\u0e32 + \u0e1b\u0e31\u0e01\u0e2b\u0e21\u0e38\u0e14 + \u0e04\u0e33\u0e19\u0e27\u0e13\u0e04\u0e48\u0e32\u0e1a\u0e23\u0e34\u0e01\u0e32\u0e23
+# \u0e15\u0e49\u0e2d\u0e07\u0e21\u0e35\u0e44\u0e1f\u0e25\u0e4c logo1.png \u0e2d\u0e22\u0e39\u0e48\u0e42\u0e1f\u0e25\u0e40\u0e14\u0e2d\u0e23\u0e4c\u0e40\u0e14\u0e35\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e44\u0e1f\u0e25\u0e4c\u0e19\u0e35\u0e49
+#
+# \u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07:
+#   pip install streamlit streamlit-folium folium shapely
+# \u0e23\u0e31\u0e19:
+#   streamlit run Ta_app.py
+
 import math
-import os
+from pathlib import Path
 
 import folium
 import streamlit as st
 from folium.plugins import LocateControl
+from shapely.geometry import Polygon
 from streamlit_folium import st_folium
 
-# ==================================================
 
-# Ta App
 
-# ระบบวัดพื้นที่นา + ปักหมุด + คำนวณค่าบริการ
-
-# ==================================================
-
-st.set_page_config(
-page_title="Ta App - วัดพื้นที่นา",
-page_icon="🌾",
-layout="wide",
-initial_sidebar_state="collapsed",
-)
-
-# ==================================================
-
-# CSS
-
-# ==================================================
-
-st.markdown(
-""" <style>
-html, body, [class*="css"], .stApp,
-button, input, textarea, select {
-font-family: "Noto Sans Thai", "Tahoma", "Arial", sans-serif !important;
-}
-
-```
-.ta-total-box {
-    padding: 24px;
-    border-radius: 18px;
-    background: rgba(46, 125, 50, 0.12);
-    border: 2px solid rgba(46, 125, 50, 0.35);
-    text-align: center;
-    margin-top: 10px;
-}
-
-.ta-total-title {
-    font-size: 20px;
-}
-
-.ta-total-money {
-    font-size: 42px;
-    font-weight: 800;
-}
-
-.ta-total-detail {
-    font-size: 15px;
+st.markdown("""
+<style>
+html, body, [class*="css"], .stApp, button, input, textarea, select {
+    font-family: "Noto Sans Thai", "Tahoma", "Arial", sans-serif !important;
 }
 </style>
-""",
-unsafe_allow_html=True,
-```
+""", unsafe_allow_html=True)
 
+st.set_page_config(
+    page_title="Ta App - \u0e27\u0e31\u0e14\u0e1e\u0e37\u0e49\u0e19\u0e17\u0e35\u0e48\u0e19\u0e32",
+    page_icon="\U0001f33e",
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
-# ==================================================
-
-# ค่าบริการ
-
-# ==================================================
-
+# ----------------------------
+# \u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32\u0e1e\u0e37\u0e49\u0e19\u0e10\u0e32\u0e19
+# ----------------------------
 PLOW_RATE = 250.0
 MILL_RATE = 350.0
-
 RAI_M2 = 1600.0
-NGAN_M2 = 400.0
-WA_M2 = 4.0
-
-# ==================================================
-
-# โลโก้
-
-# ==================================================
-
-LOGO_PATH = "logo1.png"
-
-# ==================================================
-
-# ฟังก์ชันแปลงพื้นที่
-
-# ==================================================
-
-def thai_area(m2):
-if m2 < 0:
-m2 = 0
-
-```
-rai = int(m2 // RAI_M2)
-
-remain = m2 - (rai * RAI_M2)
-
-ngan = int(remain // NGAN_M2)
-
-remain = remain - (ngan * NGAN_M2)
-
-wa = int(remain // WA_M2)
-
-remain = remain - (wa * WA_M2)
-
-return rai, ngan, wa, remain
-```
-
-# ==================================================
-
-# คำนวณพื้นที่จาก GPS
-
-# ใช้ Shoelace Formula
-
-# ไม่ต้องใช้ shapely
-
-# ==================================================
-
-def polygon_area_m2(points):
-
-```
-if len(points) < 3:
-    return 0.0
-
-average_lat = sum(
-    point[0] for point in points
-) / len(points)
-
-latitude_radians = math.radians(
-    average_lat
-)
-
-earth_radius = 6378137.0
-
-xy_points = []
-
-for lat, lon in points:
-
-    x = (
-        math.radians(lon)
-        * earth_radius
-        * math.cos(latitude_radians)
-    )
-
-    y = (
-        math.radians(lat)
-        * earth_radius
-    )
-
-    xy_points.append(
-        (x, y)
-    )
-
-area = 0.0
-
-for i in range(
-    len(xy_points)
-):
-
-    x1, y1 = xy_points[i]
-
-    x2, y2 = xy_points[
-        (i + 1) % len(xy_points)
-    ]
-
-    area += (
-        x1 * y2
-        - x2 * y1
-    )
-
-return abs(area) / 2.0
-```
-
-# ==================================================
-
-# เงิน
-
-# ==================================================
-
-def money(value):
-return f"{value:,.2f}"
-
-# ==================================================
-
-# Session State
-
-# ==================================================
-
-if "points" not in st.session_state:
-st.session_state.points = []
-
-if "saved_plots" not in st.session_state:
-st.session_state.saved_plots = []
-
-if "lat" not in st.session_state:
-st.session_state.lat = 13.7563
-
-if "lon" not in st.session_state:
-st.session_state.lon = 100.5018
-
-# ==================================================
-
-# ส่วนหัว
-
-# ==================================================
-
-header_left, header_right = st.columns(
-[1, 5]
-)
-
-with header_left:
-
-```
-if os.path.exists(LOGO_PATH):
-
-    st.image(
-        LOGO_PATH,
-        width=115
-    )
-
-else:
-
-    st.markdown("## 🌾")
-```
-
-with header_right:
-
-```
-st.title("🌾 Ta App")
-
-st.caption(
-    "วัดพื้นที่นา • ปักหมุด • "
-    "คำนวณค่าบริการไถ / ปั่น"
-)
-```
-
-st.divider()
-
-# ==================================================
-
-# ข้อมูลเจ้าของนา
-
-# ==================================================
-
-c1, c2 = st.columns(2)
-
-with c1:
-
-```
-owner = st.text_input(
-    "👤 ชื่อเจ้าของนา",
-    placeholder="เช่น นายสมชาย ใจดี",
-    key="owner",
-)
-```
-
-with c2:
-
-```
-note = st.text_input(
-    "📝 หมายเหตุ",
-    placeholder="เช่น นาแปลงหลังบ้าน / นัดไถวันจันทร์",
-    key="note",
-)
-```
-
-# ==================================================
-
-# แผนที่
-
-# ==================================================
-
-st.subheader(
-"🗺️ กำหนดขอบเขตแปลงนา"
-)
-
-st.info(
-"แตะบนแผนที่เพื่อเพิ่มหมุดทีละจุด "
-"• ใช้ปุ่ม GPS เพื่อดูตำแหน่งปัจจุบัน "
-"• สามารถลากหมุดเพื่อปรับตำแหน่งได้"
-)
-
-map_center = [
-st.session_state.lat,
-st.session_state.lon,
-]
-
-m = folium.Map(
-location=map_center,
-zoom_start=17,
-control_scale=True,
-tiles="OpenStreetMap",
-)
-
-# ==================================================
-
-# GPS
-
-# ==================================================
-
-LocateControl(
-auto_start=False,
-flyTo=True,
-keepCurrentZoomLevel=False,
-showCompass=True,
-).add_to(m)
-
-# ==================================================
-
-# วาดหมุด
-
-# ==================================================
-
-for i, point in enumerate(
-st.session_state.points
-):
-
-```
-lat, lon = point
-
-folium.Marker(
-    [lat, lon],
-    tooltip=f"หมุด {i + 1}",
-    draggable=True,
-    icon=folium.Icon(
-        color="green",
-        icon="map-marker",
-    ),
-).add_to(m)
-```
-
-# ==================================================
-
-# วาดเส้น
-
-# ==================================================
-
-if len(
-st.session_state.points
-) >= 2:
-
-```
-line_points = list(
-    st.session_state.points
-)
-
-if len(line_points) >= 3:
-
-    line_points.append(
-        line_points[0]
-    )
-
-folium.PolyLine(
-    line_points,
-    color="green",
-    weight=4,
-    opacity=0.85,
-).add_to(m)
-```
-
-# ==================================================
-
-# วาดพื้นที่
-
-# ==================================================
-
-if len(
-st.session_state.points
-) >= 3:
-
-```
-folium.Polygon(
-    st.session_state.points,
-    color="green",
-    weight=2,
-    fill=True,
-    fill_opacity=0.20,
-).add_to(m)
-```
-
-# ==================================================
-
-# แสดงแผนที่
-
-# ==================================================
-
-map_data = st_folium(
-m,
-width=None,
-height=520,
-returned_objects=[
-"last_clicked",
-"last_object_clicked",
-"center",
-],
-key="farm_map",
-)
-
-# ==================================================
-
-# แตะแผนที่เพื่อเพิ่มหมุด
-
-# ==================================================
-
-clicked = map_data.get(
-"last_clicked"
-)
-
-if clicked:
-
-```
-clicked_lat = float(
-    clicked["lat"]
-)
-
-clicked_lon = float(
-    clicked["lng"]
-)
-
-if st.session_state.points:
-
-    last_point = (
-        st.session_state.points[-1]
-    )
-
-else:
-
-    last_point = None
-
-
-is_new_point = (
-    last_point is None
-    or abs(
-        last_point[0]
-        - clicked_lat
-    ) > 0.000001
-    or abs(
-        last_point[1]
-        - clicked_lon
-    ) > 0.000001
-)
-
-
-if is_new_point:
-
-    st.session_state.points.append(
-        (
-            clicked_lat,
-            clicked_lon,
-        )
-    )
-
-    st.rerun()
-```
-
-# ==================================================
-
-# ปุ่มจัดการหมุด
-
-# ==================================================
-
-b1, b2, b3, b4 = st.columns(4)
-
-with b1:
-
-```
-if st.button(
-    "↩️ ลบหมุดล่าสุด",
-    use_container_width=True,
-):
-
-    if st.session_state.points:
-
-        st.session_state.points.pop()
-
-        st.rerun()
-```
-
-with b2:
-
-```
-if st.button(
-    "🗑️ ล้างหมุดทั้งหมด",
-    use_container_width=True,
-):
-
-    st.session_state.points = []
-
-    st.rerun()
-```
-
-with b3:
-
-```
-if st.button(
-    "📍 ใช้ตำแหน่งตัวอย่าง",
-    use_container_width=True,
-):
-
-    st.session_state.points = [
-
-        (
-            13.75630,
-            100.50180,
-        ),
-
-        (
-            13.75630,
-            100.50300,
-        ),
-
-        (
-            13.75530,
-            100.50300,
-        ),
-
-        (
-            13.75530,
-            100.50180,
-        ),
-    ]
-
-    st.rerun()
-```
-
-with b4:
-
-```
-if st.button(
-    "🔄 รีเฟรชแผนที่",
-    use_container_width=True,
-):
-
-    st.rerun()
-```
-
-# ==================================================
-
-# คำนวณพื้นที่
-
-# ==================================================
-
-area_m2 = polygon_area_m2(
-st.session_state.points
-)
-
-rai, ngan, wa, remain_m2 = thai_area(
-area_m2
-)
-
-# ==================================================
-
-# คำนวณราคา
-
-# ==================================================
-
-plow_cost = (
-area_m2 / RAI_M2
-) * PLOW_RATE
-
-mill_cost = (
-area_m2 / RAI_M2
-) * MILL_RATE
-
-total_cost = (
-plow_cost
-+ mill_cost
-)
-
-# ==================================================
-
-# ผลการวัด
-
-# ==================================================
-
-st.divider()
-
-st.subheader(
-"📐 ผลการวัดพื้นที่"
-)
-
-if len(
-st.session_state.points
-) < 3:
-
-```
-st.warning(
-    "กรุณาปักหมุดอย่างน้อย 3 จุด "
-    "เพื่อคำนวณพื้นที่"
-)
-```
-
-else:
-
-```
-a1, a2, a3, a4 = st.columns(4)
-
-
-with a1:
-
-    st.metric(
-        "พื้นที่รวม",
-        f"{area_m2:,.2f} ตร.ม.",
-    )
-
-
-with a2:
-
-    st.metric(
-        "ไร่",
-        f"{rai:,}",
-    )
-
-
-with a3:
-
-    st.metric(
-        "งาน",
-        f"{ngan:,}",
-    )
-
-
-with a4:
-
-    st.metric(
-        "ตารางวา",
-        f"{wa:,}",
-    )
-
-
-st.success(
-    f"พื้นที่โดยประมาณ "
-    f"**{rai} ไร่ {ngan} งาน "
-    f"{wa} ตารางวา "
-    f"{remain_m2:.2f} ตร.ม.**"
-)
-
-
-# ==================================================
-# ค่าบริการ
-# ==================================================
-
-st.divider()
-
-st.subheader(
-    "💰 ค่าบริการ"
-)
-
-
-s1, s2 = st.columns(2)
-
-
-with s1:
-
-    st.markdown("### 🚜 ไถ")
-
-    st.markdown(
-        f"**{money(PLOW_RATE)} บาท / ไร่**"
-    )
-
-    st.metric(
-        "ค่าไถ",
-        f"{money(plow_cost)} บาท",
-    )
-
-
-with s2:
-
-    st.markdown("### ⚙️ ปั่น")
-
-    st.markdown(
-        f"**{money(MILL_RATE)} บาท / ไร่**"
-    )
-
-    st.metric(
-        "ค่าปั่น",
-        f"{money(mill_cost)} บาท",
-    )
-
-
-# ==================================================
-# ยอดรวม
-# ==================================================
-
-st.markdown("---")
-
-
-st.markdown(
-    f"""
-    <div class="ta-total-box">
-
-        <div class="ta-total-title">
-            💰 ยอดรวมทั้งหมด
-        </div>
-
-        <div class="ta-total-money">
-            {money(total_cost)} บาท
-        </div>
-
-        <div class="ta-total-detail">
-            ไถ {money(plow_cost)}
-            +
-            ปั่น {money(mill_cost)}
-        </div>
-
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ==================================================
-# บันทึกแปลง
-# ==================================================
-
-st.divider()
-
-
-if st.button(
-    "💾 บันทึกแปลงนี้",
-    type="primary",
-    use_container_width=True,
-):
-
-    record = {
-
-        "เจ้าของนา": (
-            owner or "-"
-        ),
-
-        "พื้นที่ ตร.ม.": round(
-            area_m2,
-            2,
-        ),
-
-        "พื้นที่": (
-            f"{rai} ไร่ "
-            f"{ngan} งาน "
-            f"{wa} ตารางวา "
-            f"{remain_m2:.2f} ตร.ม."
-        ),
-
-        "ค่าไถ": round(
-            plow_cost,
-            2,
-        ),
-
-        "ค่าปั่น": round(
-            mill_cost,
-            2,
-        ),
-
-        "ยอดรวม": round(
-            total_cost,
-            2,
-        ),
-
-        "หมายเหตุ": (
-            note or "-"
-        ),
-
-        "หมุด": list(
-            st.session_state.points
-        ),
-    }
-
-
-    st.session_state.saved_plots.append(
-        record
-    )
-
-
-    st.success(
-        "บันทึกข้อมูลแปลงนาเรียบร้อยแล้วครับ 🌾"
-    )
-```
-
-# ==================================================
-
-# รายการที่บันทึก
-
-# ==================================================
-
-if st.session_state.saved_plots:
-
-```
-st.divider()
-
-st.subheader(
-    "📋 แปลงนาที่บันทึกไว้"
-)
-
-
-for idx, item in enumerate(
-    reversed(
-        st.session_state.saved_plots
-    ),
-    1,
-):
-
-    plot_number = (
-        len(
-            st.session_state.saved_plots
-        )
-        - idx
-        \+ 1
-    )
-
-
-    with st.expander(
-        f"แปลงที่ {plot_number} • "
-        f"{item['เจ้าของนา']} • "
-        f"{money(item['ยอดรวม'])} บาท"
-    ):
-
-        st.write(
-            f"**เจ้าของนา:** "
-            f"{item['เจ้าของนา']}"
-        )
-
-        st.write(
-            f"**พื้นที่:** "
-            f"{item['พื้นที่']}"
-        )
-
-        st.write(
-            f"**ค่าไถ:** "
-            f"{money(item['ค่าไถ'])} บาท"
-        )
-
-        st.write(
-            f"**ค่าปั่น:** "
-            f"{money(item['ค่าปั่น'])} บาท"
-        )
-
-        st.write(
-            f"**ยอดรวม:** "
-            f"{money(item['ยอดรวม'])} บาท"
-        )
-
-        st.write(
-            f"**หมายเหตุ:** "
-            f"{item['หมายเหตุ']}"
-        )
-```
-
-# ==================================================
-
-# Footer
-
-# ==================================================
-
-st.divider()
-
-st.caption(
-"Ta App • ระบบคำนวณพื้นที่จากพิกัด GPS "
-"โดยประมาณ • ควรตรวจสอบแนวเขตจริงก่อน "
-"นำไปใช้เป็นข้อมูลทางกฎหมาย"
-)
