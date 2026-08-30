@@ -14,8 +14,8 @@ import requests
 from PIL import Image, ImageDraw
 
 st.set_page_config(
-    page_title="Ta App - เธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ",
-    page_icon="๐พ",
+    page_title="Ta App - วัดพื้นที่นา",
+    page_icon="🌾",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -179,10 +179,10 @@ if "lat" not in st.session_state:
 if "lon" not in st.session_state:
     st.session_state.lon = None
 
-st.title("๐พ Ta App")
-st.caption("เธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ โ€ข เธเธฃเธฑเธเนเธเธงเน€เธเธ• โ€ข เธเธณเธเธงเธ“เธเนเธฒเนเธ–/เธเธฑเนเธเธ”เธดเธ โ€ข เธเธฑเธเธ—เธถเธเธเธฃเนเธญเธกเธ เธฒเธ")
+st.title("🌾 Ta App")
+st.caption("วัดพื้นที่นา • ปรับแนวเขต • คำนวณค่าไถ/ปั่นดิน • บันทึกพร้อมภาพ")
 
-# เธเธญ GPS เธเธญเธเน€เธเธฃเธทเนเธญเธเธ—เธตเนเน€เธเธดเธ”เนเธญเธ
+# ขอ GPS ของเครื่องที่เปิดแอป
 location = streamlit_geolocation()
 
 if isinstance(location, dict):
@@ -202,22 +202,22 @@ if isinstance(location, dict):
 c1, c2 = st.columns(2)
 with c1:
     owner = st.text_input(
-        "๐‘ค เธเธทเนเธญเน€เธเนเธฒเธเธญเธเธเธฒ",
-        placeholder="เน€เธเนเธ เธเธฒเธขเธชเธกเธเธฒเธข เนเธเธ”เธต",
+        "👤 ชื่อเจ้าของนา",
+        placeholder="เช่น นายสมชาย ใจดี",
     )
 with c2:
     note = st.text_input(
-        "๐“ เธเธฑเธเธ—เธถเธ / เธซเธกเธฒเธขเน€เธซเธ•เธธ",
-        placeholder="เน€เธเนเธ เธเธฑเธ”เนเธ–เธงเธฑเธเธเธฑเธเธ—เธฃเน",
+        "📝 บันทึก / หมายเหตุ",
+        placeholder="เช่น นัดไถวันจันทร์",
     )
 
-st.subheader("๐—บ๏ธ เนเธเธเธ—เธตเนเธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ")
+st.subheader("🗺️ แผนที่วัดพื้นที่นา")
 
 if st.session_state.lat is None:
-    st.info("๐“ เธเธ”เธเธธเนเธกเธ•เธณเนเธซเธเนเธเน€เธเธทเนเธญเนเธเธขเธฑเธเธเธธเธ”เธเธฑเธเธเธธเธเธฑเธ โ€ข โ๏ธ เนเธเนเธเธธเนเธก Edit เธเธเนเธเธเธ—เธตเนเน€เธเธทเนเธญเธเธขเธฑเธเธเธธเธ”เธ—เธตเนเธงเธฑเธ”เธเธดเธ” โ€ข เธเธ” ๐—‘๏ธ เน€เธเธทเนเธญเธฅเธเนเธเธงเน€เธเธ•")
+    st.info("📍 กดปุ่มตำแหน่งเพื่อไปยังจุดปัจจุบัน • ✏️ ใช้ปุ่ม Edit บนแผนที่เพื่อขยับจุดที่วัดผิด • กด 🗑️ เพื่อลบแนวเขต")
 
 if st.session_state.lat is None or st.session_state.lon is None:
-    st.warning("๐“ เธเธฃเธธเธ“เธฒเธญเธเธธเธเธฒเธ•เธ•เธณเนเธซเธเนเธ GPS เธเธญเธเธญเธธเธเธเธฃเธ“เนเธเนเธญเธเนเธเนเธเธฒเธ เนเธเธเธ—เธตเนเธเธฐเนเธกเนเนเธเนเธเธดเธเธฑเธ”เธญเธเธธเธชเธฒเธงเธฃเธตเธขเนเน€เธเนเธเธเนเธฒเน€เธฃเธดเนเธกเธ•เนเธ")
+    st.warning("📍 กรุณาอนุญาตตำแหน่ง GPS ของอุปกรณ์ก่อนใช้งาน แผนที่จะไม่ใช้พิกัดอนุสาวรีย์เป็นค่าเริ่มต้น")
     center = [0.0, 0.0]
     zoom_level = 2
 else:
@@ -234,8 +234,8 @@ m = folium.Map(
 folium.TileLayer(
     tiles="https://server.arcgisonline.com/ArcGIS/rest/services/"
           "World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attr="Tiles ยฉ Esri",
-    name="เธ เธฒเธเธ”เธฒเธงเน€เธ—เธตเธขเธก",
+    attr="Tiles © Esri",
+    name="ภาพดาวเทียม",
     overlay=False,
     control=True,
 ).add_to(m)
@@ -247,8 +247,8 @@ LocateControl(
     showCompass=True,
 ).add_to(m)
 
-# เนเธเน FeatureGroup เน€เธ”เธตเธขเธงเธเธฑเธ Draw เน€เธเธทเนเธญเนเธซเนเนเธเธงเน€เธเธ•เน€เธ”เธดเธกเนเธเนเนเธเนเธ”เนเธเธฃเธดเธ
-drawn_items = folium.FeatureGroup(name="เนเธเธงเน€เธเธ•เนเธเธฅเธเธเธฒ", show=True)
+# ใช้ FeatureGroup เดียวกับ Draw เพื่อให้แนวเขตเดิมแก้ไขได้จริง
+drawn_items = folium.FeatureGroup(name="แนวเขตแปลงนา", show=True)
 drawn_items.add_to(m)
 
 if len(st.session_state.points) >= 3:
@@ -259,7 +259,7 @@ if len(st.session_state.points) >= 3:
         fill=True,
         fill_color="#00b950",
         fill_opacity=0.18,
-        tooltip="เนเธเธงเน€เธเธ•เนเธเธฅเธเธเธฒ โ€ข เนเธเนเธเธธเนเธก โ๏ธ เน€เธเธทเนเธญเนเธเนเนเธ",
+        tooltip="แนวเขตแปลงนา • ใช้ปุ่ม ✏️ เพื่อแก้ไข",
     ).add_to(drawn_items)
 
 Draw(
@@ -302,11 +302,11 @@ if map_data and map_data.get("all_drawings") is not None:
 
 b1, b2 = st.columns(2)
 with b1:
-    if st.button("๐—‘๏ธ เธฅเนเธฒเธเนเธเธงเน€เธเธ•", use_container_width=True):
+    if st.button("🗑️ ล้างแนวเขต", use_container_width=True):
         st.session_state.points = []
         st.rerun()
 with b2:
-    if st.button("๐” เธฃเธตเน€เธเธฃเธเนเธเธเธ—เธตเน", use_container_width=True):
+    if st.button("🔄 รีเฟรชแผนที่", use_container_width=True):
         st.rerun()
 
 area_m2 = polygon_area_m2(st.session_state.points)
@@ -316,143 +316,143 @@ mill_cost = area_m2 / RAI_M2 * MILL_RATE
 total_cost = plow_cost + mill_cost
 
 st.divider()
-st.subheader("๐“ เธเธฅเธเธฒเธฃเธงเธฑเธ”เธเธทเนเธเธ—เธตเน")
+st.subheader("📐 ผลการวัดพื้นที่")
 
 if len(st.session_state.points) < 3:
-    st.warning("เธเธฃเธธเธ“เธฒเธงเธฒเธ”เธเธญเธเน€เธเธ•เนเธเธฅเธเธเธฒเธญเธขเนเธฒเธเธเนเธญเธข 3 เธเธธเธ”")
+    st.warning("กรุณาวาดขอบเขตแปลงนาอย่างน้อย 3 จุด")
 else:
     a1, a2, a3, a4 = st.columns(4)
-    a1.metric("เธเธทเนเธเธ—เธตเนเธฃเธงเธก", f"{area_m2:,.2f} เธ•เธฃ.เธก.")
-    a2.metric("เนเธฃเน", f"{rai:,}")
-    a3.metric("เธเธฒเธ", f"{ngan:,}")
-    a4.metric("เธ•เธฒเธฃเธฒเธเธงเธฒ", f"{wa:,}")
+    a1.metric("พื้นที่รวม", f"{area_m2:,.2f} ตร.ม.")
+    a2.metric("ไร่", f"{rai:,}")
+    a3.metric("งาน", f"{ngan:,}")
+    a4.metric("ตารางวา", f"{wa:,}")
 
     st.success(
-        f"เธเธทเนเธเธ—เธตเนเธเธฃเธฐเธกเธฒเธ“ {rai} เนเธฃเน {ngan} เธเธฒเธ {wa} เธ•เธฒเธฃเธฒเธเธงเธฒ "
-        f"{remain_m2:.2f} เธ•เธฃ.เธก."
+        f"พื้นที่ประมาณ {rai} ไร่ {ngan} งาน {wa} ตารางวา "
+        f"{remain_m2:.2f} ตร.ม."
     )
 
-    st.subheader("๐’ฐ เธขเธญเธ”เธ—เธตเนเธ•เนเธญเธเธเนเธฒเธข")
+    st.subheader("💰 ยอดที่ต้องจ่าย")
     p1, p2, p3 = st.columns(3)
-    p1.metric("1๏ธโฃ เธเนเธฒเนเธ–เธเธฒ", f"{money(plow_cost)} เธเธฒเธ—")
-    p2.metric("2๏ธโฃ เธเนเธฒเธเธฑเนเธเธ”เธดเธ", f"{money(mill_cost)} เธเธฒเธ—")
-    p3.metric("3๏ธโฃ เธฃเธงเธกเนเธ–เธเธฒ + เธเธฑเนเธเธ”เธดเธ", f"{money(total_cost)} เธเธฒเธ—")
+    p1.metric("1️⃣ ค่าไถนา", f"{money(plow_cost)} บาท")
+    p2.metric("2️⃣ ค่าปั่นดิน", f"{money(mill_cost)} บาท")
+    p3.metric("3️⃣ รวมไถนา + ปั่นดิน", f"{money(total_cost)} บาท")
 
-    st.caption("เธญเธฑเธ•เธฃเธฒเธเนเธฒเธเธฃเธดเธเธฒเธฃ: เนเธ–เธเธฒ 250 เธเธฒเธ—/เนเธฃเน โ€ข เธเธฑเนเธเธ”เธดเธ 350 เธเธฒเธ—/เนเธฃเน")
+    st.caption("อัตราค่าบริการ: ไถนา 250 บาท/ไร่ • ปั่นดิน 350 บาท/ไร่")
 
     st.markdown(
         f"""
         <div class="total-box">
-            <div>๐’ฐ เธขเธญเธ”เธฃเธงเธกเธ—เธฑเนเธเธซเธกเธ”</div>
-            <div class="total-money">{money(total_cost)} เธเธฒเธ—</div>
+            <div>💰 ยอดรวมทั้งหมด</div>
+            <div class="total-money">{money(total_cost)} บาท</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("### ๐ฐ๏ธ เธ เธฒเธเธเธทเนเธเธ—เธตเนเธ—เธตเนเธเธณเธฅเธฑเธเธเธฐเธเธฑเธเธ—เธถเธ")
+    st.markdown("### 🛰️ ภาพพื้นที่ที่กำลังจะบันทึก")
     preview = make_snapshot(st.session_state.points)
     if preview is not None:
-        st.image(preview, caption="เธ เธฒเธเธ”เธฒเธงเน€เธ—เธตเธขเธกเธเธฃเนเธญเธกเนเธเธงเน€เธเธ•เนเธเธฅเธเธ—เธตเนเธงเธฑเธ”", use_container_width=True)
+        st.image(preview, caption="ภาพดาวเทียมพร้อมแนวเขตแปลงที่วัด", use_container_width=True)
     else:
-        st.warning("เธขเธฑเธเธชเธฃเนเธฒเธเธ เธฒเธเธ”เธฒเธงเน€เธ—เธตเธขเธกเนเธกเนเนเธ”เน เนเธ•เนเธเนเธญเธกเธนเธฅเธเธดเธเธฑเธ”เนเธฅเธฐเธเธทเนเธเธ—เธตเนเธขเธฑเธเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเนเธ”เน")
+        st.warning("ยังสร้างภาพดาวเทียมไม่ได้ แต่ข้อมูลพิกัดและพื้นที่ยังสามารถบันทึกได้")
 
     if st.button(
-        "๐’พ เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅ + เธ เธฒเธเธเธทเนเธเธ—เธตเน",
+        "💾 บันทึกข้อมูล + ภาพพื้นที่",
         type="primary",
         use_container_width=True,
     ):
         snapshot = preview if preview is not None else make_snapshot(st.session_state.points)
 
         record = {
-            "เธฅเธณเธ”เธฑเธ": len(st.session_state.saved_plots) + 1,
-            "เธงเธฑเธเธ—เธตเนเธเธฑเธเธ—เธถเธ": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "เน€เธเนเธฒเธเธญเธเธเธฒ": owner.strip() or "-",
-            "เธซเธกเธฒเธขเน€เธซเธ•เธธ": note.strip() or "-",
-            "เธเธทเนเธเธ—เธตเน_เธ•เธฃเธก": round(area_m2, 2),
-            "เนเธฃเน": rai,
-            "เธเธฒเธ": ngan,
-            "เธ•เธฒเธฃเธฒเธเธงเธฒ": wa,
-            "เน€เธซเธฅเธทเธญ_เธ•เธฃเธก": round(remain_m2, 2),
-            "เธเนเธฒเนเธ–เธเธฒ": round(plow_cost, 2),
-            "เธเนเธฒเธเธฑเนเธเธ”เธดเธ": round(mill_cost, 2),
-            "เธฃเธงเธก": round(total_cost, 2),
-            "เธเธดเธเธฑเธ”": [
+            "ลำดับ": len(st.session_state.saved_plots) + 1,
+            "วันที่บันทึก": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "เจ้าของนา": owner.strip() or "-",
+            "หมายเหตุ": note.strip() or "-",
+            "พื้นที่_ตรม": round(area_m2, 2),
+            "ไร่": rai,
+            "งาน": ngan,
+            "ตารางวา": wa,
+            "เหลือ_ตรม": round(remain_m2, 2),
+            "ค่าไถนา": round(plow_cost, 2),
+            "ค่าปั่นดิน": round(mill_cost, 2),
+            "รวม": round(total_cost, 2),
+            "พิกัด": [
                 [round(lat, 7), round(lon, 7)]
                 for lat, lon in st.session_state.points
             ],
-            "เธ เธฒเธเธเธทเนเธเธ—เธตเน_base64": image_to_base64(snapshot),
+            "ภาพพื้นที่_base64": image_to_base64(snapshot),
         }
 
         st.session_state.saved_plots.append(record)
         save_saved(st.session_state.saved_plots)
-        st.success("เธเธฑเธเธ—เธถเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธงเธเธฃเธฑเธ เธเนเธญเธกเธนเธฅเธเธฐเธขเธฑเธเธญเธขเธนเนเน€เธกเธทเนเธญเธเธดเธ”เนเธฅเธฐเน€เธเธดเธ”เนเธญเธเนเธซเธกเน ๐พ")
+        st.success("บันทึกเรียบร้อยแล้วครับ ข้อมูลจะยังอยู่เมื่อปิดและเปิดแอปใหม่ 🌾")
 
 st.divider()
-st.subheader("๐“ เธเนเธญเธกเธนเธฅเนเธเธฅเธเธเธฒเธ—เธตเนเธเธฑเธเธ—เธถเธเนเธงเน")
+st.subheader("📋 ข้อมูลแปลงนาที่บันทึกไว้")
 
 if not st.session_state.saved_plots:
-    st.info("เธขเธฑเธเนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเธ—เธตเนเธเธฑเธเธ—เธถเธ")
+    st.info("ยังไม่มีข้อมูลที่บันทึก")
 else:
     for item in reversed(st.session_state.saved_plots):
         title = (
-            f"เนเธเธฅเธเธ—เธตเน {item['เธฅเธณเธ”เธฑเธ']} โ€ข "
-            f"{item['เน€เธเนเธฒเธเธญเธเธเธฒ']} โ€ข "
-            f"{money(item['เธฃเธงเธก'])} เธเธฒเธ—"
+            f"แปลงที่ {item['ลำดับ']} • "
+            f"{item['เจ้าของนา']} • "
+            f"{money(item['รวม'])} บาท"
         )
         with st.expander(title):
             left, right = st.columns([1.2, 1])
 
             with left:
                 saved_image = base64_to_image(
-                    item.get("เธ เธฒเธเธเธทเนเธเธ—เธตเน_base64")
+                    item.get("ภาพพื้นที่_base64")
                 )
                 if saved_image is not None:
                     st.image(
                         saved_image,
-                        caption="เธ เธฒเธเธเธทเนเธเธ—เธตเนเนเธเธฅเธเธเธฒเธ—เธตเนเธเธฑเธเธ—เธถเธเนเธงเน",
+                        caption="ภาพพื้นที่แปลงนาที่บันทึกไว้",
                         use_container_width=True,
                     )
                 else:
-                    st.warning("เนเธกเนเธเธเธ เธฒเธเธเธญเธเนเธเธฅเธเธเธตเน")
+                    st.warning("ไม่พบภาพของแปลงนี้")
 
             with right:
-                st.write(f"**เน€เธเนเธฒเธเธญเธเธเธฒ:** {item['เน€เธเนเธฒเธเธญเธเธเธฒ']}")
-                st.write(f"**เธงเธฑเธเธ—เธตเนเธเธฑเธเธ—เธถเธ:** {item['เธงเธฑเธเธ—เธตเนเธเธฑเธเธ—เธถเธ']}")
-                st.write(f"**เธซเธกเธฒเธขเน€เธซเธ•เธธ:** {item['เธซเธกเธฒเธขเน€เธซเธ•เธธ']}")
+                st.write(f"**เจ้าของนา:** {item['เจ้าของนา']}")
+                st.write(f"**วันที่บันทึก:** {item['วันที่บันทึก']}")
+                st.write(f"**หมายเหตุ:** {item['หมายเหตุ']}")
                 st.write(
-                    f"**เธเธทเนเธเธ—เธตเน:** {item['เนเธฃเน']} เนเธฃเน "
-                    f"{item['เธเธฒเธ']} เธเธฒเธ {item['เธ•เธฒเธฃเธฒเธเธงเธฒ']} เธ•เธฒเธฃเธฒเธเธงเธฒ "
-                    f"{item['เน€เธซเธฅเธทเธญ_เธ•เธฃเธก']:.2f} เธ•เธฃ.เธก."
+                    f"**พื้นที่:** {item['ไร่']} ไร่ "
+                    f"{item['งาน']} งาน {item['ตารางวา']} ตารางวา "
+                    f"{item['เหลือ_ตรม']:.2f} ตร.ม."
                 )
-                st.write(f"**เธเนเธฒเนเธ–เธเธฒ:** {money(item['เธเนเธฒเนเธ–เธเธฒ'])} เธเธฒเธ—")
-                st.write(f"**เธเนเธฒเธเธฑเนเธเธ”เธดเธ:** {money(item['เธเนเธฒเธเธฑเนเธเธ”เธดเธ'])} เธเธฒเธ—")
-                st.write(f"**เธฃเธงเธก:** {money(item['เธฃเธงเธก'])} เธเธฒเธ—")
+                st.write(f"**ค่าไถนา:** {money(item['ค่าไถนา'])} บาท")
+                st.write(f"**ค่าปั่นดิน:** {money(item['ค่าปั่นดิน'])} บาท")
+                st.write(f"**รวม:** {money(item['รวม'])} บาท")
 
                 export_item = dict(item)
-                export_item.pop("เธ เธฒเธเธเธทเนเธเธ—เธตเน_base64", None)
+                export_item.pop("ภาพพื้นที่_base64", None)
 
                 st.download_button(
-                    "โฌ๏ธ เธ”เธฒเธงเธเนเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเนเธเธฅเธเธเธตเน",
+                    "⬇️ ดาวน์โหลดข้อมูลแปลงนี้",
                     data=json.dumps(
                         export_item,
                         ensure_ascii=False,
                         indent=2,
                     ).encode("utf-8"),
-                    file_name=f"ta_plot_{item['เธฅเธณเธ”เธฑเธ']}.json",
+                    file_name=f"ta_plot_{item['ลำดับ']}.json",
                     mime="application/json",
                     use_container_width=True,
-                    key=f"download_{item['เธฅเธณเธ”เธฑเธ']}",
+                    key=f"download_{item['ลำดับ']}",
                 )
 
     export_all = []
     for item in st.session_state.saved_plots:
         row = dict(item)
-        row.pop("เธ เธฒเธเธเธทเนเธเธ—เธตเน_base64", None)
+        row.pop("ภาพพื้นที่_base64", None)
         export_all.append(row)
 
     st.download_button(
-        "โฌ๏ธ เธ”เธฒเธงเธเนเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเธ—เธฑเนเธเธซเธกเธ”",
+        "⬇️ ดาวน์โหลดข้อมูลทั้งหมด",
         data=json.dumps(
             export_all,
             ensure_ascii=False,
@@ -465,7 +465,7 @@ else:
 
 st.divider()
 st.caption(
-    "Ta App โ€ข เน€เธเธดเธ”เนเธเนเธเธฒเธเธซเธเนเธฒเธเธฒเธเธ”เนเธงเธข GPS เธเธญเธเน€เธเธฃเธทเนเธญเธเธ—เธตเนเน€เธเธดเธ”เนเธญเธ "
-    "โ€ข เธเนเธญเธกเธนเธฅเธ—เธตเนเธเธฑเธเธ—เธถเธเน€เธเนเธเนเธ ta_data.json เธเธเน€เธเธฃเธทเนเธญเธ/เน€เธเธดเธฃเนเธเน€เธงเธญเธฃเนเธ—เธตเนเธฃเธฑเธเนเธญเธ "
-    "โ€ข เธเนเธฒเธเธทเนเธเธ—เธตเนเน€เธเนเธเธเนเธฒเธเธฃเธฐเธกเธฒเธ“เธเธฒเธเธเธดเธเธฑเธ” GPS"
-  )
+    "Ta App • เปิดใช้งานหน้างานด้วย GPS ของเครื่องที่เปิดแอป "
+    "• ข้อมูลที่บันทึกเก็บใน ta_data.json บนเครื่อง/เซิร์ฟเวอร์ที่รันแอป "
+    "• ค่าพื้นที่เป็นค่าประมาณจากพิกัด GPS"
+    )
