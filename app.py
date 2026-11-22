@@ -1,1526 +1,1887 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from pathlib import Path
+
+import os
+import json
 import base64
 import mimetypes
-import json
+from pathlib import Path
 
-# =========================================================
-# SYNAPSE NEON MUSIC SYSTEM
-# =========================================================
+
+# =====================================================
+# SYNAPSE NEON MUSIC STUDIO
+# =====================================================
 
 APP_DIR = Path(__file__).resolve().parent
-LOGO_FILE = APP_DIR / "logo1.jpg"
-
-AUDIO_EXTENSIONS = {
-    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"
-}
 
 st.set_page_config(
     page_title="SYNAPSE NEON MUSIC",
-    page_icon="🎵",
-    layout="wide"
+    page_icon="🎧",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# =========================================================
-# HIDE STREAMLIT
-# =========================================================
+
+# =====================================================
+# HIDE STREAMLIT INTERFACE
+# =====================================================
 
 st.markdown("""
 <style>
-html, body {
-    margin:0!important;
-    padding:0!important;
-    overflow:hidden!important;
-    background:#02030a!important;
+
+#MainMenu {visibility:hidden;}
+
+header {visibility:hidden;}
+
+footer {visibility:hidden;}
+
+.stApp {
+    background:#03030a;
 }
-header, footer, #MainMenu,
-[data-testid="stHeader"],
-[data-testid="stToolbar"],
-[data-testid="stDecoration"],
-[data-testid="stSidebar"],
-.stDeployButton {
-    display:none!important;
-}
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
-[data-testid="stMainBlockContainer"] {
-    padding:0!important;
-    margin:0!important;
-    background:#02030a!important;
-}
+
 .block-container {
-    padding:0!important;
-    margin:0!important;
-    max-width:100%!important;
+    padding:0 !important;
+    margin:0 !important;
+    max-width:100% !important;
 }
+
+[data-testid="stSidebar"] {
+    display:none;
+}
+
 iframe {
-    border:none!important;
+    border:none !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# LOGO
-# =========================================================
 
-logo_base64 = ""
+# =====================================================
+# LOAD LOGO
+# =====================================================
 
-if LOGO_FILE.exists():
-    logo_base64 = base64.b64encode(
-        LOGO_FILE.read_bytes()
-    ).decode("utf-8")
+logo_path = APP_DIR / "logo1.jpg"
 
-# =========================================================
-# MUSIC FROM SAME DIRECTORY AS Ta_app.py
-# =========================================================
+logo_data = ""
 
-music_list = []
+if logo_path.exists():
 
-for file in sorted(APP_DIR.iterdir(), key=lambda x: x.name.lower()):
-    if file.is_file() and file.suffix.lower() in AUDIO_EXTENSIONS:
-        try:
-            raw = file.read_bytes()
-            mime = mimetypes.guess_type(file.name)[0] or "audio/mpeg"
+    with open(logo_path, "rb") as f:
 
-            music_list.append({
-                "name": file.stem,
-                "type": mime,
-                "data": base64.b64encode(raw).decode("ascii")
-            })
-        except Exception:
-            pass
+        logo_data = base64.b64encode(
+            f.read()
+        ).decode("utf-8")
 
-music_json = json.dumps(music_list, ensure_ascii=False)
 
-# =========================================================
+if logo_data:
+
+    logo_url = "data:image/jpeg;base64," + logo_data
+
+else:
+
+    logo_url = ""
+
+
+# =====================================================
+# LOAD MUSIC FROM SAME FOLDER
+# =====================================================
+
+AUDIO_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".m4a",
+    ".aac",
+    ".flac"
+}
+
+music_files = sorted([
+    p for p in APP_DIR.iterdir()
+    if p.is_file()
+    and p.suffix.lower() in AUDIO_EXTENSIONS
+])
+
+
+music_library = []
+
+for path in music_files:
+
+    try:
+
+        mime = mimetypes.guess_type(
+            path.name
+        )[0]
+
+        if not mime:
+            mime = "audio/mpeg"
+
+        with open(path, "rb") as f:
+
+            encoded = base64.b64encode(
+                f.read()
+            ).decode("utf-8")
+
+        music_library.append({
+
+            "name": path.stem,
+
+            "type": mime,
+
+            "src": (
+                "data:"
+                + mime
+                + ";base64,"
+                + encoded
+            )
+
+        })
+
+    except Exception:
+
+        pass
+
+
+tracks_json = json.dumps(
+    music_library,
+    ensure_ascii=False
+)
+
+logo_json = json.dumps(logo_url)
+
+
+# =====================================================
 # HTML START
-# =========================================================
+# =====================================================
 
 html = r"""
+
 <!DOCTYPE html>
+
 <html>
+
 <head>
+
 <meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
+
 
 <style>
 
 * {
     box-sizing:border-box;
-}
-
-html, body {
     margin:0;
+    padding:0;
+}
+
+html,body {
+
     width:100%;
     height:100%;
+
     overflow:hidden;
-    background:#02030a;
+
+    background:#02020a;
+
     font-family:Arial,sans-serif;
+
+    color:white;
+
 }
 
-:root {
-    --c1:#00eaff;
-    --c2:#bd00ff;
-    --c3:#ff1744;
-    --c4:#ffd700;
-    --c5:#ffffff;
-    --c6:#00ff88;
-}
+#studio {
 
-#screen {
-    width:100%;
-    height:100vh;
-    height:100dvh;
-    overflow:hidden;
     position:relative;
-    background:
-      radial-gradient(circle at 50% 50%,
-      #17172d 0%,
-      #080916 45%,
-      #02030a 100%);
-}
 
-/* BACKGROUND */
-
-canvas {
-    pointer-events:none;
-}
-
-#stars, #particles, #grid {
-    position:absolute;
-    inset:0;
     width:100%;
-    height:100%;
+
+    height:850px;
+
+    max-height:100vh;
+
+    overflow:hidden;
+
+    background:
+    radial-gradient(
+        circle at 50% 45%,
+        #10132b 0%,
+        #050611 45%,
+        #010107 100%
+    );
+
 }
 
-#grid {
-    opacity:.16;
+
+/* BACKGROUND GRID */
+
+.grid {
+
+    position:absolute;
+
+    inset:0;
+
+    background-image:
+
+    linear-gradient(
+        rgba(0,255,255,.07) 1px,
+        transparent 1px
+    ),
+
+    linear-gradient(
+        90deg,
+        rgba(0,255,255,.07) 1px,
+        transparent 1px
+    );
+
+    background-size:35px 35px;
+
+    opacity:.65;
+
 }
+
+
+/* SCAN LINES */
 
 .scan {
+
     position:absolute;
+
     inset:0;
-    z-index:30;
+
     pointer-events:none;
+
     background:repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      transparent 3px,
-      rgba(255,255,255,.08) 4px
+
+        0deg,
+
+        transparent,
+
+        transparent 3px,
+
+        rgba(255,255,255,.035) 4px
+
     );
+
+    z-index:10;
+
 }
 
-.vignette {
+
+/* PARTICLES */
+
+#particles {
+
     position:absolute;
+
+    width:100%;
+
+    height:100%;
+
     inset:0;
-    z-index:31;
-    pointer-events:none;
-    background:radial-gradient(
-      circle,
-      transparent 40%,
-      rgba(0,0,0,.35) 75%,
-      #000 130%
-    );
+
 }
+
 
 /* HEADER */
 
 .header {
+
     position:absolute;
-    top:3%;
-    left:4%;
-    right:4%;
+
+    top:20px;
+
+    left:22px;
+
+    right:22px;
+
     display:flex;
+
     justify-content:space-between;
-    z-index:10;
+
+    align-items:center;
+
+    z-index:5;
+
 }
 
 .brand {
-    font-size:clamp(22px,5vw,38px);
+
+    font-size:clamp(25px,7vw,42px);
+
     font-weight:900;
-    letter-spacing:.28em;
-    color:var(--c1);
-    text-shadow:0 0 10px var(--c1),0 0 35px var(--c2);
+
+    letter-spacing:8px;
+
+    color:#a7faff;
+
+    text-shadow:
+
+    0 0 8px #00eaff,
+
+    0 0 25px #008cff,
+
+    0 0 55px #00d9ff;
+
 }
 
-.subbrand {
-    color:#a8b3c9;
-    font-size:8px;
-    letter-spacing:.35em;
-    margin-top:5px;
+.subtitle {
+
+    font-size:9px;
+
+    letter-spacing:4px;
+
+    color:#9aa8c8;
+
+    margin-top:6px;
+
 }
 
 .status {
+
     text-align:right;
-    color:var(--c4);
-    font-size:9px;
-    letter-spacing:.2em;
+
+    font-size:10px;
+
+    letter-spacing:3px;
+
+    color:#f8dc65;
+
     line-height:2;
+
 }
 
-.dot {
-    display:inline-block;
-    width:7px;
-    height:7px;
-    background:var(--c3);
-    border-radius:50%;
-    box-shadow:0 0 12px var(--c3);
-    animation:blink 1s infinite;
-}
 
-@keyframes blink {
-    50% {opacity:.15;}
-}
+/* TOP SPECTRUM */
 
-/* CORNERS */
+#spectrum {
 
-.corner {
     position:absolute;
-    width:38px;
-    height:38px;
-    z-index:5;
+
+    top:125px;
+
+    left:3%;
+
+    width:94%;
+
+    height:120px;
+
 }
 
-.tl {
-    top:13%;
-    left:2%;
-    border-top:2px solid var(--c1;
-    border-left:2px solid var(--c1);
-}
 
-.tr {
-    top:13%;
-    right:2%;
-    border-top:2px solid var(--c3);
-    border-right:2px solid var(--c3);
-}
+/* MAIN VISUALIZER */
 
-.bl {
-    bottom:4%;
-    left:2%;
-    border-bottom:2px solid var(--c4);
-    border-left:2px solid var(--c4);
-}
+.visualizer {
 
-.br {
-    bottom:4%;
-    right:2%;
-    border-bottom:2px solid var(--c2);
-    border-right:2px solid var(--c2);
-}
-
-/* CENTER CORE */
-
-.core {
     position:absolute;
-    width:min(76vw,66vh);
-    height:min(76vw,66vh);
-    max-width:620px;
-    max-height:620px;
+
+    width:min(88vw,510px);
+
+    height:min(88vw,510px);
+
+    max-height:510px;
+
+    max-width:510px;
+
     left:50%;
-    top:48%;
+
+    top:47%;
+
     transform:translate(-50%,-50%);
-    z-index:6;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
 }
 
-.ring {
+
+/* CIRCULAR CANVAS */
+
+#visual {
+
     position:absolute;
-    inset:0;
-    border-radius:50%;
-    pointer-events:none;
-}
 
-.r1 {
-    border:1px dashed var(--c1);
-    box-shadow:0 0 15px var(--c1);
-    animation:spin 30s linear infinite;
-}
-
-.r2 {
-    inset:5%;
-    border:2px solid var(--c2);
-    box-shadow:0 0 15px var(--c2);
-    animation:spinback 22s linear infinite;
-}
-
-.r3 {
-    inset:10%;
-    border:1px dotted var(--c4);
-    animation:spin 17s linear infinite;
-}
-
-.r4 {
-    inset:15%;
-    border:2px double var(--c5);
-    opacity:.6;
-    animation:spinback 12s linear infinite;
-}
-
-.r5 {
-    inset:21%;
-    border:1px dashed var(--c3);
-    box-shadow:0 0 12px var(--c3);
-    animation:spin 8s linear infinite;
-}
-
-.r6 {
-    inset:27%;
-    border:2px solid var(--c1);
-    box-shadow:inset 0 0 12px var(--c1);
-    animation:spinback 5s linear infinite;
-}
-
-@keyframes spin {
-    to {transform:rotate(360deg);}
-}
-
-@keyframes spinback {
-    to {transform:rotate(-360deg);}
-}
-
-#orbit {
-    position:absolute;
-    inset:0;
     width:100%;
+
     height:100%;
+
+    inset:0;
+
 }
+
 
 /* LOGO */
 
-.logo {
-    position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    width:34%;
-    height:34%;
+.logo-box {
+
+    width:38%;
+
+    aspect-ratio:1/1;
+
     border-radius:50%;
+
     overflow:hidden;
-    background:#000;
-    border:3px solid var(--c4);
-    box-shadow:
-      0 0 12px var(--c4),
-      0 0 30px var(--c1),
-      0 0 70px var(--c2);
-    animation:pulse 2.8s infinite;
+
+    position:relative;
+
+    z-index:3;
+
     display:flex;
+
     justify-content:center;
+
     align-items:center;
+
+    background:#03030a;
+
+    border:3px solid #c5faff;
+
+    box-shadow:
+
+    0 0 12px #00eaff,
+
+    0 0 35px #008cff,
+
+    0 0 65px #a000ff,
+
+    inset 0 0 25px #004cff;
+
+    animation:logoPulse 3s infinite alternate;
+
 }
 
-.logo img {
+.logo-box img {
+
     width:100%;
+
     height:100%;
-    object-fit:contain;
+
+    object-fit:cover;
+
 }
 
-@keyframes pulse {
-    50% {
-        box-shadow:
-          0 0 25px var(--c4),
-          0 0 55px var(--c1),
-          0 0 100px var(--c2);
-    }
+.logo-text {
+
+    font-size:24px;
+
+    font-weight:900;
+
+    color:#00eaff;
+
+    text-shadow:0 0 20px cyan;
+
 }
+
+@keyframes logoPulse {
+
+    from {
+
+        transform:scale(.96);
+
+        box-shadow:0 0 15px cyan;
+
+    }
+
+    to {
+
+        transform:scale(1.04);
+
+        box-shadow:
+
+        0 0 35px cyan,
+
+        0 0 65px purple;
+
+    }
+
+}
+
 
 /* SIDE METERS */
 
-.side {
+.meter {
+
     position:absolute;
-    width:19%;
-    top:27%;
-    z-index:9;
+
+    top:42%;
+
+    z-index:4;
+
+    font-size:11px;
+
+    letter-spacing:2px;
+
+    color:#a8b9e5;
+
+    text-shadow:0 0 10px cyan;
+
 }
 
-.left {
-    left:3%;
+.left-meter {
+
+    left:20px;
+
 }
 
-.right {
-    right:3%;
+.right-meter {
+
+    right:20px;
+
     text-align:right;
+
 }
 
-.label {
-    font-size:8px;
-    color:var(--c1);
-    letter-spacing:.2em;
-    margin-bottom:10px;
+.meter strong {
+
+    display:block;
+
+    font-size:24px;
+
+    margin-top:7px;
+
+    color:#fff;
+
 }
 
-.bars {
-    height:65px;
-    display:flex;
-    align-items:flex-end;
-    gap:2px;
-}
 
-.right .bars {
-    justify-content:flex-end;
-}
+/* TRACK INFO */
 
-.bars span {
-    flex:1;
-    max-width:7px;
-    height:5%;
-    background:var(--c1);
-    box-shadow:0 0 7px var(--c1);
-}
+.track-info {
 
-.right .bars span {
-    background:var(--c3);
-    box-shadow:0 0 7px var(--c3);
-}
-
-.number {
-    color:var(--c4);
-    font-size:20px;
-    margin-top:8px;
-    text-shadow:0 0 12px var(--c4);
-}
-
-.info {
-    font-size:7px;
-    color:#8b9bb8;
-    letter-spacing:.16em;
-    line-height:2;
-    margin-top:10px;
-}
-
-/* TOP BARS */
-
-.topBars {
     position:absolute;
-    top:18%;
-    left:24%;
-    right:24%;
-    height:45px;
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
-    gap:2px;
+
+    bottom:160px;
+
+    left:20px;
+
+    right:20px;
+
+    text-align:center;
+
     z-index:5;
+
 }
 
-.topBars span {
-    flex:1;
-    max-width:8px;
-    height:5%;
-    background:var(--c4);
-    box-shadow:0 0 8px var(--c4);
-}
+.track-title {
 
-/* WAVE */
+    font-size:16px;
 
-.wave {
-    position:absolute;
-    top:39%;
-    left:5%;
-    right:5%;
-    height:12%;
-    z-index:7;
-}
+    font-weight:bold;
 
-#wave {
-    width:100%;
-    height:100%;
-}
+    color:#fff;
 
-/* BOTTOM SPECTRUM */
+    text-shadow:0 0 15px cyan;
 
-.spectrum {
-    position:absolute;
-    left:3%;
-    right:3%;
-    bottom:25%;
-    height:10%;
-    z-index:8;
-    display:flex;
-    justify-content:center;
-    align-items:flex-end;
-    gap:2px;
-}
-
-.spectrum span {
-    flex:1;
-    max-width:10px;
-    height:3%;
-    background:var(--c1);
-    box-shadow:0 0 8px var(--c1);
-}
-
-/* TRACK */
-
-.track {
-    position:absolute;
-    bottom:17%;
-    left:5%;
-    right:5%;
-    text-align:center;
-    z-index:12;
-}
-
-.trackTitle {
-    color:white;
-    font-size:clamp(10px,2.5vw,17px);
-    letter-spacing:.12em;
     white-space:nowrap;
+
     overflow:hidden;
+
     text-overflow:ellipsis;
-    text-shadow:0 0 12px var(--c1);
+
 }
 
-.trackCaption {
-    color:var(--c4);
-    font-size:8px;
-    letter-spacing:.35em;
-    margin-bottom:8px;
+.track-sub {
+
+    font-size:10px;
+
+    color:#9ba7c9;
+
+    letter-spacing:3px;
+
+    margin-top:6px;
+
 }
 
-/* COLOR PANEL */
 
-.colors {
+/* PLAYER CONTROL */
+
+.controls {
+
     position:absolute;
-    top:12%;
-    left:50%;
-    transform:translateX(-50%);
-    width:95%;
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:5px;
-    z-index:20;
-    background:rgba(0,0,0,.65);
-    border:1px solid #30344a;
-    padding:5px;
-}
 
-.colors label {
-    display:flex;
-    align-items:center;
-    gap:2px;
-    color:#9baac5;
-    font-size:7px;
-}
+    bottom:35px;
 
-.colors input {
-    width:21px;
-    height:18px;
-    border:0;
-    padding:0;
-    background:transparent;
-}
+    left:0;
 
-/* PLAYER */
+    right:0;
 
-.player {
-    position:absolute;
-    bottom:2%;
-    left:4%;
-    right:4%;
-    z-index:20;
+    z-index:6;
+
     text-align:center;
+
 }
 
 .buttons {
+
     display:flex;
+
     justify-content:center;
+
     align-items:center;
-    flex-wrap:wrap;
-    gap:4px;
+
+    gap:18px;
+
 }
 
-button {
-    color:var(--c1);
-    background:rgba(2,5,15,.9);
-    border:1px solid var(--c1);
-    border-radius:3px;
-    padding:7px 9px;
-    font-size:8px;
-    letter-spacing:.1em;
-    box-shadow:0 0 8px rgba(0,234,255,.2);
+.btn {
+
+    width:48px;
+
+    height:48px;
+
+    border-radius:50%;
+
+    border:1px solid #00eaff;
+
+    background:rgba(0,20,45,.8);
+
+    color:#fff;
+
+    font-size:18px;
+
+    box-shadow:0 0 15px rgba(0,220,255,.5);
+
+    cursor:pointer;
+
 }
 
-button:active {
-    background:var(--c1);
-    color:#000;
+.btn.play {
+
+    width:62px;
+
+    height:62px;
+
+    font-size:24px;
+
+    background:linear-gradient(
+        135deg,
+        #006aff,
+        #9b00ff,
+        #ff0080
+    );
+
+    border:2px solid white;
+
+    box-shadow:
+
+    0 0 20px #00eaff,
+
+    0 0 40px #8b00ff;
+
 }
 
-#play {
-    color:var(--c4);
-    border-color:var(--c4);
+.btn:active {
+
+    transform:scale(.9);
+
 }
 
-.progress {
-    width:78%;
-    height:3px;
-    margin:8px auto 5px;
-    background:#252c40;
+
+/* PROGRESS */
+
+.progress-area {
+
+    margin:15px auto 0;
+
+    width:85%;
+
 }
 
-#fill {
-    width:0%;
-    height:100%;
-    background:linear-gradient(90deg,var(--c1),var(--c2),var(--c3),var(--c4));
-    box-shadow:0 0 12px var(--c1);
+#progress {
+
+    width:100%;
+
+    accent-color:#00eaff;
+
 }
 
 .time {
-    font-size:8px;
-    color:#aab5cb;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    font-size:10px;
+
+    color:#9da9c9;
+
 }
 
-.message {
-    font-size:8px;
-    color:var(--c4);
-    margin-top:5px;
-}
 
-.fullscreen {
+/* LIBRARY */
+
+.library {
+
     position:absolute;
-    right:3%;
-    bottom:11%;
-    z-index:25;
+
+    top:18px;
+
+    right:22px;
+
+    z-index:9;
+
 }
 
-/* MOBILE */
+.library button {
 
-@media(max-width:700px) {
-    .core {
-        width:min(78vw,55vh);
-        height:min(78vw,55vh);
-        top:48%;
-    }
+    background:#11172b;
 
-    .side {
-        top:28%;
-        width:19%;
-    }
+    color:#00eaff;
 
-    .bars {
-        height:52px;
-    }
+    border:1px solid #00eaff;
 
-    .info {
-        font-size:6px;
-    }
+    border-radius:8px;
 
-    .topBars {
-        top:19%;
-    }
+    padding:7px 12px;
 
-    .spectrum {
-        bottom:25%;
-        height:9%;
-    }
-
-    .track {
-        bottom:17%;
-    }
-
-    .player {
-        bottom:2%;
-    }
-
-    .colors {
-        top:12%;
-    }
-
-    button {
-        padding:6px 7px;
-        font-size:7px;
-    }
-
-    .fullscreen {
-        bottom:11%;
-    }
 }
 
-@media(max-height:650px) {
-    .core {
-        width:min(58vh,62vw);
-        height:min(58vh,62vw);
-        top:43%;
+#playlist {
+
+    display:none;
+
+    position:absolute;
+
+    top:35px;
+
+    right:0;
+
+    width:230px;
+
+    max-height:250px;
+
+    overflow-y:auto;
+
+    background:rgba(5,8,25,.97);
+
+    border:1px solid #00eaff;
+
+    box-shadow:0 0 25px #004cff;
+
+    padding:8px;
+
+}
+
+.song {
+
+    padding:10px;
+
+    font-size:12px;
+
+    border-bottom:1px solid #29304d;
+
+    cursor:pointer;
+
+    color:white;
+
+}
+
+.song:hover {
+
+    color:#00ffff;
+
+    background:#142344;
+
+}
+
+
+/* RESPONSIVE */
+
+@media(max-width:500px) {
+
+    .visualizer {
+
+        width:88vw;
+
+        height:88vw;
+
+        top:46%;
+
     }
 
-    .side {
-        top:21%;
+    .meter {
+
+        font-size:9px;
+
     }
 
-    .track {
-        bottom:13%;
+    .meter strong {
+
+        font-size:18px;
+
     }
 
-    .spectrum {
-        bottom:22%;
+    .left-meter {
+
+        left:12px;
+
     }
 
-    .player {
-        bottom:1%;
+    .right-meter {
+
+        right:12px;
+
     }
 
-    .colors {
-        top:10%;
+    .track-info {
+
+        bottom:150px;
+
     }
+
 }
 
 </style>
+
 </head>
 
-<body>
-<div id="screen">
 
-<canvas id="stars"></canvas>
+<body>
+
+<div id="studio">
+
+<div class="grid"></div>
+
 <canvas id="particles"></canvas>
-<canvas id="grid"></canvas>
 
 <div class="scan"></div>
-<div class="vignette"></div>
 
-<div class="corner tl"></div>
-<div class="corner tr"></div>
-<div class="corner bl"></div>
-<div class="corner br"></div>
 
 <div class="header">
-    <div>
-        <div class="brand">SYNAPSE</div>
-        <div class="subbrand">NEON MUSIC SYSTEM / SOUND & VISUAL THERAPY</div>
-    </div>
-    <div class="status">
-        <span class="dot"></span> AUDIO<br>
-        <span id="sys">SYSTEM READY</span>
-    </div>
-</div>
 
-<div class="topBars" id="topBars"></div>
+<div>
 
-<div class="side left">
-    <div class="label">LOW FREQUENCY</div>
-    <div class="bars" id="bassBars"></div>
-    <div class="number" id="bassNum">000</div>
-    <div class="info">BASS ENERGY<br>SUB WAVE<br><span id="bassStatus">STANDBY</span></div>
-</div>
+<div class="brand">SYNAPSE</div>
 
-<div class="side right">
-    <div class="label">HIGH FREQUENCY</div>
-    <div class="bars" id="trebleBars"></div>
-    <div class="number" id="trebleNum">000</div>
-    <div class="info">TREBLE ENERGY<br>STEREO CHANNEL<br><span id="trebleStatus">STANDBY</span></div>
-</div>
+<div class="subtitle">
 
-<div class="core">
-
-    <div class="ring r1"></div>
-    <div class="ring r2"></div>
-    <div class="ring r3"></div>
-    <div class="ring r4"></div>
-    <div class="ring r5"></div>
-    <div class="ring r6"></div>
-
-    <canvas id="orbit"></canvas>
-
-    <div class="logo" id="logo">
-        <span style="color:#00eaff;font-weight:bold">SYNAPSE</span>
-    </div>
+NEON MUSIC STUDIO / SOUND SYSTEM
 
 </div>
 
-<div class="wave">
-    <canvas id="wave"></canvas>
 </div>
 
-<div class="spectrum" id="spectrum"></div>
+<div class="status">
 
-<div class="track">
-    <div class="trackCaption">NEURAL AUDIO / NOW PLAYING</div>
-    <div class="trackTitle" id="trackName">SYNAPSE MUSIC SYSTEM</div>
+● AUDIO<br>
+
+● NEON SYSTEM<br>
+
+● READY
+
 </div>
 
-<div class="colors">
-    <label>RING<input type="color" id="col1" value="#00eaff"></label>
-    <label>ORBIT<input type="color" id="col2" value="#bd00ff"></label>
-    <label>WAVE<input type="color" id="col3" value="#ffffff"></label>
-    <label>BASS<input type="color" id="col4" value="#ffd700"></label>
-    <label>BAR<input type="color" id="col5" value="#ff1744"></label>
-    <label>STAR<input type="color" id="col6" value="#00ff88"></label>
 </div>
 
-<div class="player">
-    <div class="buttons">
-        <button onclick="prev()">◀ PREV</button>
-        <button id="play" onclick="playPause()">▶ PLAY</button>
-        <button onclick="stopAudio()">■ STOP</button>
-        <button onclick="next()">NEXT ▶</button>
-        <button onclick="shuffle()">SHUFFLE</button>
-        <button onclick="repeat()">REPEAT</button>
-    </div>
 
-    <div class="progress">
-        <div id="fill"></div>
-    </div>
+<canvas id="spectrum"></canvas>
 
-    <div class="time">
-        <span id="now">00:00</span> /
-        <span id="total">00:00</span>
-    </div>
 
-    <div class="message" id="msg">SYSTEM READY</div>
+<div class="meter left-meter">
+
+BASS ENERGY
+
+<strong id="bass">000</strong>
+
+AUDIO INPUT
+
+<br><br>
+
+<span id="state">STANDBY</span>
+
 </div>
 
-<button class="fullscreen" onclick="fullScreen()">⛶ FULL SCREEN</button>
 
-</div><script>
+<div class="meter right-meter">
 
-// =========================================================
-// MUSIC DATA
-// =========================================================
+TREBLE ENERGY
 
-const MUSIC = __MUSIC__;
-const LOGO_DATA = "__LOGO__";
+<strong id="treble">000</strong>
 
-// =========================================================
-// COLOR SYSTEM
-// =========================================================
+STEREO CHANNEL
 
-const C = {
-    c1:"#00eaff",
-    c2:"#bd00ff",
-    c3:"#ffffff",
-    c4:"#ffd700",
-    c5:"#ff1744",
-    c6:"#00ff88"
-};
+<br><br>
 
-function setColor(key,value) {
-    C[key] = value;
-    document.documentElement.style.setProperty("--"+key,value);
-}
+<span> L / R ACTIVE </span>
 
-[
-    ["col1","c1"],
-    ["col2","c2"],
-    ["col3","c3"],
-    ["col4","c4"],
-    ["col5","c5"],
-    ["col6","c6"]
-].forEach(([id,key]) => {
-    document.getElementById(id).addEventListener("input",e=>{
-        setColor(key,e.target.value);
-    });
-});
+</div>
 
-// =========================================================
-// LOGO
-// =========================================================
 
-if(LOGO_DATA.length > 10) {
-    document.getElementById("logo").innerHTML =
-        `<img src="data:image/jpeg;base64,${LOGO_DATA}">`;
-}
+<div class="visualizer">
 
-// =========================================================
-// CREATE BARS
-// =========================================================
+<canvas id="visual"></canvas>
 
-const spectrum = document.getElementById("spectrum");
-const topBars = document.getElementById("topBars");
-const bassBars = document.getElementById("bassBars");
-const trebleBars = document.getElementById("trebleBars");
+<div class="logo-box">
 
-for(let i=0;i<90;i++) {
-    spectrum.appendChild(document.createElement("span"));
-}
+<img id="logo" style="display:none">
 
-for(let i=0;i<40;i++) {
-    topBars.appendChild(document.createElement("span"));
-}
+<div id="logoFallback" class="logo-text">
 
-for(let i=0;i<20;i++) {
-    bassBars.appendChild(document.createElement("span"));
-    trebleBars.appendChild(document.createElement("span"));
-}
+SYNAPSE
 
-// =========================================================
-// AUDIO
-// =========================================================
+</div>
 
-const audio = new Audio();
-audio.preload = "auto";
+</div>
+
+</div>
+
+
+<div class="library">
+
+<button onclick="toggleLibrary()">
+
+♫ SONGS
+
+</button>
+
+<div id="playlist"></div>
+
+</div>
+
+
+<div class="track-info">
+
+<div class="track-title" id="trackName">
+
+SYNAPSE NEON MUSIC STUDIO
+
+</div>
+
+<div class="track-sub">
+
+SOUND FREQUENCY / VISUAL EXPERIENCE
+
+</div>
+
+</div>
+
+
+<div class="controls">
+
+<div class="buttons">
+
+<button class="btn" onclick="previousTrack()">
+
+◀
+
+</button>
+
+<button class="btn play" onclick="togglePlay()" id="playBtn">
+
+▶
+
+</button>
+
+<button class="btn" onclick="stopMusic()">
+
+■
+
+</button>
+
+<button class="btn" onclick="nextTrack()">
+
+▶▶
+
+</button>
+
+</div>
+
+
+<div class="progress-area">
+
+<input type="range"
+id="progress"
+min="0"
+max="1000"
+value="0"
+oninput="seekMusic(this.value)">
+
+<div class="time">
+
+<span id="currentTime">00:00</span>
+
+<span id="duration">00:00</span>
+
+</div>
+
+</div>
+
+</div>
+
+
+<audio id="audio" preload="metadata"></audio>
+
+</div>
+
+</body>
+
+"""
+# =====================================================
+# JAVASCRIPT ENGINE
+# =====================================================
+
+html += r"""
+
+<script>
+
+const tracks = __TRACKS__;
+
+const logoURL = __LOGO__;
+
+const audio = document.getElementById("audio");
+
+const playBtn = document.getElementById("playBtn");
+
+const trackName = document.getElementById("trackName");
+
+const playlist = document.getElementById("playlist");
+
+const progress = document.getElementById("progress");
+
+let currentTrack = 0;
 
 let audioContext = null;
+
 let analyser = null;
+
 let sourceNode = null;
-let freq = null;
-let waveData = null;
 
-let current = 0;
-let isPlaying = false;
-let isShuffle = false;
-let isRepeat = false;
+let frequencyData = null;
 
-function initAudio() {
-    if(!audioContext) {
-        const AC = window.AudioContext || window.webkitAudioContext;
+let playing = false;
 
-        if(!AC) {
-            document.getElementById("msg").textContent =
-                "BROWSER AUDIO NOT SUPPORTED";
-            return;
+let shuffle = false;
+
+let pulse = 0;
+
+
+const logo = document.getElementById("logo");
+
+if (logoURL) {
+
+    logo.src = logoURL;
+
+    logo.style.display = "block";
+
+    document.getElementById(
+        "logoFallback"
+    ).style.display = "none";
+
+}
+
+
+/* =====================================
+   AUDIO ENGINE
+===================================== */
+
+function setupAudio() {
+
+    if (audioContext) return;
+
+    audioContext = new (
+        window.AudioContext ||
+        window.webkitAudioContext
+    )();
+
+    analyser = audioContext.createAnalyser();
+
+    analyser.fftSize = 512;
+
+    analyser.smoothingTimeConstant = 0.82;
+
+    sourceNode = audioContext.createMediaElementSource(
+        audio
+    );
+
+    sourceNode.connect(analyser);
+
+    analyser.connect(audioContext.destination);
+
+    frequencyData = new Uint8Array(
+        analyser.frequencyBinCount
+    );
+
+}
+
+
+/* =====================================
+   LOAD TRACK
+===================================== */
+
+function loadTrack(index, autoplay=true) {
+
+    if (!tracks.length) {
+
+        trackName.innerText = "NO MUSIC FILE FOUND";
+
+        return;
+
+    }
+
+    currentTrack = (
+        index + tracks.length
+    ) % tracks.length;
+
+    audio.src = tracks[currentTrack].src;
+
+    trackName.innerText = tracks[currentTrack].name;
+
+    progress.value = 0;
+
+    if (autoplay) {
+
+        playMusic();
+
+    }
+
+    renderPlaylist();
+
+}
+
+
+/* =====================================
+   PLAY
+===================================== */
+
+async function playMusic() {
+
+    if (!tracks.length) return;
+
+    try {
+
+        setupAudio();
+
+        if (audioContext.state === "suspended") {
+
+            await audioContext.resume();
+
         }
 
-        audioContext = new AC();
+        await audio.play();
 
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
+        playing = true;
 
-        sourceNode = audioContext.createMediaElementSource(audio);
+        playBtn.innerText = "Ⅱ";
 
-        sourceNode.connect(analyser);
-        analyser.connect(audioContext.destination);
+        document.getElementById(
+            "state"
+        ).innerText = "PLAYING";
 
-        freq = new Uint8Array(analyser.frequencyBinCount);
-        waveData = new Uint8Array(analyser.fftSize);
+    } catch(e) {
+
+        document.getElementById(
+            "state"
+        ).innerText = "PRESS PLAY";
+
     }
 
-    if(audioContext.state === "suspended") {
-        audioContext.resume();
-    }
 }
 
-function timeFormat(sec) {
-    if(!Number.isFinite(sec)) return "00:00";
 
-    const m = Math.floor(sec/60);
-    const s = Math.floor(sec%60);
+function togglePlay() {
 
-    return String(m).padStart(2,"0")+":"+
-           String(s).padStart(2,"0");
-}
+    if (!tracks.length) return;
 
-// =========================================================
-// TRACK LOADING
-// =========================================================
+    if (audio.paused) {
 
-function loadTrack(index,autoplay=false) {
-    if(!MUSIC.length) {
-        document.getElementById("msg").textContent =
-            "NO MUSIC FILE FOUND";
-        return;
-    }
+        playMusic();
 
-    current = (index+MUSIC.length)%MUSIC.length;
-
-    const track = MUSIC[current];
-
-    audio.src = "data:"+track.type+";base64,"+track.data;
-    audio.load();
-
-    document.getElementById("trackName").textContent = track.name;
-    document.getElementById("msg").textContent =
-        "TRACK "+(current+1)+" / "+MUSIC.length;
-
-    if(autoplay) startAudio();
-}
-
-function startAudio() {
-    if(!MUSIC.length) {
-        document.getElementById("msg").textContent =
-            "ADD MUSIC BESIDE Ta_app.py";
-        return;
-    }
-
-    initAudio();
-
-    if(!audio.src) {
-        loadTrack(current,false);
-    }
-
-    audio.play().then(()=>{
-        isPlaying = true;
-        document.getElementById("play").textContent = "❚❚ PAUSE";
-        document.getElementById("sys").textContent = "PLAYING";
-        document.getElementById("bassStatus").textContent = "ACTIVE";
-        document.getElementById("trebleStatus").textContent = "ACTIVE";
-        document.getElementById("msg").textContent = "AUDIO SYSTEM ACTIVE";
-    }).catch(()=>{
-        document.getElementById("msg").textContent =
-            "PRESS PLAY TO START";
-    });
-}
-
-function playPause() {
-    if(!MUSIC.length) return;
-
-    initAudio();
-
-    if(audio.paused) {
-        startAudio();
     } else {
+
         audio.pause();
-        isPlaying = false;
 
-        document.getElementById("play").textContent = "▶ PLAY";
-        document.getElementById("sys").textContent = "PAUSED";
+        playing = false;
+
+        playBtn.innerText = "▶";
+
+        document.getElementById(
+            "state"
+        ).innerText = "PAUSED";
+
     }
+
 }
 
-function stopAudio() {
+
+/* =====================================
+   STOP
+===================================== */
+
+function stopMusic() {
+
     audio.pause();
+
     audio.currentTime = 0;
-    isPlaying = false;
 
-    document.getElementById("play").textContent = "▶ PLAY";
-    document.getElementById("sys").textContent = "STOPPED";
+    playing = false;
+
+    playBtn.innerText = "▶";
+
+    document.getElementById(
+        "state"
+    ).innerText = "STOPPED";
+
 }
 
-function next() {
-    if(!MUSIC.length) return;
 
-    if(isShuffle && MUSIC.length>1) {
-        let n=current;
+/* =====================================
+   NEXT / PREVIOUS
+===================================== */
 
-        while(n===current) {
-            n=Math.floor(Math.random()*MUSIC.length);
-        }
+function nextTrack() {
 
-        loadTrack(n,true);
-    } else {
-        loadTrack(current+1,true);
+    let next = currentTrack + 1;
+
+    if (shuffle && tracks.length > 1) {
+
+        next = Math.floor(
+            Math.random() * tracks.length
+        );
+
     }
+
+    loadTrack(next, true);
+
 }
 
-function prev() {
-    if(!MUSIC.length) return;
 
-    if(audio.currentTime>3) {
-        audio.currentTime=0;
-    } else {
-        loadTrack(current-1,true);
+function previousTrack() {
+
+    if (audio.currentTime > 3) {
+
+        audio.currentTime = 0;
+
+        return;
+
     }
+
+    loadTrack(currentTrack - 1, true);
+
 }
 
-function shuffle() {
-    isShuffle=!isShuffle;
 
-    document.getElementById("msg").textContent =
-        isShuffle ? "SHUFFLE MODE ON" : "SHUFFLE MODE OFF";
+audio.addEventListener("ended", nextTrack);
+
+
+/* =====================================
+   PLAYLIST
+===================================== */
+
+function toggleLibrary() {
+
+    playlist.style.display =
+        playlist.style.display === "block"
+        ? "none"
+        : "block";
+
 }
 
-function repeat() {
-    isRepeat=!isRepeat;
-    audio.loop=isRepeat;
 
-    document.getElementById("msg").textContent =
-        isRepeat ? "REPEAT MODE ON" : "REPEAT MODE OFF";
+function renderPlaylist() {
+
+    playlist.innerHTML = "";
+
+    tracks.forEach((track, index) => {
+
+        const item = document.createElement("div");
+
+        item.className = "song";
+
+        item.innerText =
+            (index + 1) + ". " + track.name;
+
+        item.onclick = function() {
+
+            loadTrack(index, true);
+
+            playlist.style.display = "none";
+
+        };
+
+        playlist.appendChild(item);
+
+    });
+
 }
 
-audio.addEventListener("ended",()=>{
-    if(!isRepeat) next();
+
+/* =====================================
+   TIME / PROGRESS
+===================================== */
+
+function formatTime(seconds) {
+
+    if (!Number.isFinite(seconds)) {
+
+        return "00:00";
+
+    }
+
+    let minutes = Math.floor(seconds / 60);
+
+    let secs = Math.floor(seconds % 60);
+
+    return (
+        String(minutes).padStart(2,"0")
+        + ":"
+        + String(secs).padStart(2,"0")
+    );
+
+}
+
+
+function seekMusic(value) {
+
+    if (audio.duration) {
+
+        audio.currentTime =
+            (value / 1000) * audio.duration;
+
+    }
+
+}
+
+
+audio.addEventListener("timeupdate", function() {
+
+    if (audio.duration) {
+
+        progress.value =
+            (audio.currentTime / audio.duration) * 1000;
+
+        document.getElementById(
+            "currentTime"
+        ).innerText = formatTime(audio.currentTime);
+
+        document.getElementById(
+            "duration"
+        ).innerText = formatTime(audio.duration);
+
+    }
+
 });
 
-audio.addEventListener("timeupdate",()=>{
-    document.getElementById("now").textContent =
-        timeFormat(audio.currentTime);
 
-    document.getElementById("total").textContent =
-        timeFormat(audio.duration);
+/* =====================================
+   VISUALIZER
+===================================== */
 
-    if(audio.duration>0) {
-        document.getElementById("fill").style.width =
-            (audio.currentTime/audio.duration*100)+"%";
-    }
-});
+const canvas = document.getElementById("visual");
 
-// =========================================================
-// FULL SCREEN
-// =========================================================
+const ctx = canvas.getContext("2d");
 
-function fullScreen() {
-    const el=document.getElementById("screen");
+const spectrumCanvas =
+    document.getElementById("spectrum");
 
-    if(!document.fullscreenElement) {
-        if(el.requestFullscreen) el.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
+const sctx = spectrumCanvas.getContext("2d");
+
+
+function resizeCanvas() {
+
+    const box = canvas.getBoundingClientRect();
+
+    const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        2
+    );
+
+    canvas.width = box.width * dpr;
+
+    canvas.height = box.height * dpr;
+
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const sw = spectrumCanvas.getBoundingClientRect();
+
+    spectrumCanvas.width = sw.width * dpr;
+
+    spectrumCanvas.height = sw.height * dpr;
+
+    sctx.setTransform(dpr,0,0,dpr,0,0);
+
 }
 
-// =========================================================
-// CANVAS
-// =========================================================
 
-const orbit=document.getElementById("orbit");
-const octx=orbit.getContext("2d");
+window.addEventListener("resize", resizeCanvas);
 
-const waveCanvas=document.getElementById("wave");
-const wctx=waveCanvas.getContext("2d");
+resizeCanvas();
 
-function resizeCanvas(canvas) {
-    const rect=canvas.getBoundingClientRect();
-    const dpr=Math.min(window.devicePixelRatio||1,2);
 
-    canvas.width=Math.max(1,rect.width*dpr);
-    canvas.height=Math.max(1,rect.height*dpr);
+/* =====================================
+   DRAW CIRCULAR ENERGY
+===================================== */
 
-    canvas.getContext("2d").setTransform(dpr,0,0,dpr,0,0);
-}
+function drawVisual() {
 
-function resizeAll() {
-    resizeCanvas(orbit);
-    resizeCanvas(waveCanvas);
-    resizeBG();
-}
+    const w = canvas.clientWidth;
 
-window.addEventListener("resize",resizeAll);
+    const h = canvas.clientHeight;
 
-// =========================================================
-// AUDIO DATA
-// =========================================================
+    const cx = w / 2;
 
-let tick=0;
-let bass=0;
-let treble=0;
-let mid=0;
+    const cy = h / 2;
 
-function average(arr,a,b) {
-    let sum=0;
-    let count=0;
+    const baseRadius = Math.min(w,h) * .31;
 
-    for(let i=a;i<b;i++) {
-        sum+=arr[i];
-        count++;
-    }
+    ctx.clearRect(0,0,w,h);
 
-    return count ? sum/count : 0;
-}
+    let bass = 0;
 
-// =========================================================
-// ANIMATION ENGINE
-// =========================================================
+    let treble = 0;
 
-function animate() {
-    requestAnimationFrame(animate);
+    if (analyser && playing) {
 
-    tick+=0.015;
+        analyser.getByteFrequencyData(
+            frequencyData
+        );
 
-    if(analyser && isPlaying) {
-        analyser.getByteFrequencyData(freq);
-        analyser.getByteTimeDomainData(waveData);
+        for (let i=0;i<35;i++) {
 
-        const n=freq.length;
+            bass += frequencyData[i];
 
-        bass=average(freq,0,Math.floor(n*0.15));
-        mid=average(freq,Math.floor(n*0.15),Math.floor(n*0.55));
-        treble=average(freq,Math.floor(n*0.55),n);
-    } else {
-        bass=8+Math.random()*10;
-        mid=5+Math.random()*8;
-        treble=5+Math.random()*10;
-    }
-
-    document.getElementById("bassNum").textContent =
-        Math.round(bass).toString().padStart(3,"0");
-
-    document.getElementById("trebleNum").textContent =
-        Math.round(treble).toString().padStart(3,"0");
-
-    updateBars();
-    drawOrbit();
-    drawWave();
-}
-
-// =========================================================
-// SPECTRUM
-// =========================================================
-
-function updateBars() {
-    const bars=spectrum.children;
-
-    for(let i=0;i<bars.length;i++) {
-        let v;
-
-        if(analyser && isPlaying) {
-            const idx=Math.floor(i/bars.length*freq.length);
-            v=Math.max(3,freq[idx]/255*100);
-        } else {
-            v=5+Math.random()*25;
         }
 
-        bars[i].style.height=v+"%";
+        for (
+            let i=frequencyData.length-35;
+            i<frequencyData.length;
+            i++
+        ) {
 
-        const hue=(i/bars.length*360+tick*25)%360;
+            treble += frequencyData[i];
 
-        bars[i].style.background=`hsl(${hue},100%,65%)`;
-        bars[i].style.boxShadow=`0 0 10px hsl(${hue},100%,60%)`;
-    }
-
-    for(let i=0;i<topBars.children.length;i++) {
-        let v;
-
-        if(analyser && isPlaying) {
-            const idx=Math.floor(i/topBars.children.length*freq.length);
-            v=Math.max(3,freq[idx]/255*100);
-        } else {
-            v=5+Math.random()*25;
         }
 
-        topBars.children[i].style.height=v+"%";
+        bass = bass / 35;
+
+        treble = treble / 35;
+
+    } else {
+
+        pulse += .025;
+
+        bass = 15 + Math.sin(pulse) * 8;
+
+        treble = 10 + Math.cos(pulse) * 6;
+
     }
 
-    for(let i=0;i<bassBars.children.length;i++) {
-        const b=analyser && isPlaying
-            ?freq[i]/255*100
-            :Math.random()*75;
+    document.getElementById("bass").innerText =
+        String(Math.round(bass)).padStart(3,"0");
 
-        const t=analyser && isPlaying
-            ?freq[freq.length-1-i]/255*100
-            :Math.random()*75;
+    document.getElementById("treble").innerText =
+        String(Math.round(treble)).padStart(3,"0");
 
-        bassBars.children[i].style.height=Math.max(4,b)+"%";
-        trebleBars.children[i].style.height=Math.max(4,t)+"%";
-    }
-}
 
-// =========================================================
-// CIRCULAR VISUALIZER
-// =========================================================
+    const colors = [
 
-function drawOrbit() {
-    const rect=orbit.getBoundingClientRect();
-    const w=rect.width;
-    const h=rect.height;
+        "#00eaff",
 
-    octx.clearRect(0,0,w,h);
-    octx.save();
-    octx.translate(w/2,h/2);
+        "#a000ff",
 
-    const base=Math.min(w,h)*0.35;
+        "#ff007a",
 
-    for(let layer=0;layer<6;layer++) {
-        octx.beginPath();
+        "#ffd700",
 
-        const points=260;
+        "#00ff88",
 
-        for(let i=0;i<=points;i++) {
-            const angle=i/points*Math.PI*2;
+        "#ffffff"
 
-            let d;
+    ];
 
-            if(analyser && isPlaying) {
-                const idx=Math.floor(i/points*freq.length);
-                d=freq[idx]/255;
+
+    /* MULTI LAYER RINGS */
+
+    for (let layer=0;layer<5;layer++) {
+
+        ctx.beginPath();
+
+        const color = colors[layer];
+
+        for (let i=0;i<=240;i++) {
+
+            const angle =
+                i / 240 * Math.PI * 2;
+
+            let data = 0;
+
+            if (analyser && playing) {
+
+                const index = Math.floor(
+                    i / 240 * frequencyData.length
+                );
+
+                data = frequencyData[index] / 255;
+
             } else {
-                d=Math.sin(angle*12+tick+layer)*0.12;
+
+                data = Math.sin(
+                    angle * 8 + pulse
+                ) * .12;
+
             }
 
-            const r=base+layer*9+d*(22+bass*0.15);
-            const rot=tick*(layer%2 ? 1:-1);
+            const radius =
+                baseRadius
+                + layer * 12
+                + data * (25 + bass * .15);
 
-            const x=Math.cos(angle+rot)*r;
-            const y=Math.sin(angle+rot)*r;
+            const x = cx + Math.cos(angle) * radius;
 
-            if(i===0) octx.moveTo(x,y);
-            else octx.lineTo(x,y);
+            const y = cy + Math.sin(angle) * radius;
+
+            if (i===0) {
+
+                ctx.moveTo(x,y);
+
+            } else {
+
+                ctx.lineTo(x,y);
+
+            }
+
         }
 
-        octx.closePath();
+        ctx.closePath();
 
-        const color=[
-            C.c1,C.c2,C.c3,C.c4,C.c5,C.c6
-        ][layer];
+        ctx.strokeStyle = color;
 
-        octx.strokeStyle=color;
-        octx.globalAlpha=.75-layer*.08;
-        octx.lineWidth=layer===0 ? 2:1;
-        octx.shadowBlur=15;
-        octx.shadowColor=color;
-        octx.stroke();
+        ctx.lineWidth = layer===0 ? 3 : 1.5;
+
+        ctx.shadowColor = color;
+
+        ctx.shadowBlur = 15 + bass * .08;
+
+        ctx.stroke();
+
     }
 
-    // ORBITING LIGHTS
 
-    for(let i=0;i<36;i++) {
-        const a=tick*(i%2 ? 1:-1)+i*Math.PI*2/36;
-        const r=base+25+Math.sin(tick*3+i)*12;
+    /* OUTER ENERGY BARS */
 
-        octx.beginPath();
-        octx.arc(
-            Math.cos(a)*r,
-            Math.sin(a)*r,
-            2+bass/55,
+    for (let i=0;i<100;i++) {
+
+        const angle =
+            i / 100 * Math.PI * 2;
+
+        let value = 0;
+
+        if (analyser && playing) {
+
+            value =
+                frequencyData[i % frequencyData.length] / 255;
+
+        } else {
+
+            value =
+                Math.abs(Math.sin(pulse + i * .2)) * .25;
+
+        }
+
+        const r1 = baseRadius + 65;
+
+        const r2 = r1 + 8 + value * 45;
+
+        const x1 = cx + Math.cos(angle) * r1;
+
+        const y1 = cy + Math.sin(angle) * r1;
+
+        const x2 = cx + Math.cos(angle) * r2;
+
+        const y2 = cy + Math.sin(angle) * r2;
+
+        ctx.beginPath();
+
+        ctx.moveTo(x1,y1);
+
+        ctx.lineTo(x2,y2);
+
+        ctx.strokeStyle = colors[i % colors.length];
+
+        ctx.lineWidth = 2;
+
+        ctx.shadowBlur = 8;
+
+        ctx.shadowColor = colors[i % colors.length];
+
+        ctx.stroke();
+
+    }
+
+}
+
+
+/* =====================================
+   TOP SPECTRUM
+===================================== */
+
+function drawSpectrum() {
+
+    const w = spectrumCanvas.clientWidth;
+
+    const h = spectrumCanvas.clientHeight;
+
+    sctx.clearRect(0,0,w,h);
+
+    const bars = 65;
+
+    const gap = 4;
+
+    const barWidth = (w - gap * bars) / bars;
+
+    for (let i=0;i<bars;i++) {
+
+        let value = 0;
+
+        if (analyser && playing) {
+
+            const index = Math.floor(
+                i / bars * frequencyData.length
+            );
+
+            value = frequencyData[index] / 255;
+
+        } else {
+
+            value =
+                Math.abs(Math.sin(pulse + i * .3)) * .2;
+
+        }
+
+        const barHeight = 5 + value * h * .85;
+
+        const x = i * (barWidth + gap);
+
+        const y = h - barHeight;
+
+        const gradient = sctx.createLinearGradient(
+            0,y,0,h
+        );
+
+        gradient.addColorStop(0,"#ff00cc");
+
+        gradient.addColorStop(.45,"#00eaff");
+
+        gradient.addColorStop(1,"#0066ff");
+
+        sctx.fillStyle = gradient;
+
+        sctx.shadowColor = "#00eaff";
+
+        sctx.shadowBlur = 10;
+
+        sctx.fillRect(
+            x,y,barWidth,barHeight
+        );
+
+    }
+
+}
+
+
+/* =====================================
+   PARTICLES
+===================================== */
+
+const pCanvas = document.getElementById("particles");
+
+const pctx = pCanvas.getContext("2d");
+
+let particles = [];
+
+
+function resizeParticles() {
+
+    pCanvas.width = pCanvas.clientWidth;
+
+    pCanvas.height = pCanvas.clientHeight;
+
+}
+
+
+resizeParticles();
+
+window.addEventListener(
+    "resize",
+    resizeParticles
+);
+
+
+for (let i=0;i<100;i++) {
+
+    particles.push({
+
+        x:Math.random(),
+
+        y:Math.random(),
+
+        size:Math.random()*3+1,
+
+        speed:Math.random()*.0008+.0002,
+
+        color:colorsRandom()
+
+    });
+
+}
+
+
+function colorsRandom() {
+
+    const colors = [
+
+        "#00ffff",
+
+        "#ff00cc",
+
+        "#00ff66",
+
+        "#ffcc00",
+
+        "#ffffff",
+
+        "#0066ff"
+
+    ];
+
+    return colors[
+        Math.floor(Math.random()*colors.length)
+    ];
+
+}
+
+
+function drawParticles() {
+
+    const w = pCanvas.width;
+
+    const h = pCanvas.height;
+
+    pctx.clearRect(0,0,w,h);
+
+    particles.forEach(p => {
+
+        p.y -= p.speed * h;
+
+        if (p.y < 0) {
+
+            p.y = 1;
+
+            p.x = Math.random();
+
+        }
+
+        pctx.beginPath();
+
+        pctx.arc(
+            p.x*w,
+            p.y*h,
+            p.size,
             0,
             Math.PI*2
         );
 
-        const color=i%3===0 ? C.c4 : i%3===1 ? C.c1 : C.c5;
+        pctx.fillStyle = p.color;
 
-        octx.fillStyle=color;
-        octx.shadowBlur=20;
-        octx.shadowColor=color;
-        octx.fill();
-    }
+        pctx.shadowColor = p.color;
 
-    // RADAR
+        pctx.shadowBlur = 12;
 
-    const a=tick*.8;
-
-    octx.beginPath();
-    octx.moveTo(0,0);
-    octx.arc(0,0,base*1.55,a,a+.3);
-    octx.closePath();
-
-    octx.fillStyle=C.c1;
-    octx.globalAlpha=.08;
-    octx.fill();
-
-    octx.restore();
-}
-
-// =========================================================
-// WAVEFORM
-// =========================================================
-
-function drawWave() {
-    const rect=waveCanvas.getBoundingClientRect();
-    const w=rect.width;
-    const h=rect.height;
-
-    wctx.clearRect(0,0,w,h);
-
-    const colors=[C.c1,C.c2,C.c3,C.c4];
-
-    for(let layer=0;layer<4;layer++) {
-        wctx.beginPath();
-
-        for(let x=0;x<w;x++) {
-            let v;
-
-            if(analyser && isPlaying) {
-                const idx=Math.floor(x/w*waveData.length);
-                v=(waveData[idx]-128)/128;
-            } else {
-                v=Math.sin(x*.03+tick+layer)*.2;
-            }
-
-            const y=h/2+v*h*.35+
-                Math.sin(x*.015+tick+layer)*(layer+1)*3;
-
-            if(x===0) wctx.moveTo(x,y);
-            else wctx.lineTo(x,y);
-        }
-
-        wctx.strokeStyle=colors[layer];
-        wctx.globalAlpha=.8-layer*.12;
-        wctx.lineWidth=layer===0 ? 2:1;
-        wctx.shadowBlur=15;
-        wctx.shadowColor=colors[layer];
-        wctx.stroke();
-    }
-}
-
-// =========================================================
-// PARTICLE SYSTEM
-// =========================================================
-
-const particlesCanvas=document.getElementById("particles");
-const pctx=particlesCanvas.getContext("2d");
-let particles=[];
-
-function resizeBG() {
-    const w=innerWidth;
-    const h=innerHeight;
-
-    particlesCanvas.width=w;
-    particlesCanvas.height=h;
-
-    document.getElementById("stars").width=w;
-    document.getElementById("stars").height=h;
-
-    document.getElementById("grid").width=w;
-    document.getElementById("grid").height=h;
-
-    particles=[];
-
-    for(let i=0;i<130;i++) {
-        particles.push({
-            x:Math.random()*w,
-            y:Math.random()*h,
-            r:Math.random()*2.5+.5,
-            dx:(Math.random()-.5)*.5,
-            dy:(Math.random()-.5)*.5,
-            hue:Math.random()*360,
-            alpha:Math.random()
-        });
-    }
-
-    drawGrid();
-}
-
-function drawGrid() {
-    const canvas=document.getElementById("grid");
-    const g=canvas.getContext("2d");
-
-    g.clearRect(0,0,canvas.width,canvas.height);
-    g.strokeStyle=C.c1;
-    g.lineWidth=.5;
-
-    for(let x=0;x<canvas.width;x+=35) {
-        g.beginPath();
-        g.moveTo(x,0);
-        g.lineTo(x,canvas.height);
-        g.stroke();
-    }
-
-    for(let y=0;y<canvas.height;y+=35) {
-        g.beginPath();
-        g.moveTo(0,y);
-        g.lineTo(canvas.width,y);
-        g.stroke();
-    }
-}
-
-function particleLoop() {
-    requestAnimationFrame(particleLoop);
-
-    pctx.clearRect(0,0,particlesCanvas.width,particlesCanvas.height);
-
-    const star=document.getElementById("stars");
-    const sctx=star.getContext("2d");
-
-    sctx.clearRect(0,0,star.width,star.height);
-
-    for(const p of particles) {
-        p.x+=p.dx*(1+bass/30);
-        p.y+=p.dy*(1+bass/30);
-
-        if(p.x<0) p.x=particlesCanvas.width;
-        if(p.x>particlesCanvas.width) p.x=0;
-        if(p.y<0) p.y=particlesCanvas.height;
-        if(p.y>particlesCanvas.height) p.y=0;
-
-        p.alpha+=(Math.random()-.5)*.05;
-        p.alpha=Math.max(.15,Math.min(1,p.alpha));
-
-        const color=`hsla(${p.hue},100%,65%,${p.alpha})`;
-
-        pctx.beginPath();
-        pctx.arc(p.x,p.y,p.r+bass/90,0,Math.PI*2);
-        pctx.fillStyle=color;
-        pctx.shadowBlur=18;
-        pctx.shadowColor=color;
         pctx.fill();
 
-        sctx.beginPath();
-        sctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        sctx.fillStyle=color;
-        sctx.fill();
-    }
+    });
+
 }
 
-// =========================================================
-// START
-// =========================================================
 
-resizeAll();
-particleLoop();
-animate();
+/* =====================================
+   ANIMATION LOOP
+===================================== */
 
-if(MUSIC.length>0) {
-    document.getElementById("msg").textContent=
-        MUSIC.length+" MUSIC FILES READY";
+function animate() {
 
-    document.getElementById("sys").textContent=
-        "LIBRARY READY";
+    if (analyser && playing) {
+
+        analyser.getByteFrequencyData(
+            frequencyData
+        );
+
+    }
+
+    drawVisual();
+
+    drawSpectrum();
+
+    drawParticles();
+
+    requestAnimationFrame(animate);
+
+}
+
+
+/* =====================================
+   START
+===================================== */
+
+if (tracks.length > 0) {
 
     loadTrack(0,false);
-} else {
-    document.getElementById("msg").textContent=
-        "ADD MP3 FILE BESIDE Ta_app.py";
 
-    document.getElementById("sys").textContent=
-        "NO MUSIC FOUND";
+    document.getElementById(
+        "state"
+    ).innerText = "LIBRARY READY";
+
+} else {
+
+    document.getElementById(
+        "state"
+    ).innerText = "NO MUSIC";
+
+    trackName.innerText =
+        "ADD MUSIC TO APP FOLDER";
+
 }
 
+
+renderPlaylist();
+
+animate();
+
+
 </script>
-</body>
+
 </html>
+
 """
 
-# =========================================================
-# INSERT DATA SAFELY
-# =========================================================
 
-html = html.replace("__MUSIC__", music_json)
-html = html.replace("__LOGO__", logo_base64)
+# =====================================================
+# INSERT DATA
+# =====================================================
 
-# =========================================================
+html = html.replace(
+    "__TRACKS__",
+    tracks_json
+)
+
+html = html.replace(
+    "__LOGO__",
+    logo_json
+)
+
+
+# =====================================================
 # DISPLAY
-# =========================================================
+# =====================================================
 
-st.iframe(
+components.html(
     html,
     height=850,
-    width="stretch"
+    scrolling=False
 )
