@@ -1519,7 +1519,7 @@ html = html.replace("__LOGO__", logo_base64)
 # DISPLAY
 # =========================================================
 
-components.html(
+st.iframe(
     html,
     height=850,
     scrolling=False
