@@ -2,119 +2,99 @@ import streamlit as st
 import streamlit.components.v1 as components
 from pathlib import Path
 import base64
-import json
 import mimetypes
-import random
+import json
 
 # =========================================================
-# SYNAPSE NEON MUSIC STUDIO - MAXIMAL EDITION
+# SYNAPSE NEON MUSIC SYSTEM
 # =========================================================
 
 APP_DIR = Path(__file__).resolve().parent
-LOGO_PATH = APP_DIR / "logo1.jpg"
+LOGO_FILE = APP_DIR / "logo1.jpg"
 
-SUPPORTED_AUDIO = {
+AUDIO_EXTENSIONS = {
     ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"
 }
 
 st.set_page_config(
-    page_title="SYNAPSE NEON MUSIC STUDIO",
+    page_title="SYNAPSE NEON MUSIC",
     page_icon="🎵",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 # =========================================================
-# HIDE STREAMLIT UI
+# HIDE STREAMLIT
 # =========================================================
 
 st.markdown("""
 <style>
-#MainMenu,
-header,
-footer,
-.stDeployButton,
-[data-testid="stSidebar"],
+html, body {
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    background:#02030a!important;
+}
+header, footer, #MainMenu,
 [data-testid="stHeader"],
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
-[data-testid="stStatusWidget"] {
-    display: none !important;
+[data-testid="stSidebar"],
+.stDeployButton {
+    display:none!important;
 }
-
-html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    background: #02030a !important;
-}
-
-.stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"] {
-    background: #02030a !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    padding:0!important;
+    margin:0!important;
+    background:#02030a!important;
 }
-
 .block-container {
-    padding: 0 !important;
-    max-width: 100% !important;
+    padding:0!important;
+    margin:0!important;
+    max-width:100%!important;
 }
-
 iframe {
-    border: 0 !important;
+    border:none!important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# READ LOGO
+# LOGO
 # =========================================================
 
-logo_b64 = ""
+logo_base64 = ""
 
-if LOGO_PATH.exists():
-    logo_b64 = base64.b64encode(
-        LOGO_PATH.read_bytes()
+if LOGO_FILE.exists():
+    logo_base64 = base64.b64encode(
+        LOGO_FILE.read_bytes()
     ).decode("utf-8")
 
 # =========================================================
-# AUTO READ MUSIC FROM SAME FOLDER
+# MUSIC FROM SAME DIRECTORY AS Ta_app.py
 # =========================================================
 
-music_files = sorted(
-    [
-        p for p in APP_DIR.iterdir()
-        if p.is_file() and p.suffix.lower() in SUPPORTED_AUDIO
-    ],
-    key=lambda p: p.name.lower()
-)
+music_list = []
 
-tracks = []
+for file in sorted(APP_DIR.iterdir(), key=lambda x: x.name.lower()):
+    if file.is_file() and file.suffix.lower() in AUDIO_EXTENSIONS:
+        try:
+            raw = file.read_bytes()
+            mime = mimetypes.guess_type(file.name)[0] or "audio/mpeg"
 
-for file_path in music_files:
-    try:
-        raw = file_path.read_bytes()
-        mime = mimetypes.guess_type(file_path.name)[0]
+            music_list.append({
+                "name": file.stem,
+                "type": mime,
+                "data": base64.b64encode(raw).decode("ascii")
+            })
+        except Exception:
+            pass
 
-        if not mime:
-            mime = "audio/mpeg"
-
-        tracks.append({
-            "name": file_path.stem,
-            "filename": file_path.name,
-            "type": mime,
-            "data": base64.b64encode(raw).decode("ascii")
-        })
-    except Exception:
-        pass
-
-music_json = json.dumps(tracks, ensure_ascii=False)
+music_json = json.dumps(music_list, ensure_ascii=False)
 
 # =========================================================
-# VISUALIZER HTML
+# HTML START
 # =========================================================
 
 html = r"""
@@ -122,685 +102,625 @@ html = r"""
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 
 * {
-    box-sizing: border-box;
+    box-sizing:border-box;
 }
 
 html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: #02030a;
-    overflow: hidden;
-    font-family: Arial, Helvetica, sans-serif;
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#02030a;
+    font-family:Arial,sans-serif;
 }
 
 :root {
-    --c1: #00eaff;
-    --c2: #bd00ff;
-    --c3: #ff1744;
-    --c4: #ffd700;
-    --c5: #ffffff;
-    --c6: #00ff88;
+    --c1:#00eaff;
+    --c2:#bd00ff;
+    --c3:#ff1744;
+    --c4:#ffd700;
+    --c5:#ffffff;
+    --c6:#00ff88;
 }
 
 #screen {
-    position: relative;
-    width: 100%;
-    height: 100vh;
-    min-height: 520px;
-    overflow: hidden;
-    isolation: isolate;
-
+    width:100%;
+    height:100vh;
+    height:100dvh;
+    overflow:hidden;
+    position:relative;
     background:
-        radial-gradient(ellipse at 50% 50%,
-        #10152a 0%,
-        #080916 38%,
-        #02030a 80%);
+      radial-gradient(circle at 50% 50%,
+      #17172d 0%,
+      #080916 45%,
+      #02030a 100%);
 }
 
-/* BACKGROUND FX */
+/* BACKGROUND */
 
-#starCanvas,
-#particleCanvas,
-#gridCanvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
+canvas {
+    pointer-events:none;
 }
 
-#gridCanvas {
-    opacity: 0.17;
+#stars, #particles, #grid {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
 }
 
-.scanlines {
-    position: absolute;
-    inset: 0;
-    z-index: 30;
-    pointer-events: none;
-    opacity: 0.10;
+#grid {
+    opacity:.16;
+}
 
-    background: repeating-linear-gradient(
-        to bottom,
-        transparent 0px,
-        transparent 2px,
-        #fff 3px,
-        transparent 4px
+.scan {
+    position:absolute;
+    inset:0;
+    z-index:30;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255,255,255,.08) 4px
     );
 }
 
 .vignette {
-    position: absolute;
-    inset: 0;
-    z-index: 29;
-    pointer-events: none;
-
-    background:
-        radial-gradient(
-            ellipse at center,
-            transparent 35%,
-            rgba(0,0,0,0.15) 65%,
-            rgba(0,0,0,0.8) 100%
-        );
+    position:absolute;
+    inset:0;
+    z-index:31;
+    pointer-events:none;
+    background:radial-gradient(
+      circle,
+      transparent 40%,
+      rgba(0,0,0,.35) 75%,
+      #000 130%
+    );
 }
 
 /* HEADER */
 
 .header {
-    position: absolute;
-    top: 2%;
-    left: 3%;
-    right: 3%;
-    z-index: 20;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    position:absolute;
+    top:3%;
+    left:4%;
+    right:4%;
+    display:flex;
+    justify-content:space-between;
+    z-index:10;
 }
 
 .brand {
-    font-size: clamp(17px, 3vw, 34px);
-    font-weight: 900;
-    letter-spacing: 0.35em;
-
-    color: var(--c1);
-
-    text-shadow:
-        0 0 5px var(--c1),
-        0 0 20px var(--c1),
-        0 0 50px var(--c2);
+    font-size:clamp(22px,5vw,38px);
+    font-weight:900;
+    letter-spacing:.28em;
+    color:var(--c1);
+    text-shadow:0 0 10px var(--c1),0 0 35px var(--c2);
 }
 
-.brandSub {
-    font-size: 8px;
-    letter-spacing: 0.45em;
-    color: #9aa8c7;
-    margin-top: 5px;
+.subbrand {
+    color:#a8b3c9;
+    font-size:8px;
+    letter-spacing:.35em;
+    margin-top:5px;
 }
 
-.headerRight {
-    text-align: right;
-    color: var(--c4);
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    line-height: 1.8;
+.status {
+    text-align:right;
+    color:var(--c4);
+    font-size:9px;
+    letter-spacing:.2em;
+    line-height:2;
 }
 
-.liveDot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--c3);
-    box-shadow: 0 0 15px var(--c3);
-    animation: blink 1s infinite;
+.dot {
+    display:inline-block;
+    width:7px;
+    height:7px;
+    background:var(--c3);
+    border-radius:50%;
+    box-shadow:0 0 12px var(--c3);
+    animation:blink 1s infinite;
 }
 
 @keyframes blink {
-    50% { opacity: 0.15; }
+    50% {opacity:.15;}
 }
 
-/* HUD CORNERS */
+/* CORNERS */
 
 .corner {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    z-index: 4;
-    opacity: 0.8;
+    position:absolute;
+    width:38px;
+    height:38px;
+    z-index:5;
 }
 
 .tl {
-    top: 12%;
-    left: 2%;
-    border-top: 2px solid var(--c1);
-    border-left: 2px solid var(--c1);
+    top:13%;
+    left:2%;
+    border-top:2px solid var(--c1;
+    border-left:2px solid var(--c1);
 }
 
 .tr {
-    top: 12%;
-    right: 2%;
-    border-top: 2px solid var(--c3);
-    border-right: 2px solid var(--c3);
+    top:13%;
+    right:2%;
+    border-top:2px solid var(--c3);
+    border-right:2px solid var(--c3);
 }
 
 .bl {
-    bottom: 5%;
-    left: 2%;
-    border-bottom: 2px solid var(--c4);
-    border-left: 2px solid var(--c4);
+    bottom:4%;
+    left:2%;
+    border-bottom:2px solid var(--c4);
+    border-left:2px solid var(--c4);
 }
 
 .br {
-    bottom: 5%;
-    right: 2%;
-    border-bottom: 2px solid var(--c2);
-    border-right: 2px solid var(--c2);
+    bottom:4%;
+    right:2%;
+    border-bottom:2px solid var(--c2);
+    border-right:2px solid var(--c2);
 }
 
-/* CENTRAL CORE */
+/* CENTER CORE */
 
 .core {
-    position: absolute;
-    left: 50%;
-    top: 47%;
-    transform: translate(-50%, -50%);
-
-    width: min(68vw, 68vh);
-    height: min(68vw, 68vh);
-
-    max-width: 620px;
-    max-height: 620px;
-
-    z-index: 6;
+    position:absolute;
+    width:min(76vw,66vh);
+    height:min(76vw,66vh);
+    max-width:620px;
+    max-height:620px;
+    left:50%;
+    top:48%;
+    transform:translate(-50%,-50%);
+    z-index:6;
 }
 
 .ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    pointer-events: none;
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    pointer-events:none;
 }
 
-.ring1 {
-    inset: 1%;
-    border: 1px dashed var(--c1);
-    box-shadow: 0 0 12px var(--c1);
-    opacity: 0.55;
-    animation: rotate 36s linear infinite;
+.r1 {
+    border:1px dashed var(--c1);
+    box-shadow:0 0 15px var(--c1);
+    animation:spin 30s linear infinite;
 }
 
-.ring2 {
-    inset: 5%;
-    border: 2px solid var(--c2);
-    box-shadow: 0 0 15px var(--c2), inset 0 0 12px var(--c2);
-    opacity: 0.5;
-    animation: rotateReverse 23s linear infinite;
+.r2 {
+    inset:5%;
+    border:2px solid var(--c2);
+    box-shadow:0 0 15px var(--c2);
+    animation:spinback 22s linear infinite;
 }
 
-.ring3 {
-    inset: 10%;
-    border: 1px dotted var(--c4);
-    opacity: 0.8;
-    animation: rotate 16s linear infinite;
+.r3 {
+    inset:10%;
+    border:1px dotted var(--c4);
+    animation:spin 17s linear infinite;
 }
 
-.ring4 {
-    inset: 15%;
-    border: 3px double var(--c5);
-    opacity: 0.4;
-    animation: rotateReverse 11s linear infinite;
+.r4 {
+    inset:15%;
+    border:2px double var(--c5);
+    opacity:.6;
+    animation:spinback 12s linear infinite;
 }
 
-.ring5 {
-    inset: 20%;
-    border: 1px dashed var(--c3);
-    box-shadow: 0 0 15px var(--c3);
-    opacity: 0.6;
-    animation: rotate 8s linear infinite;
+.r5 {
+    inset:21%;
+    border:1px dashed var(--c3);
+    box-shadow:0 0 12px var(--c3);
+    animation:spin 8s linear infinite;
 }
 
-.ring6 {
-    inset: 25%;
-    border: 2px solid var(--c1);
-    opacity: 0.6;
-    animation: rotateReverse 5s linear infinite;
+.r6 {
+    inset:27%;
+    border:2px solid var(--c1);
+    box-shadow:inset 0 0 12px var(--c1);
+    animation:spinback 5s linear infinite;
 }
 
-@keyframes rotate {
-    to { transform: rotate(360deg); }
+@keyframes spin {
+    to {transform:rotate(360deg);}
 }
 
-@keyframes rotateReverse {
-    to { transform: rotate(-360deg); }
+@keyframes spinback {
+    to {transform:rotate(-360deg);}
 }
 
-#orbitCanvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+#orbit {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
 }
 
 /* LOGO */
 
-.logoBox {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-
-    width: 31%;
-    height: 31%;
-
-    border-radius: 50%;
-    overflow: hidden;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: #02030a;
-    border: 3px solid var(--c4);
-
+.logo {
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:34%;
+    height:34%;
+    border-radius:50%;
+    overflow:hidden;
+    background:#000;
+    border:3px solid var(--c4);
     box-shadow:
-        0 0 10px var(--c4),
-        0 0 30px var(--c1),
-        0 0 70px var(--c2),
-        inset 0 0 25px var(--c1);
-
-    animation: logoPulse 3s ease-in-out infinite;
+      0 0 12px var(--c4),
+      0 0 30px var(--c1),
+      0 0 70px var(--c2);
+    animation:pulse 2.8s infinite;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
-.logoBox img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+.logo img {
+    width:100%;
+    height:100%;
+    object-fit:contain;
 }
 
-@keyframes logoPulse {
-    0%,100% {
-        transform: translate(-50%, -50%) scale(0.98);
-    }
+@keyframes pulse {
     50% {
-        transform: translate(-50%, -50%) scale(1.04);
+        box-shadow:
+          0 0 25px var(--c4),
+          0 0 55px var(--c1),
+          0 0 100px var(--c2);
     }
 }
 
 /* SIDE METERS */
 
 .side {
-    position: absolute;
-    top: 25%;
-    width: 20%;
-    z-index: 10;
+    position:absolute;
+    width:19%;
+    top:27%;
+    z-index:9;
 }
 
-.sideLeft {
-    left: 2%;
+.left {
+    left:3%;
 }
 
-.sideRight {
-    right: 2%;
-    text-align: right;
+.right {
+    right:3%;
+    text-align:right;
 }
 
-.title {
-    font-size: 9px;
-    letter-spacing: 0.3em;
-    color: var(--c1);
-    text-shadow: 0 0 10px var(--c1);
-    margin-bottom: 12px;
+.label {
+    font-size:8px;
+    color:var(--c1);
+    letter-spacing:.2em;
+    margin-bottom:10px;
 }
 
-.meter {
-    display: flex;
-    align-items: flex-end;
-    gap: 3px;
-    height: 100px;
+.bars {
+    height:65px;
+    display:flex;
+    align-items:flex-end;
+    gap:2px;
 }
 
-.sideRight .meter {
-    justify-content: flex-end;
+.right .bars {
+    justify-content:flex-end;
 }
 
-.meter span {
-    width: 5px;
-    flex: 1;
-    max-width: 9px;
-    height: 5%;
-    border-radius: 2px 2px 0 0;
-    background: var(--c1);
-    box-shadow: 0 0 8px var(--c1);
+.bars span {
+    flex:1;
+    max-width:7px;
+    height:5%;
+    background:var(--c1);
+    box-shadow:0 0 7px var(--c1);
 }
 
-.sideRight .meter span {
-    background: var(--c3);
-    box-shadow: 0 0 8px var(--c3);
+.right .bars span {
+    background:var(--c3);
+    box-shadow:0 0 7px var(--c3);
 }
 
-.value {
-    color: var(--c4);
-    font-size: clamp(15px, 2.2vw, 25px);
-    margin-top: 10px;
-    text-shadow: 0 0 15px var(--c4);
+.number {
+    color:var(--c4);
+    font-size:20px;
+    margin-top:8px;
+    text-shadow:0 0 12px var(--c4);
 }
 
-.smallText {
-    font-size: 8px;
-    color: #8d9cb7;
-    letter-spacing: 0.18em;
-    line-height: 2;
-    margin-top: 12px;
+.info {
+    font-size:7px;
+    color:#8b9bb8;
+    letter-spacing:.16em;
+    line-height:2;
+    margin-top:10px;
 }
 
-/* TOP MINI BARS */
+/* TOP BARS */
 
-.miniTop {
-    position: absolute;
-    left: 25%;
-    right: 25%;
-    top: 16%;
-    height: 50px;
-    z-index: 5;
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    justify-content: center;
+.topBars {
+    position:absolute;
+    top:18%;
+    left:24%;
+    right:24%;
+    height:45px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:2px;
+    z-index:5;
 }
 
-.miniTop span {
-    flex: 1;
-    max-width: 7px;
-    height: 5%;
-    background: var(--c4);
-    box-shadow: 0 0 8px var(--c4);
+.topBars span {
+    flex:1;
+    max-width:8px;
+    height:5%;
+    background:var(--c4);
+    box-shadow:0 0 8px var(--c4);
+}
+
+/* WAVE */
+
+.wave {
+    position:absolute;
+    top:39%;
+    left:5%;
+    right:5%;
+    height:12%;
+    z-index:7;
+}
+
+#wave {
+    width:100%;
+    height:100%;
 }
 
 /* BOTTOM SPECTRUM */
 
 .spectrum {
-    position: absolute;
-    left: 3%;
-    right: 3%;
-    bottom: 24%;
-    height: 13%;
-    z-index: 8;
-
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    gap: 2px;
+    position:absolute;
+    left:3%;
+    right:3%;
+    bottom:25%;
+    height:10%;
+    z-index:8;
+    display:flex;
+    justify-content:center;
+    align-items:flex-end;
+    gap:2px;
 }
 
 .spectrum span {
-    flex: 1;
-    min-width: 1px;
-    max-width: 12px;
-    height: 3%;
-    border-radius: 2px 2px 0 0;
+    flex:1;
+    max-width:10px;
+    height:3%;
+    background:var(--c1);
+    box-shadow:0 0 8px var(--c1);
 }
 
-/* WAVE */
+/* TRACK */
 
-.waveArea {
-    position: absolute;
-    left: 4%;
-    right: 4%;
-    top: 39%;
-    height: 13%;
-    z-index: 7;
+.track {
+    position:absolute;
+    bottom:17%;
+    left:5%;
+    right:5%;
+    text-align:center;
+    z-index:12;
 }
 
-#waveCanvas {
-    width: 100%;
-    height: 100%;
+.trackTitle {
+    color:white;
+    font-size:clamp(10px,2.5vw,17px);
+    letter-spacing:.12em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-shadow:0 0 12px var(--c1);
 }
 
-/* TRACK INFO */
-
-.trackPanel {
-    position: absolute;
-    left: 5%;
-    right: 5%;
-    bottom: 16%;
-    text-align: center;
-    z-index: 12;
+.trackCaption {
+    color:var(--c4);
+    font-size:8px;
+    letter-spacing:.35em;
+    margin-bottom:8px;
 }
 
-.trackName {
-    font-size: clamp(12px, 2vw, 20px);
-    letter-spacing: 0.15em;
-    color: white;
-    text-shadow: 0 0 12px var(--c1), 0 0 25px var(--c2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+/* COLOR PANEL */
+
+.colors {
+    position:absolute;
+    top:12%;
+    left:50%;
+    transform:translateX(-50%);
+    width:95%;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:5px;
+    z-index:20;
+    background:rgba(0,0,0,.65);
+    border:1px solid #30344a;
+    padding:5px;
 }
 
-.trackSub {
-    color: var(--c4);
-    font-size: 8px;
-    letter-spacing: 0.4em;
-    margin-bottom: 8px;
+.colors label {
+    display:flex;
+    align-items:center;
+    gap:2px;
+    color:#9baac5;
+    font-size:7px;
 }
 
-/* CONTROL PANEL */
+.colors input {
+    width:21px;
+    height:18px;
+    border:0;
+    padding:0;
+    background:transparent;
+}
 
-.controlPanel {
-    position: absolute;
-    bottom: 2%;
-    left: 5%;
-    right: 5%;
-    z-index: 20;
-    text-align: center;
+/* PLAYER */
+
+.player {
+    position:absolute;
+    bottom:2%;
+    left:4%;
+    right:4%;
+    z-index:20;
+    text-align:center;
 }
 
 .buttons {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 5px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:4px;
 }
 
 button {
-    border: 1px solid var(--c1);
-    background: rgba(2, 7, 18, 0.88);
-    color: var(--c1);
-
-    padding: 7px 11px;
-    border-radius: 3px;
-
-    font-size: 9px;
-    letter-spacing: 0.12em;
-
-    box-shadow: 0 0 8px rgba(0,234,255,0.2);
-    cursor: pointer;
+    color:var(--c1);
+    background:rgba(2,5,15,.9);
+    border:1px solid var(--c1);
+    border-radius:3px;
+    padding:7px 9px;
+    font-size:8px;
+    letter-spacing:.1em;
+    box-shadow:0 0 8px rgba(0,234,255,.2);
 }
 
-button:active,
-button:hover {
-    color: #000;
-    background: var(--c1);
-    box-shadow: 0 0 20px var(--c1);
+button:active {
+    background:var(--c1);
+    color:#000;
 }
 
-#playBtn {
-    border-color: var(--c4);
-    color: var(--c4);
-}
-
-#playBtn:hover {
-    background: var(--c4);
-    color: black;
+#play {
+    color:var(--c4);
+    border-color:var(--c4);
 }
 
 .progress {
-    height: 3px;
-    margin: 10px auto 5px;
-    width: 75%;
-    background: #283044;
-    overflow: hidden;
+    width:78%;
+    height:3px;
+    margin:8px auto 5px;
+    background:#252c40;
 }
 
-#progressFill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c4));
-    box-shadow: 0 0 12px var(--c1);
+#fill {
+    width:0%;
+    height:100%;
+    background:linear-gradient(90deg,var(--c1),var(--c2),var(--c3),var(--c4));
+    box-shadow:0 0 12px var(--c1);
 }
 
 .time {
-    font-size: 8px;
-    color: #9ba9c4;
-    letter-spacing: 0.15em;
+    font-size:8px;
+    color:#aab5cb;
 }
 
 .message {
-    color: var(--c4);
-    font-size: 8px;
-    margin-top: 6px;
+    font-size:8px;
+    color:var(--c4);
+    margin-top:5px;
 }
 
-/* COLOR CONTROL */
-
-.colorPanel {
-    position: absolute;
-    z-index: 50;
-    top: 12%;
-    left: 50%;
-    transform: translateX(-50%);
-
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px;
-
-    background: rgba(0,0,0,0.7);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 5px;
-    padding: 5px;
+.fullscreen {
+    position:absolute;
+    right:3%;
+    bottom:11%;
+    z-index:25;
 }
 
-.colorPanel label {
-    color: #8b9bb6;
-    font-size: 7px;
-    letter-spacing: 0.1em;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-}
+/* MOBILE */
 
-.colorPanel input {
-    width: 20px;
-    height: 18px;
-    padding: 0;
-    border: 0;
-    background: none;
-}
-
-/* FULLSCREEN */
-
-.fullBtn {
-    position: absolute;
-    right: 3%;
-    bottom: 2%;
-    z-index: 60;
-}
-
-/* RESPONSIVE */
-
-@media (max-width: 700px) {
-
+@media(max-width:700px) {
     .core {
-        width: min(78vw, 54vh);
-        height: min(78vw, 54vh);
-        top: 48%;
+        width:min(78vw,55vh);
+        height:min(78vw,55vh);
+        top:48%;
     }
 
     .side {
-        top: 28%;
-        width: 19%;
+        top:28%;
+        width:19%;
     }
 
-    .meter {
-        height: 60px;
+    .bars {
+        height:52px;
     }
 
-    .side .smallText {
-        font-size: 6px;
+    .info {
+        font-size:6px;
     }
 
-    .miniTop {
-        top: 18%;
+    .topBars {
+        top:19%;
     }
 
     .spectrum {
-        bottom: 24%;
-        height: 10%;
+        bottom:25%;
+        height:9%;
     }
 
-    .trackPanel {
-        bottom: 16%;
+    .track {
+        bottom:17%;
     }
 
-    .controlPanel {
-        bottom: 2%;
+    .player {
+        bottom:2%;
     }
 
-    .colorPanel {
-        top: 12%;
-        width: 94%;
+    .colors {
+        top:12%;
     }
 
     button {
-        padding: 6px 8px;
-        font-size: 8px;
+        padding:6px 7px;
+        font-size:7px;
     }
 
-    .fullBtn {
-        bottom: 11%;
-    }
-
-    .brandSub {
-        letter-spacing: 0.22em;
+    .fullscreen {
+        bottom:11%;
     }
 }
 
-@media (max-height: 600px) {
+@media(max-height:650px) {
     .core {
-        width: min(55vh, 60vw);
-        height: min(55vh, 60vw);
-        top: 44%;
+        width:min(58vh,62vw);
+        height:min(58vh,62vw);
+        top:43%;
     }
 
     .side {
-        top: 20%;
+        top:21%;
+    }
+
+    .track {
+        bottom:13%;
     }
 
     .spectrum {
-        bottom: 23%;
-        height: 12%;
+        bottom:22%;
     }
 
-    .trackPanel {
-        bottom: 13%;
+    .player {
+        bottom:1%;
     }
 
-    .controlPanel {
-        bottom: 1%;
-    }
-
-    .colorPanel {
-        top: 11%;
+    .colors {
+        top:10%;
     }
 }
 
@@ -808,14 +728,13 @@ button:hover {
 </head>
 
 <body>
-
 <div id="screen">
 
-<canvas id="starCanvas"></canvas>
-<canvas id="particleCanvas"></canvas>
-<canvas id="gridCanvas"></canvas>
+<canvas id="stars"></canvas>
+<canvas id="particles"></canvas>
+<canvas id="grid"></canvas>
 
-<div class="scanlines"></div>
+<div class="scan"></div>
 <div class="vignette"></div>
 
 <div class="corner tl"></div>
@@ -823,234 +742,198 @@ button:hover {
 <div class="corner bl"></div>
 <div class="corner br"></div>
 
-<!-- HEADER -->
-
 <div class="header">
     <div>
         <div class="brand">SYNAPSE</div>
-        <div class="brandSub">SOUND & VISUAL THERAPY / NEON SYSTEM</div>
+        <div class="subbrand">NEON MUSIC SYSTEM / SOUND & VISUAL THERAPY</div>
     </div>
-
-    <div class="headerRight">
-        <span class="liveDot"></span> AUDIO SYSTEM<br>
-        <span id="systemStatus">STANDBY</span>
-    </div>
-</div>
-
-<!-- TOP SPECTRUM -->
-
-<div class="miniTop" id="miniTop"></div>
-
-<!-- SIDE LEFT -->
-
-<div class="side sideLeft">
-    <div class="title">LOW FREQUENCY</div>
-    <div class="meter" id="bassMeter"></div>
-
-    <div class="value" id="bassValue">000</div>
-
-    <div class="smallText">
-        BASS ENERGY<br>
-        SUB WAVE / CHANNEL A<br>
-        <span id="bassStatus">STANDBY</span>
+    <div class="status">
+        <span class="dot"></span> AUDIO<br>
+        <span id="sys">SYSTEM READY</span>
     </div>
 </div>
 
-<!-- SIDE RIGHT -->
+<div class="topBars" id="topBars"></div>
 
-<div class="side sideRight">
-    <div class="title">HIGH FREQUENCY</div>
-    <div class="meter" id="trebleMeter"></div>
+<div class="side left">
+    <div class="label">LOW FREQUENCY</div>
+    <div class="bars" id="bassBars"></div>
+    <div class="number" id="bassNum">000</div>
+    <div class="info">BASS ENERGY<br>SUB WAVE<br><span id="bassStatus">STANDBY</span></div>
+</div>
 
-    <div class="value" id="trebleValue">000</div>
+<div class="side right">
+    <div class="label">HIGH FREQUENCY</div>
+    <div class="bars" id="trebleBars"></div>
+    <div class="number" id="trebleNum">000</div>
+    <div class="info">TREBLE ENERGY<br>STEREO CHANNEL<br><span id="trebleStatus">STANDBY</span></div>
+</div>
 
-    <div class="smallText">
-        TREBLE ENERGY<br>
-        STEREO / CHANNEL B<br>
-        <span id="trebleStatus">STANDBY</span>
+<div class="core">
+
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="ring r4"></div>
+    <div class="ring r5"></div>
+    <div class="ring r6"></div>
+
+    <canvas id="orbit"></canvas>
+
+    <div class="logo" id="logo">
+        <span style="color:#00eaff;font-weight:bold">SYNAPSE</span>
     </div>
+
 </div>
 
-<!-- CORE -->
-
-<div class="core" id="core">
-
-    <div class="ring ring1"></div>
-    <div class="ring ring2"></div>
-    <div class="ring ring3"></div>
-    <div class="ring ring4"></div>
-    <div class="ring ring5"></div>
-    <div class="ring ring6"></div>
-
-    <canvas id="orbitCanvas"></canvas>
-
-    <div class="logoBox" id="logoBox">
-        <div style="color:var(--c1);font-weight:900;">SYNAPSE</div>
-    </div>
+<div class="wave">
+    <canvas id="wave"></canvas>
 </div>
-
-<!-- WAVE -->
-
-<div class="waveArea">
-    <canvas id="waveCanvas"></canvas>
-</div>
-
-<!-- BOTTOM SPECTRUM -->
 
 <div class="spectrum" id="spectrum"></div>
 
-<!-- TRACK -->
-
-<div class="trackPanel">
-    <div class="trackSub">NOW PLAYING / NEURAL AUDIO</div>
-    <div class="trackName" id="trackName">SYNAPSE NEON MUSIC STUDIO</div>
+<div class="track">
+    <div class="trackCaption">NEURAL AUDIO / NOW PLAYING</div>
+    <div class="trackTitle" id="trackName">SYNAPSE MUSIC SYSTEM</div>
 </div>
 
-<!-- COLOR SELECTORS -->
-
-<div class="colorPanel">
-    <label>RING <input type="color" value="#00eaff" id="color1"></label>
-    <label>ORBIT <input type="color" value="#bd00ff" id="color2"></label>
-    <label>WAVE <input type="color" value="#ffffff" id="color3"></label>
-    <label>BASS <input type="color" value="#ffd700" id="color4"></label>
-    <label>BAR <input type="color" value="#ff1744" id="color5"></label>
-    <label>PARTICLE <input type="color" value="#00ff88" id="color6"></label>
+<div class="colors">
+    <label>RING<input type="color" id="col1" value="#00eaff"></label>
+    <label>ORBIT<input type="color" id="col2" value="#bd00ff"></label>
+    <label>WAVE<input type="color" id="col3" value="#ffffff"></label>
+    <label>BASS<input type="color" id="col4" value="#ffd700"></label>
+    <label>BAR<input type="color" id="col5" value="#ff1744"></label>
+    <label>STAR<input type="color" id="col6" value="#00ff88"></label>
 </div>
 
-<!-- CONTROLS -->
-
-<div class="controlPanel">
-
+<div class="player">
     <div class="buttons">
-        <button onclick="prevTrack()">◀ PREV</button>
-        <button id="playBtn" onclick="togglePlay()">▶ PLAY</button>
-        <button onclick="stopMusic()">■ STOP</button>
-        <button onclick="nextTrack()">NEXT ▶</button>
-        <button onclick="toggleShuffle()" id="shuffleBtn">SHUFFLE OFF</button>
-        <button onclick="toggleRepeat()" id="repeatBtn">REPEAT OFF</button>
+        <button onclick="prev()">◀ PREV</button>
+        <button id="play" onclick="playPause()">▶ PLAY</button>
+        <button onclick="stopAudio()">■ STOP</button>
+        <button onclick="next()">NEXT ▶</button>
+        <button onclick="shuffle()">SHUFFLE</button>
+        <button onclick="repeat()">REPEAT</button>
     </div>
 
     <div class="progress">
-        <div id="progressFill"></div>
+        <div id="fill"></div>
     </div>
 
     <div class="time">
-        <span id="currentTime">00:00</span>
-        /
-        <span id="duration">00:00</span>
+        <span id="now">00:00</span> /
+        <span id="total">00:00</span>
     </div>
 
-    <div class="message" id="message">SYSTEM READY</div>
+    <div class="message" id="msg">SYSTEM READY</div>
 </div>
 
-<button class="fullBtn" onclick="fullscreen()">⛶ FULL SCREEN</button>
+<button class="fullscreen" onclick="fullScreen()">⛶ FULL SCREEN</button>
 
-</div>
-
-<script>
+</div><script>
 
 // =========================================================
-// CONFIG
+// MUSIC DATA
 // =========================================================
 
 const MUSIC = __MUSIC__;
 const LOGO_DATA = "__LOGO__";
 
-const COLORS = {
-    c1: "#00eaff",
-    c2: "#bd00ff",
-    c3: "#ffffff",
-    c4: "#ffd700",
-    c5: "#ff1744",
-    c6: "#00ff88"
+// =========================================================
+// COLOR SYSTEM
+// =========================================================
+
+const C = {
+    c1:"#00eaff",
+    c2:"#bd00ff",
+    c3:"#ffffff",
+    c4:"#ffd700",
+    c5:"#ff1744",
+    c6:"#00ff88"
 };
 
-function setColor(name, value) {
-    COLORS[name] = value;
-    document.documentElement.style.setProperty("--" + name, value);
+function setColor(key,value) {
+    C[key] = value;
+    document.documentElement.style.setProperty("--"+key,value);
 }
+
+[
+    ["col1","c1"],
+    ["col2","c2"],
+    ["col3","c3"],
+    ["col4","c4"],
+    ["col5","c5"],
+    ["col6","c6"]
+].forEach(([id,key]) => {
+    document.getElementById(id).addEventListener("input",e=>{
+        setColor(key,e.target.value);
+    });
+});
 
 // =========================================================
 // LOGO
 // =========================================================
 
-const logoBox = document.getElementById("logoBox");
-
-if (LOGO_DATA && LOGO_DATA.length > 20) {
-    logoBox.innerHTML =
-        `<img src="data:image/jpeg;base64,${LOGO_DATA}" alt="SYNAPSE">`;
+if(LOGO_DATA.length > 10) {
+    document.getElementById("logo").innerHTML =
+        `<img src="data:image/jpeg;base64,${LOGO_DATA}">`;
 }
-
-// =========================================================
-// COLOR CONTROLS
-// =========================================================
-
-[
-    ["color1", "c1"],
-    ["color2", "c2"],
-    ["color3", "c3"],
-    ["color4", "c4"],
-    ["color5", "c5"],
-    ["color6", "c6"]
-].forEach(([id, key]) => {
-    const el = document.getElementById(id);
-    el.addEventListener("input", () => {
-        setColor(key, el.value);
-    });
-});
 
 // =========================================================
 // CREATE BARS
 // =========================================================
 
 const spectrum = document.getElementById("spectrum");
-const miniTop = document.getElementById("miniTop");
-const bassMeter = document.getElementById("bassMeter");
-const trebleMeter = document.getElementById("trebleMeter");
+const topBars = document.getElementById("topBars");
+const bassBars = document.getElementById("bassBars");
+const trebleBars = document.getElementById("trebleBars");
 
-for (let i = 0; i < 96; i++) {
-    const bar = document.createElement("span");
-    spectrum.appendChild(bar);
+for(let i=0;i<90;i++) {
+    spectrum.appendChild(document.createElement("span"));
 }
 
-for (let i = 0; i < 48; i++) {
-    const bar = document.createElement("span");
-    miniTop.appendChild(bar);
+for(let i=0;i<40;i++) {
+    topBars.appendChild(document.createElement("span"));
 }
 
-for (let i = 0; i < 24; i++) {
-    bassMeter.appendChild(document.createElement("span"));
-    trebleMeter.appendChild(document.createElement("span"));
+for(let i=0;i<20;i++) {
+    bassBars.appendChild(document.createElement("span"));
+    trebleBars.appendChild(document.createElement("span"));
 }
 
 // =========================================================
-// AUDIO PLAYER
+// AUDIO
 // =========================================================
 
-let audio = new Audio();
+const audio = new Audio();
 audio.preload = "auto";
 
 let audioContext = null;
 let analyser = null;
 let sourceNode = null;
 let freq = null;
-let timeData = null;
+let waveData = null;
 
-let currentIndex = 0;
+let current = 0;
+let isPlaying = false;
 let isShuffle = false;
 let isRepeat = false;
-let isPlaying = false;
 
 function initAudio() {
-    if (!audioContext) {
-        audioContext = new (
-            window.AudioContext ||
-            window.webkitAudioContext
-        )();
+    if(!audioContext) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+
+        if(!AC) {
+            document.getElementById("msg").textContent =
+                "BROWSER AUDIO NOT SUPPORTED";
+            return;
+        }
+
+        audioContext = new AC();
 
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.78;
+        analyser.smoothingTimeConstant = 0.8;
 
         sourceNode = audioContext.createMediaElementSource(audio);
 
@@ -1058,252 +941,250 @@ function initAudio() {
         analyser.connect(audioContext.destination);
 
         freq = new Uint8Array(analyser.frequencyBinCount);
-        timeData = new Uint8Array(analyser.fftSize);
+        waveData = new Uint8Array(analyser.fftSize);
     }
 
-    if (audioContext.state === "suspended") {
+    if(audioContext.state === "suspended") {
         audioContext.resume();
     }
 }
 
-function fmtTime(sec) {
-    if (!Number.isFinite(sec)) return "00:00";
+function timeFormat(sec) {
+    if(!Number.isFinite(sec)) return "00:00";
 
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
+    const m = Math.floor(sec/60);
+    const s = Math.floor(sec%60);
 
-    return String(m).padStart(2, "0") 
-               + ":" +
-           String(s).padStart(2, "0");
+    return String(m).padStart(2,"0")+":"+
+           String(s).padStart(2,"0");
 }
 
 // =========================================================
-// AUDIO TRACK CONTROL
+// TRACK LOADING
 // =========================================================
 
-function loadTrack(index, autoPlay = true) {
-    if (!MUSIC.length) {
-        document.getElementById("message").textContent =
+function loadTrack(index,autoplay=false) {
+    if(!MUSIC.length) {
+        document.getElementById("msg").textContent =
             "NO MUSIC FILE FOUND";
         return;
     }
 
-    currentIndex = (index + MUSIC.length) % MUSIC.length;
+    current = (index+MUSIC.length)%MUSIC.length;
 
-    const track = MUSIC[currentIndex];
+    const track = MUSIC[current];
 
-    audio.src = `data:${track.type};base64,${track.data}`;
+    audio.src = "data:"+track.type+";base64,"+track.data;
     audio.load();
 
     document.getElementById("trackName").textContent = track.name;
-    document.getElementById("message").textContent =
-        "TRACK " + (currentIndex + 1) + " / " + MUSIC.length;
+    document.getElementById("msg").textContent =
+        "TRACK "+(current+1)+" / "+MUSIC.length;
 
-    if (autoPlay) {
-        playMusic();
-    }
+    if(autoplay) startAudio();
 }
 
-function playMusic() {
-    if (!MUSIC.length) {
-        document.getElementById("message").textContent =
+function startAudio() {
+    if(!MUSIC.length) {
+        document.getElementById("msg").textContent =
             "ADD MUSIC BESIDE Ta_app.py";
         return;
     }
 
     initAudio();
 
-    if (!audio.src) {
-        loadTrack(currentIndex, false);
+    if(!audio.src) {
+        loadTrack(current,false);
     }
 
-    audio.play().then(() => {
+    audio.play().then(()=>{
         isPlaying = true;
-
-        document.getElementById("playBtn").textContent = "❚❚ PAUSE";
-        document.getElementById("systemStatus").textContent = "AUDIO PLAYING";
+        document.getElementById("play").textContent = "❚❚ PAUSE";
+        document.getElementById("sys").textContent = "PLAYING";
         document.getElementById("bassStatus").textContent = "ACTIVE";
         document.getElementById("trebleStatus").textContent = "ACTIVE";
-        document.getElementById("message").textContent = "NEURAL AUDIO ACTIVE";
-
-    }).catch(() => {
-        document.getElementById("message").textContent =
+        document.getElementById("msg").textContent = "AUDIO SYSTEM ACTIVE";
+    }).catch(()=>{
+        document.getElementById("msg").textContent =
             "PRESS PLAY TO START";
     });
 }
 
-function togglePlay() {
-    if (!MUSIC.length) return;
+function playPause() {
+    if(!MUSIC.length) return;
 
     initAudio();
 
-    if (audio.paused) {
-        playMusic();
+    if(audio.paused) {
+        startAudio();
     } else {
         audio.pause();
         isPlaying = false;
 
-        document.getElementById("playBtn").textContent = "▶ PLAY";
-        document.getElementById("systemStatus").textContent = "PAUSED";
+        document.getElementById("play").textContent = "▶ PLAY";
+        document.getElementById("sys").textContent = "PAUSED";
     }
 }
 
-function stopMusic() {
+function stopAudio() {
     audio.pause();
     audio.currentTime = 0;
     isPlaying = false;
 
-    document.getElementById("playBtn").textContent = "▶ PLAY";
-    document.getElementById("systemStatus").textContent = "STOPPED";
+    document.getElementById("play").textContent = "▶ PLAY";
+    document.getElementById("sys").textContent = "STOPPED";
 }
 
-function nextTrack() {
-    if (!MUSIC.length) return;
+function next() {
+    if(!MUSIC.length) return;
 
-    if (isShuffle && MUSIC.length > 1) {
-        let n;
+    if(isShuffle && MUSIC.length>1) {
+        let n=current;
 
-        do {
-            n = Math.floor(Math.random() * MUSIC.length);
-        } while (n === currentIndex);
-
-        loadTrack(n);
-    } else {
-        loadTrack(currentIndex + 1);
-    }
-}
-
-function prevTrack() {
-    if (!MUSIC.length) return;
-
-    if (audio.currentTime > 3) {
-        audio.currentTime = 0;
-        return;
-    }
-
-    loadTrack(currentIndex - 1);
-}
-
-function toggleShuffle() {
-    isShuffle = !isShuffle;
-
-    document.getElementById("shuffleBtn").textContent =
-        isShuffle ? "SHUFFLE ON" : "SHUFFLE OFF";
-}
-
-function toggleRepeat() {
-    isRepeat = !isRepeat;
-    audio.loop = isRepeat;
-
-    document.getElementById("repeatBtn").textContent =
-        isRepeat ? "REPEAT ON" : "REPEAT OFF";
-}
-
-audio.addEventListener("ended", () => {
-    if (!isRepeat) nextTrack();
-});
-
-audio.addEventListener("timeupdate", () => {
-    document.getElementById("currentTime").textContent =
-        fmtTime(audio.currentTime);
-
-    document.getElementById("duration").textContent =
-        fmtTime(audio.duration);
-
-    if (audio.duration > 0) {
-        document.getElementById("progressFill").style.width =
-            (audio.currentTime / audio.duration * 100) + "%";
-    }
-});
-
-// =========================================================
-// FULLSCREEN
-// =========================================================
-
-function fullscreen() {
-    const el = document.getElementById("screen");
-
-    if (!document.fullscreenElement) {
-        if (el.requestFullscreen) {
-            el.requestFullscreen();
+        while(n===current) {
+            n=Math.floor(Math.random()*MUSIC.length);
         }
+
+        loadTrack(n,true);
+    } else {
+        loadTrack(current+1,true);
+    }
+}
+
+function prev() {
+    if(!MUSIC.length) return;
+
+    if(audio.currentTime>3) {
+        audio.currentTime=0;
+    } else {
+        loadTrack(current-1,true);
+    }
+}
+
+function shuffle() {
+    isShuffle=!isShuffle;
+
+    document.getElementById("msg").textContent =
+        isShuffle ? "SHUFFLE MODE ON" : "SHUFFLE MODE OFF";
+}
+
+function repeat() {
+    isRepeat=!isRepeat;
+    audio.loop=isRepeat;
+
+    document.getElementById("msg").textContent =
+        isRepeat ? "REPEAT MODE ON" : "REPEAT MODE OFF";
+}
+
+audio.addEventListener("ended",()=>{
+    if(!isRepeat) next();
+});
+
+audio.addEventListener("timeupdate",()=>{
+    document.getElementById("now").textContent =
+        timeFormat(audio.currentTime);
+
+    document.getElementById("total").textContent =
+        timeFormat(audio.duration);
+
+    if(audio.duration>0) {
+        document.getElementById("fill").style.width =
+            (audio.currentTime/audio.duration*100)+"%";
+    }
+});
+
+// =========================================================
+// FULL SCREEN
+// =========================================================
+
+function fullScreen() {
+    const el=document.getElementById("screen");
+
+    if(!document.fullscreenElement) {
+        if(el.requestFullscreen) el.requestFullscreen();
     } else {
         document.exitFullscreen();
     }
 }
 
 // =========================================================
-// CANVAS VISUALIZER
+// CANVAS
 // =========================================================
 
-const orbitCanvas = document.getElementById("orbitCanvas");
-const orbitCtx = orbitCanvas.getContext("2d");
+const orbit=document.getElementById("orbit");
+const octx=orbit.getContext("2d");
 
-const waveCanvas = document.getElementById("waveCanvas");
-const waveCtx = waveCanvas.getContext("2d");
+const waveCanvas=document.getElementById("wave");
+const wctx=waveCanvas.getContext("2d");
 
-function fitCanvas(canvas) {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+function resizeCanvas(canvas) {
+    const rect=canvas.getBoundingClientRect();
+    const dpr=Math.min(window.devicePixelRatio||1,2);
 
-    canvas.width = Math.max(1, rect.width * dpr);
-    canvas.height = Math.max(1, rect.height * dpr);
+    canvas.width=Math.max(1,rect.width*dpr);
+    canvas.height=Math.max(1,rect.height*dpr);
 
-    const context = canvas.getContext("2d");
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas.getContext("2d").setTransform(dpr,0,0,dpr,0,0);
 }
 
 function resizeAll() {
-    fitCanvas(orbitCanvas);
-    fitCanvas(waveCanvas);
-    resizeBackground();
+    resizeCanvas(orbit);
+    resizeCanvas(waveCanvas);
+    resizeBG();
 }
 
-window.addEventListener("resize", resizeAll);
+window.addEventListener("resize",resizeAll);
 
-let tick = 0;
-let bass = 0;
-let mid = 0;
-let treble = 0;
+// =========================================================
+// AUDIO DATA
+// =========================================================
 
-function average(arr, start, end) {
-    let sum = 0;
-    let count = 0;
+let tick=0;
+let bass=0;
+let treble=0;
+let mid=0;
 
-    for (let i = start; i < end; i++) {
-        sum += arr[i];
+function average(arr,a,b) {
+    let sum=0;
+    let count=0;
+
+    for(let i=a;i<b;i++) {
+        sum+=arr[i];
         count++;
     }
 
-    return count ? sum / count : 0;
+    return count ? sum/count : 0;
 }
+
+// =========================================================
+// ANIMATION ENGINE
+// =========================================================
 
 function animate() {
     requestAnimationFrame(animate);
 
-    tick += 0.015;
+    tick+=0.015;
 
-    if (analyser && isPlaying) {
+    if(analyser && isPlaying) {
         analyser.getByteFrequencyData(freq);
-        analyser.getByteTimeDomainData(timeData);
+        analyser.getByteTimeDomainData(waveData);
 
-        const n = freq.length;
+        const n=freq.length;
 
-        bass = average(freq, 0, Math.floor(n * 0.15));
-        mid = average(freq, Math.floor(n * 0.15), Math.floor(n * 0.55));
-        treble = average(freq, Math.floor(n * 0.55), n);
-
+        bass=average(freq,0,Math.floor(n*0.15));
+        mid=average(freq,Math.floor(n*0.15),Math.floor(n*0.55));
+        treble=average(freq,Math.floor(n*0.55),n);
     } else {
-        bass = 8 + Math.random() * 10;
-        mid = 5 + Math.random() * 8;
-        treble = 4 + Math.random() * 8;
+        bass=8+Math.random()*10;
+        mid=5+Math.random()*8;
+        treble=5+Math.random()*10;
     }
 
-    document.getElementById("bassValue").textContent =
-        Math.round(bass).toString().padStart(3, "0");
+    document.getElementById("bassNum").textContent =
+        Math.round(bass).toString().padStart(3,"0");
 
-    document.getElementById("trebleValue").textContent =
-        Math.round(treble).toString().padStart(3, "0");
+    document.getElementById("trebleNum").textContent =
+        Math.round(treble).toString().padStart(3,"0");
 
     updateBars();
     drawOrbit();
@@ -1311,247 +1192,226 @@ function animate() {
 }
 
 // =========================================================
-// SPECTRUM BARS
+// SPECTRUM
 // =========================================================
 
 function updateBars() {
-    const bars = spectrum.children;
+    const bars=spectrum.children;
 
-    for (let i = 0; i < bars.length; i++) {
-        let value;
+    for(let i=0;i<bars.length;i++) {
+        let v;
 
-        if (analyser && isPlaying) {
-            const idx = Math.floor(i / bars.length * freq.length);
-            value = Math.max(3, freq[idx] / 255 * 100);
+        if(analyser && isPlaying) {
+            const idx=Math.floor(i/bars.length*freq.length);
+            v=Math.max(3,freq[idx]/255*100);
         } else {
-            value = 4 + Math.random() * 20;
+            v=5+Math.random()*25;
         }
 
-        bars[i].style.height = value + "%";
+        bars[i].style.height=v+"%";
 
-        const hue = (i / bars.length * 360 + tick * 25) % 360;
+        const hue=(i/bars.length*360+tick*25)%360;
 
-        bars[i].style.background = `hsl(${hue},100%,65%)`;
-        bars[i].style.boxShadow = `0 0 10px hsl(${hue},100%,60%)`;
+        bars[i].style.background=`hsl(${hue},100%,65%)`;
+        bars[i].style.boxShadow=`0 0 10px hsl(${hue},100%,60%)`;
     }
 
-    const topBars = miniTop.children;
+    for(let i=0;i<topBars.children.length;i++) {
+        let v;
 
-    for (let i = 0; i < topBars.length; i++) {
-        let value;
-
-        if (analyser && isPlaying) {
-            const idx = Math.floor(i / topBars.length * freq.length);
-            value = Math.max(3, freq[idx] / 255 * 100);
+        if(analyser && isPlaying) {
+            const idx=Math.floor(i/topBars.children.length*freq.length);
+            v=Math.max(3,freq[idx]/255*100);
         } else {
-            value = 5 + Math.random() * 15;
+            v=5+Math.random()*25;
         }
 
-        topBars[i].style.height = value + "%";
+        topBars.children[i].style.height=v+"%";
     }
 
-    const bm = bassMeter.children;
-    const tm = trebleMeter.children;
+    for(let i=0;i<bassBars.children.length;i++) {
+        const b=analyser && isPlaying
+            ?freq[i]/255*100
+            :Math.random()*75;
 
-    for (let i = 0; i < bm.length; i++) {
-        let b, t;
+        const t=analyser && isPlaying
+            ?freq[freq.length-1-i]/255*100
+            :Math.random()*75;
 
-        if (analyser && isPlaying) {
-            b = freq[i] / 255 * 100;
-            t = freq[freq.length - 1 - i] / 255 * 100;
-        } else {
-            b = Math.random() * 70;
-            t = Math.random() * 70;
-        }
-
-        bm[i].style.height = Math.max(4, b) + "%";
-        tm[i].style.height = Math.max(4, t) + "%";
+        bassBars.children[i].style.height=Math.max(4,b)+"%";
+        trebleBars.children[i].style.height=Math.max(4,t)+"%";
     }
 }
 
 // =========================================================
-// CIRCULAR AUDIO ORBIT
+// CIRCULAR VISUALIZER
 // =========================================================
 
 function drawOrbit() {
-    const rect = orbitCanvas.getBoundingClientRect();
-    const w = rect.width;
-    const h = rect.height;
+    const rect=orbit.getBoundingClientRect();
+    const w=rect.width;
+    const h=rect.height;
 
-    orbitCtx.clearRect(0, 0, w, h);
-    orbitCtx.save();
-    orbitCtx.translate(w / 2, h / 2);
+    octx.clearRect(0,0,w,h);
+    octx.save();
+    octx.translate(w/2,h/2);
 
-    const base = Math.min(w, h) * 0.36;
+    const base=Math.min(w,h)*0.35;
 
-    for (let layer = 0; layer < 5; layer++) {
-        orbitCtx.beginPath();
+    for(let layer=0;layer<6;layer++) {
+        octx.beginPath();
 
-        const points = 260;
+        const points=260;
 
-        for (let i = 0; i <= points; i++) {
-            const angle = i / points * Math.PI * 2;
+        for(let i=0;i<=points;i++) {
+            const angle=i/points*Math.PI*2;
 
-            let data = 0;
+            let d;
 
-            if (analyser && isPlaying) {
-                const idx = Math.floor(i / points * freq.length);
-                data = freq[idx] / 255;
+            if(analyser && isPlaying) {
+                const idx=Math.floor(i/points*freq.length);
+                d=freq[idx]/255;
             } else {
-                data = Math.sin(angle * 12 + tick + layer) * 0.1;
+                d=Math.sin(angle*12+tick+layer)*0.12;
             }
 
-            const radius =
-                base +
-                layer * 10 +
-                data * (25 + bass * 0.15);
+            const r=base+layer*9+d*(22+bass*0.15);
+            const rot=tick*(layer%2 ? 1:-1);
 
-            const rotation = tick * (layer % 2 ? 1 : -1);
+            const x=Math.cos(angle+rot)*r;
+            const y=Math.sin(angle+rot)*r;
 
-            const x = Math.cos(angle + rotation) * radius;
-            const y = Math.sin(angle + rotation) * radius;
-
-            if (i === 0) orbitCtx.moveTo(x, y);
-            else orbitCtx.lineTo(x, y);
+            if(i===0) octx.moveTo(x,y);
+            else octx.lineTo(x,y);
         }
 
-        orbitCtx.closePath();
+        octx.closePath();
 
-        const colors = [
-            COLORS.c1,
-            COLORS.c2,
-            COLORS.c3,
-            COLORS.c4,
-            COLORS.c5
-        ];
+        const color=[
+            C.c1,C.c2,C.c3,C.c4,C.c5,C.c6
+        ][layer];
 
-        orbitCtx.strokeStyle = colors[layer];
-        orbitCtx.lineWidth = layer === 0 ? 2 : 1;
-        orbitCtx.globalAlpha = 0.65 - layer * 0.08;
-        orbitCtx.shadowBlur = 15;
-        orbitCtx.shadowColor = colors[layer];
-        orbitCtx.stroke();
+        octx.strokeStyle=color;
+        octx.globalAlpha=.75-layer*.08;
+        octx.lineWidth=layer===0 ? 2:1;
+        octx.shadowBlur=15;
+        octx.shadowColor=color;
+        octx.stroke();
     }
 
-    for (let i = 0; i < 28; i++) {
-        const angle =
-            tick * (i % 2 ? 1 : -1) +
-            i * Math.PI * 2 / 28;
+    // ORBITING LIGHTS
 
-        const radius = base + 25 + Math.sin(tick * 3 + i) * 12;
+    for(let i=0;i<36;i++) {
+        const a=tick*(i%2 ? 1:-1)+i*Math.PI*2/36;
+        const r=base+25+Math.sin(tick*3+i)*12;
 
-        orbitCtx.beginPath();
-
-        orbitCtx.arc(
-            Math.cos(angle) * radius,
-            Math.sin(angle) * radius,
-            2 + bass / 55,
+        octx.beginPath();
+        octx.arc(
+            Math.cos(a)*r,
+            Math.sin(a)*r,
+            2+bass/55,
             0,
-            Math.PI * 2
+            Math.PI*2
         );
 
-        orbitCtx.fillStyle =
-            i % 3 === 0 ? COLORS.c4 :
-            i % 3 === 1 ? COLORS.c1 : COLORS.c5;
+        const color=i%3===0 ? C.c4 : i%3===1 ? C.c1 : C.c5;
 
-        orbitCtx.shadowBlur = 20;
-        orbitCtx.shadowColor = orbitCtx.fillStyle;
-        orbitCtx.fill();
+        octx.fillStyle=color;
+        octx.shadowBlur=20;
+        octx.shadowColor=color;
+        octx.fill();
     }
 
-    const sweepAngle = tick * 0.8;
+    // RADAR
 
-    orbitCtx.beginPath();
-    orbitCtx.moveTo(0, 0);
-    orbitCtx.arc(0, 0, base * 1.55, sweepAngle, sweepAngle + 0.35);
-    orbitCtx.closePath();
+    const a=tick*.8;
 
-    orbitCtx.fillStyle = COLORS.c1;
-    orbitCtx.globalAlpha = 0.06;
-    orbitCtx.fill();
+    octx.beginPath();
+    octx.moveTo(0,0);
+    octx.arc(0,0,base*1.55,a,a+.3);
+    octx.closePath();
 
-    orbitCtx.restore();
+    octx.fillStyle=C.c1;
+    octx.globalAlpha=.08;
+    octx.fill();
+
+    octx.restore();
 }
 
 // =========================================================
-// SOUND WAVE
+// WAVEFORM
 // =========================================================
 
 function drawWave() {
-    const rect = waveCanvas.getBoundingClientRect();
-    const w = rect.width;
-    const h = rect.height;
+    const rect=waveCanvas.getBoundingClientRect();
+    const w=rect.width;
+    const h=rect.height;
 
-    waveCtx.clearRect(0, 0, w, h);
+    wctx.clearRect(0,0,w,h);
 
-    const colors = [COLORS.c1, COLORS.c2, COLORS.c3, COLORS.c4];
+    const colors=[C.c1,C.c2,C.c3,C.c4];
 
-    for (let layer = 0; layer < 4; layer++) {
-        waveCtx.beginPath();
+    for(let layer=0;layer<4;layer++) {
+        wctx.beginPath();
 
-        for (let x = 0; x < w; x++) {
+        for(let x=0;x<w;x++) {
             let v;
 
-            if (analyser && isPlaying) {
-                const idx = Math.floor(x / w * timeData.length);
-                v = (timeData[idx] - 128) / 128;
+            if(analyser && isPlaying) {
+                const idx=Math.floor(x/w*waveData.length);
+                v=(waveData[idx]-128)/128;
             } else {
-                v = Math.sin(x * 0.03 + tick + layer) * 0.2;
+                v=Math.sin(x*.03+tick+layer)*.2;
             }
 
-            const y =
-                h / 2 +
-                v * h * 0.35 +
-                Math.sin(x * 0.015 + tick + layer) * (layer + 1) * 3;
+            const y=h/2+v*h*.35+
+                Math.sin(x*.015+tick+layer)*(layer+1)*3;
 
-            if (x === 0) waveCtx.moveTo(x, y);
-            else waveCtx.lineTo(x, y);
+            if(x===0) wctx.moveTo(x,y);
+            else wctx.lineTo(x,y);
         }
 
-        waveCtx.strokeStyle = colors[layer];
-        waveCtx.globalAlpha = 0.75 - layer * 0.12;
-        waveCtx.lineWidth = layer === 0 ? 2 : 1;
-        waveCtx.shadowBlur = 15;
-        waveCtx.shadowColor = colors[layer];
-        waveCtx.stroke();
+        wctx.strokeStyle=colors[layer];
+        wctx.globalAlpha=.8-layer*.12;
+        wctx.lineWidth=layer===0 ? 2:1;
+        wctx.shadowBlur=15;
+        wctx.shadowColor=colors[layer];
+        wctx.stroke();
     }
 }
 
 // =========================================================
-// PARTICLE BACKGROUND
+// PARTICLE SYSTEM
 // =========================================================
 
-const particleCanvas = document.getElementById("particleCanvas");
-const pctx = particleCanvas.getContext("2d");
+const particlesCanvas=document.getElementById("particles");
+const pctx=particlesCanvas.getContext("2d");
+let particles=[];
 
-let particles = [];
+function resizeBG() {
+    const w=innerWidth;
+    const h=innerHeight;
 
-function resizeBackground() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    particlesCanvas.width=w;
+    particlesCanvas.height=h;
 
-    particleCanvas.width = w;
-    particleCanvas.height = h;
+    document.getElementById("stars").width=w;
+    document.getElementById("stars").height=h;
 
-    const starCanvas = document.getElementById("starCanvas");
-    starCanvas.width = w;
-    starCanvas.height = h;
+    document.getElementById("grid").width=w;
+    document.getElementById("grid").height=h;
 
-    const gridCanvas = document.getElementById("gridCanvas");
-    gridCanvas.width = w;
-    gridCanvas.height = h;
+    particles=[];
 
-    particles = [];
-
-    for (let i = 0; i < 150; i++) {
+    for(let i=0;i<130;i++) {
         particles.push({
-            x: Math.random() * w,
-            y: Math.random() * h,
-            r: Math.random() * 2.5 + 0.5,
-            dx: (Math.random() - 0.5) * 0.5,
-            dy: (Math.random() - 0.5) * 0.5,
-            hue: Math.random() * 360,
-            alpha: Math.random()
+            x:Math.random()*w,
+            y:Math.random()*h,
+            r:Math.random()*2.5+.5,
+            dx:(Math.random()-.5)*.5,
+            dy:(Math.random()-.5)*.5,
+            hue:Math.random()*360,
+            alpha:Math.random()
         });
     }
 
@@ -1559,94 +1419,88 @@ function resizeBackground() {
 }
 
 function drawGrid() {
-    const canvas = document.getElementById("gridCanvas");
-    const g = canvas.getContext("2d");
+    const canvas=document.getElementById("grid");
+    const g=canvas.getContext("2d");
 
-    const w = canvas.width;
-    const h = canvas.height;
+    g.clearRect(0,0,canvas.width,canvas.height);
+    g.strokeStyle=C.c1;
+    g.lineWidth=.5;
 
-    g.clearRect(0, 0, w, h);
-    g.strokeStyle = COLORS.c1;
-    g.lineWidth = 0.5;
-
-    const gap = 35;
-
-    for (let x = 0; x < w; x += gap) {
+    for(let x=0;x<canvas.width;x+=35) {
         g.beginPath();
-        g.moveTo(x, 0);
-        g.lineTo(x, h);
+        g.moveTo(x,0);
+        g.lineTo(x,canvas.height);
         g.stroke();
     }
 
-    for (let y = 0; y < h; y += gap) {
+    for(let y=0;y<canvas.height;y+=35) {
         g.beginPath();
-        g.moveTo(0, y);
-        g.lineTo(w, y);
+        g.moveTo(0,y);
+        g.lineTo(canvas.width,y);
         g.stroke();
     }
 }
 
-function drawParticles() {
-    requestAnimationFrame(drawParticles);
+function particleLoop() {
+    requestAnimationFrame(particleLoop);
 
-    pctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+    pctx.clearRect(0,0,particlesCanvas.width,particlesCanvas.height);
 
-    const starCanvas = document.getElementById("starCanvas");
-    const sctx = starCanvas.getContext("2d");
+    const star=document.getElementById("stars");
+    const sctx=star.getContext("2d");
 
-    sctx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+    sctx.clearRect(0,0,star.width,star.height);
 
-    for (const p of particles) {
-        p.x += p.dx * (1 + bass / 30);
-        p.y += p.dy * (1 + bass / 30);
+    for(const p of particles) {
+        p.x+=p.dx*(1+bass/30);
+        p.y+=p.dy*(1+bass/30);
 
-        if (p.x < 0) p.x = particleCanvas.width;
-        if (p.x > particleCanvas.width) p.x = 0;
-        if (p.y < 0) p.y = particleCanvas.height;
-        if (p.y > particleCanvas.height) p.y = 0;
+        if(p.x<0) p.x=particlesCanvas.width;
+        if(p.x>particlesCanvas.width) p.x=0;
+        if(p.y<0) p.y=particlesCanvas.height;
+        if(p.y>particlesCanvas.height) p.y=0;
 
-        p.alpha += (Math.random() - 0.5) * 0.05;
-        p.alpha = Math.max(0.15, Math.min(1, p.alpha));
+        p.alpha+=(Math.random()-.5)*.05;
+        p.alpha=Math.max(.15,Math.min(1,p.alpha));
 
-        const color = `hsla(${p.hue},100%,65%,${p.alpha})`;
+        const color=`hsla(${p.hue},100%,65%,${p.alpha})`;
 
         pctx.beginPath();
-        pctx.arc(p.x, p.y, p.r + bass / 90, 0, Math.PI * 2);
-        pctx.fillStyle = color;
-        pctx.shadowBlur = 18;
-        pctx.shadowColor = color;
+        pctx.arc(p.x,p.y,p.r+bass/90,0,Math.PI*2);
+        pctx.fillStyle=color;
+        pctx.shadowBlur=18;
+        pctx.shadowColor=color;
         pctx.fill();
 
         sctx.beginPath();
-        sctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        sctx.fillStyle = color;
+        sctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        sctx.fillStyle=color;
         sctx.fill();
     }
 }
 
 // =========================================================
-// START ENGINE
+// START
 // =========================================================
 
 resizeAll();
-drawParticles();
+particleLoop();
 animate();
 
-if (MUSIC.length > 0) {
-    document.getElementById("message").textContent =
-        MUSIC.length + " MUSIC FILES FOUND";
+if(MUSIC.length>0) {
+    document.getElementById("msg").textContent=
+        MUSIC.length+" MUSIC FILES READY";
 
-    document.getElementById("systemStatus").textContent =
-        "MUSIC LIBRARY READY";
+    document.getElementById("sys").textContent=
+        "LIBRARY READY";
 
-    loadTrack(0, false);
-
+    loadTrack(0,false);
 } else {
-    document.getElementById("message").textContent =
-        "NO MUSIC / ADD MP3 BESIDE Ta_app.py";
+    document.getElementById("msg").textContent=
+        "ADD MP3 FILE BESIDE Ta_app.py";
 
-    document.getElementById("systemStatus").textContent =
-        "WAITING FOR MUSIC";
+    document.getElementById("sys").textContent=
+        "NO MUSIC FOUND";
 }
 
 </script>
@@ -1655,14 +1509,14 @@ if (MUSIC.length > 0) {
 """
 
 # =========================================================
-# INJECT DATA
+# INSERT DATA SAFELY
 # =========================================================
 
 html = html.replace("__MUSIC__", music_json)
-html = html.replace("__LOGO__", logo_b64)
+html = html.replace("__LOGO__", logo_base64)
 
 # =========================================================
-# RENDER
+# DISPLAY
 # =========================================================
 
 components.html(
