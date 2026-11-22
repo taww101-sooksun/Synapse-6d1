@@ -1522,5 +1522,5 @@ html = html.replace("__LOGO__", logo_base64)
 st.iframe(
     html,
     height=850,
-    scrolling=False
+    width="stretch"
 )
