@@ -61,7 +61,9 @@ iframe {
 # LOAD LOGO
 # =====================================================
 
-logo_path = APP_DIR / "logo1.jpg"
+logo_path = APP_DIR / "671.jpg"
+if not logo_path.exists():
+    logo_path = APP_DIR / "logo1.jpg"
 
 logo_data = ""
 
@@ -200,9 +202,9 @@ html,body {
 
     width:100%;
 
-    height:850px;
+    height:100dvh;
 
-    max-height:100vh;
+    max-height:100dvh;
 
     overflow:hidden;
 
@@ -293,9 +295,9 @@ html,body {
 
     position:absolute;
 
-    top:20px;
+    top:clamp(12px,2.5vh,24px);
 
-    left:22px;
+    left:clamp(12px,3vw,24px);
 
     right:22px;
 
@@ -362,7 +364,7 @@ html,body {
 
     position:absolute;
 
-    top:125px;
+    top:clamp(100px,18vh,150px);
 
     left:3%;
 
@@ -389,7 +391,7 @@ html,body {
 
     left:50%;
 
-    top:47%;
+    top:48%;
 
     transform:translate(-50%,-50%);
 
@@ -557,7 +559,7 @@ html,body {
 
     position:absolute;
 
-    bottom:160px;
+    bottom:clamp(145px,21vh,185px);
 
     left:20px;
 
@@ -606,7 +608,7 @@ html,body {
 
     position:absolute;
 
-    bottom:35px;
+    bottom:clamp(12px,2vh,24px);
 
     left:0;
 
@@ -626,15 +628,15 @@ html,body {
 
     align-items:center;
 
-    gap:18px;
+    gap:clamp(9px,2.8vw,18px);
 
 }
 
 .btn {
 
-    width:48px;
+    width:clamp(40px,11vw,48px);
 
-    height:48px;
+    height:clamp(40px,11vw,48px);
 
     border-radius:50%;
 
@@ -654,9 +656,9 @@ html,body {
 
 .btn.play {
 
-    width:62px;
+    width:clamp(54px,14vw,62px);
 
-    height:62px;
+    height:clamp(54px,14vw,62px);
 
     font-size:24px;
 
@@ -791,6 +793,12 @@ html,body {
 
 }
 
+
+
+.theme-dock {position:absolute;left:50%;top:clamp(82px,13vh,125px);transform:translateX(-50%);z-index:8;display:flex;gap:6px;padding:6px 8px;border:1px solid rgba(130,220,255,.35);border-radius:24px;background:rgba(3,7,20,.72);backdrop-filter:blur(8px);}
+.theme-dock button {width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(20,25,45,.8);color:white;font-size:14px;cursor:pointer;}
+.theme-dock button:active {transform:scale(.9);}
+@media(max-height:700px){.visualizer{top:48%;width:min(74vw,55vh);height:min(74vw,55vh)} #spectrum{height:85px;top:110px}.track-info{bottom:125px}.controls{bottom:8px}.buttons{gap:8px}.progress-area{margin-top:8px}}
 
 /* RESPONSIVE */
 
@@ -943,6 +951,15 @@ SYNAPSE
 
 <div id="playlist"></div>
 
+</div>
+
+<div class="theme-dock">
+<button onclick="setTheme(0)" title="Neon spectrum">🌈</button>
+<button onclick="setTheme(1)" title="Ice blue">🔵</button>
+<button onclick="setTheme(2)" title="Purple pulse">🟣</button>
+<button onclick="setTheme(3)" title="Solar gold">🟡</button>
+<button onclick="setTheme(4)" title="Matrix green">🟢</button>
+<button onclick="fullScreenMode()" title="Fullscreen">⛶</button>
 </div>
 
 
@@ -1369,6 +1386,19 @@ audio.addEventListener("timeupdate", function() {
 });
 
 
+
+const themeSets = [
+ ["#00eaff","#a000ff","#ff007a","#ffd700","#00ff88","#ffffff"],
+ ["#00d9ff","#0077ff","#6aeaff","#a8f4ff","#ffffff","#4a8cff"],
+ ["#d000ff","#7b2cff","#ff35df","#a86bff","#00eaff","#ffffff"],
+ ["#ffd000","#ff8c00","#ff3d00","#fff27a","#ffcc44","#ffffff"],
+ ["#00ff66","#00cc88","#66ff00","#00eaff","#aaff44","#ffffff"]
+];
+let themeIndex=0;
+let colors=[...themeSets[0]];
+function setTheme(n){themeIndex=n; colors.splice(0,colors.length,...themeSets[n]); document.documentElement.style.setProperty('--accent',colors[0]); document.getElementById('state').innerText=playing?'PLAYING':'THEME '+(n+1)+' ACTIVE';}
+function fullScreenMode(){const el=document.getElementById('studio');if(!document.fullscreenElement){el.requestFullscreen?.();}else{document.exitFullscreen?.();}}
+
 /* =====================================
    VISUALIZER
 ===================================== */
@@ -1412,7 +1442,6 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 
 resizeCanvas();
-
 
 /* =====================================
    DRAW CIRCULAR ENERGY
@@ -1477,23 +1506,6 @@ function drawVisual() {
 
     document.getElementById("treble").innerText =
         String(Math.round(treble)).padStart(3,"0");
-
-
-    const colors = [
-
-        "#00eaff",
-
-        "#a000ff",
-
-        "#ff007a",
-
-        "#ffd700",
-
-        "#00ff88",
-
-        "#ffffff"
-
-    ];
 
 
     /* MULTI LAYER RINGS */
@@ -1885,3 +1897,4 @@ components.html(
     height=850,
     scrolling=False
 )
+
