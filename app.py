@@ -122,7 +122,7 @@ input[type=range]{width:100%;accent-color:#00eaff}
 .panel{border:1px solid #1b8eaa88;border-radius:10px;background:linear-gradient(135deg,#081426ee,#10091fee);padding:5px 7px;margin-top:3px;box-shadow:inset 0 0 18px #00aaff13,0 0 12px #00bfff18}
 .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
 .panel-title{font-size:11px;font-weight:900;letter-spacing:3px;color:#8ffaff;text-shadow:0 0 9px #00eaff}
-.song-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:76px;overflow:auto}
+.song-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:118px;overflow:auto}
 .song{display:flex;align-items:center;gap:5px;text-align:left;min-width:0;padding:4px 6px;border:1px solid #263c62;background:#080f20;border-radius:8px;color:#c9eaff;font-size:10px}
 .song.active{border-color:#ff3bc7;background:linear-gradient(90deg,#17264a,#35103b);box-shadow:0 0 12px #ff2bc255;color:#fff}
 .song .num{color:#00f5ff;font-weight:900}
@@ -130,8 +130,8 @@ input[type=range]{width:100%;accent-color:#00eaff}
 .options{display:flex;gap:6px;flex-wrap:wrap}
 .note{display:none;font-size:9px;color:#83a8c8;line-height:1.3;margin:3px 2px 0}
 .status{font-size:10px;color:#9cfaff;min-height:14px}
-@media(min-width:700px){.stage{height:clamp(260px,42vh,380px);min-height:260px}.logo-zone{width:min(34%,250px)}.overlay{padding:2% 5%}.song-list{grid-template-columns:repeat(5,minmax(0,1fr));max-height:64px}}
-@media(max-width:420px){.shell{padding:2px 4px}.toolbar{gap:3px;margin:3px 1px}.group{gap:3px}button{padding:6px 7px;font-size:9px;border-radius:7px}.song-list{grid-template-columns:1fr 1fr;max-height:132px}.stage{height:clamp(210px,34vh,285px);min-height:210px}.logo-zone{width:min(55%,220px)}.visual-title{font-size:15px}.subtitle{font-size:8px}.track-bottom .track-name{font-size:14px}}
+@media(min-width:700px){.stage{height:clamp(260px,42vh,380px);min-height:260px}.logo-zone{width:min(34%,250px)}.overlay{padding:2% 5%}.song-list{grid-template-columns:repeat(5,minmax(0,1fr));max-height:75px}}
+@media(max-width:420px){.shell{padding:2px 4px}.toolbar{gap:3px;margin:3px 1px}.group{gap:3px}button{padding:6px 7px;font-size:9px;border-radius:7px}.song-list{grid-template-columns:1fr 1fr;max-height:118px}.stage{height:clamp(210px,34vh,285px);min-height:210px}.logo-zone{width:min(55%,220px)}.visual-title{font-size:15px}.subtitle{font-size:8px}.track-bottom .track-name{font-size:14px}}
 </style>
 </head>
 <body>
@@ -167,9 +167,7 @@ input[type=range]{width:100%;accent-color:#00eaff}
       <button id="shuffle">🔀</button><button id="repeat">↻</button>
     </div>
     <div class="group">
-      <select id="ratio"><option value="portrait">VIDEO 9:16</option><option value="landscape">VIDEO 16:9</option></select>
-      <button id="fullscreen">⛶ FULL</button>
-      <button class="record" id="record">● RECORD</button>
+      <button id="fullscreen">⛶ FULL SCREEN</button>
     </div>
   </div>
 
@@ -195,7 +193,7 @@ const audio = new Audio();
 audio.preload = "auto";
 audio.volume = 0.85;
 let current = 0, playing = false, shuffled = false, repeating = false;
-let audioCtx = null, analyser = null, sourceNode = null, recordDestination = null;
+let audioCtx = null, analyser = null, sourceNode = null;
 let recorder = null, chunks = [], recording = false;
 const canvas = document.getElementById("visual");
 const ctx = canvas.getContext("2d");
@@ -203,6 +201,7 @@ const stage = document.getElementById("stage");
 const $ = id => document.getElementById(id);
 const status = msg => $("status").textContent = msg;
 const fmt = n => { if(!isFinite(n)) return "0:00"; let m=Math.floor(n/60),s=Math.floor(n%60);return m+":"+String(s).padStart(2,"0"); };
+const boost = v => Math.min(1, Math.pow(Math.max(0,(v-0.02)/0.98),0.55)*1.6);
 
 if(DATA.logo){
   const img=document.createElement("img"); img.src=DATA.logo; img.alt="SYNAPSE"; $("logoCore").appendChild(img);
@@ -233,10 +232,9 @@ async function initAudio(){
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)throw new Error("อุปกรณ์นี้ไม่รองรับ Web Audio");
   audioCtx=new AC();
-  analyser=audioCtx.createAnalyser(); analyser.fftSize=512; analyser.smoothingTimeConstant=.78;
+  analyser=audioCtx.createAnalyser(); analyser.fftSize=1024; analyser.smoothingTimeConstant=.12; analyser.minDecibels=-88; analyser.maxDecibels=-12;
   sourceNode=audioCtx.createMediaElementSource(audio);
-  recordDestination=audioCtx.createMediaStreamDestination();
-  sourceNode.connect(analyser); analyser.connect(audioCtx.destination); analyser.connect(recordDestination);
+  sourceNode.connect(analyser); analyser.connect(audioCtx.destination);
 }
 async function playAudio(){
   try{
@@ -256,7 +254,6 @@ audio.addEventListener("ended",()=>{if(repeating){audio.currentTime=0;playAudio(
 audio.addEventListener("timeupdate",()=>{if(audio.duration){$("seek").value=audio.currentTime/audio.duration*1000;$("elapsed").textContent=fmt(audio.currentTime);$("duration").textContent=fmt(audio.duration);}});
 $("seek").addEventListener("input",()=>{if(audio.duration)audio.currentTime=Number($("seek").value)/1000*audio.duration;});
 $("volume").addEventListener("input",e=>audio.volume=Number(e.target.value));
-$("ratio").addEventListener("change",e=>{stage.classList.toggle("landscape",e.target.value==="landscape");resize();});
 $("fullscreen").addEventListener("click",async()=>{
   try{if(!document.fullscreenElement)await stage.requestFullscreen();else await document.exitFullscreen();}
   catch(e){status("เบราว์เซอร์นี้ไม่อนุญาต Full Screen");}
@@ -285,12 +282,12 @@ function frame(){
   const bg=ctx.createRadialGradient(W*.5,H*.48,5,W*.5,H*.5,Math.max(W,H)*.72);
   bg.addColorStop(0,"#101632");bg.addColorStop(.55,"#070b1b");bg.addColorStop(1,"#02030a");
   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  let bins=new Uint8Array(analyser?analyser.frequencyBinCount:128);
+  let bins=new Uint8Array(analyser?analyser.frequencyBinCount:512);
   if(analyser)analyser.getByteFrequencyData(bins);
   let bass=0,treble=0;
-  for(let i=0;i<Math.min(12,bins.length);i++)bass+=bins[i];
-  for(let i=35;i<Math.min(100,bins.length);i++)treble+=bins[i];
-  bass/=12*255;treble/=65*255;
+  for(let i=1;i<Math.min(28,bins.length);i++)bass+=bins[i];
+  for(let i=65;i<Math.min(230,bins.length);i++)treble+=bins[i];
+  bass=boost((bass/27)/255);treble=boost((treble/165)/255);
   const cx=W/2,cy=H*.5,base=Math.min(W,H)*.19;
   // Moving luminous laser sheets.
   ctx.save();ctx.globalCompositeOperation="screen";
@@ -324,8 +321,8 @@ function frame(){
     ctx.beginPath();
     for(let a=0;a<=Math.PI*2+.02;a+=.025){
       const idx=Math.floor((a/(Math.PI*2))*bins.length)%bins.length;
-      const v=bins[idx]/255;
-      const rr=rad+v*base*.18*Math.sin(a*9+tick*2+ring);
+      const v=boost(bins[idx]/255);
+      const rr=rad+v*base*.34*Math.sin(a*9+tick*2+ring);
       const x=Math.cos(a+tick*(ring%2?.12:-.09))*rr;
       const y=Math.sin(a+tick*(ring%2?.12:-.09))*rr;
       if(a===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
@@ -337,17 +334,17 @@ function frame(){
   const count=200;
   for(let i=0;i<count;i++){
     const a=i/count*Math.PI*2;
-    const v=(bins[Math.floor(i/count*bins.length)]||0)/255;
-    const inner=base*.70;
-    const outer=inner+12+v*base*1.65;
+    const v=boost((bins[Math.floor(i/count*bins.length)]||0)/255);
+    const inner=base*.60;
+    const outer=inner+14+v*base*2.55;
     const hue=i%3===0?"#ff45d4":(i%3===1?"#27f6ff":"#a76aff");
-    ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?3:1.8;
-    ctx.shadowBlur=14+v*25;ctx.shadowColor=hue;
+    ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?3.5:2.1;
+    ctx.shadowBlur=17+v*32;ctx.shadowColor=hue;
     ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
     ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.stroke();
   }
   // Bass shockwave expands from the centre on each beat.
-  const pulse=base*(.98+bass*.42);
+  const pulse=base*(.90+bass*.85);
   ctx.beginPath();ctx.arc(0,0,pulse,0,Math.PI*2);
   ctx.strokeStyle=`rgba(0,245,255,${.18+bass*.5})`;
   ctx.lineWidth=2+bass*5;ctx.shadowBlur=22+bass*30;ctx.shadowColor="#00efff";ctx.stroke();
@@ -361,41 +358,9 @@ function frame(){
 }
 frame();
 
-$("record").addEventListener("click",async()=>{
-  if(recording){
-    recorder.stop();return;
-  }
-  try{
-    if(!audio.src)loadTrack(current,false);
-    if(!window.MediaRecorder||!canvas.captureStream){status("เบราว์เซอร์นี้ไม่รองรับการบันทึกวิดีโอ");return;}
-    await initAudio();
-    if(audioCtx.state==="suspended")await audioCtx.resume();
-    if(audio.paused)await audio.play();
-    const videoStream=canvas.captureStream(30);
-    const combined=new MediaStream([...videoStream.getVideoTracks(),...recordDestination.stream.getAudioTracks()]);
-    const mimeTypes=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
-    const mime=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t));
-    if(!mime){status("ไม่พบรูปแบบวิดีโอที่อุปกรณ์รองรับ");return;}
-    chunks=[];recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:6500000,audioBitsPerSecond:192000});
-    recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
-    recorder.onstop=()=>{
-      const blob=new Blob(chunks,{type:mime});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");a.href=url;a.download="SYNAPSE-Visualizer-"+Date.now()+".webm";
-      document.body.appendChild(a);a.click();a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),60000);
-      recording=false;$("record").classList.remove("recording");$("record").textContent="● RECORD";
-      status("บันทึกเสร็จแล้ว — ดาวน์โหลดไฟล์วิดีโอเรียบร้อย");
-      videoStream.getTracks().forEach(t=>t.stop());combined.getTracks().forEach(t=>t.stop());
-    };
-    recorder.start(1000);recording=true;
-    $("record").classList.add("recording");$("record").textContent="■ STOP";
-    status("กำลังบันทึกวิดีโอและเสียงเพลง...");
-  }catch(e){status("เริ่มบันทึกไม่ได้: "+e.message);}
-});
 </script>
 </body>
 </html>
 """.replace("__PAYLOAD__", payload)
 
-components.html(html, height=690, scrolling=False)
+components.html(html, height=620, scrolling=False)
