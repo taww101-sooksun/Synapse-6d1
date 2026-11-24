@@ -1,255 +1,83 @@
-import base64
-import mimetypes
-import random
 from pathlib import Path
-
+import base64, mimetypes, json
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ============================================================
-# SYNAPSE NEON MUSIC STUDIO — single-file Streamlit app
-# Put logo1.jpg and your music files in the same folder as app.py
-# ============================================================
+APP_DIR=Path(__file__).resolve().parent
+LOGO_FILE=APP_DIR/'logo1.jpg'
+AUDIO_EXTS={'.mp3','.wav','.ogg','.m4a','.aac','.flac'}
+st.set_page_config(page_title='SYNAPSE NEON MUSIC STUDIO', page_icon='🎧', layout='wide')
+st.markdown('''<style>
+html,body,[data-testid="stAppViewContainer"]{background:#02020b!important;color:#eaf7ff!important}
+[data-testid="stHeader"],footer,#MainMenu{visibility:hidden;height:0}
+.block-container{padding:0.15rem 0.4rem!important;max-width:100%!important}
+[data-testid="stSidebar"]{background:#06091a!important}
+</style>''',unsafe_allow_html=True)
 
-APP_DIR = Path(__file__).resolve().parent
-LOGO_FILE = APP_DIR / "logo1.jpg"
-AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+# Tracks are loaded from the app folder, plus optional files uploaded through the sidebar.
+local_files=sorted([p for p in APP_DIR.iterdir() if p.is_file() and p.suffix.lower() in AUDIO_EXTS],key=lambda p:p.name.lower())
+with st.sidebar:
+    st.markdown('### 🎵 SONG LIBRARY')
+    uploaded=st.file_uploader('เพิ่มเพลงจากโทรศัพท์/อุปกรณ์',type=[x[1:] for x in AUDIO_EXTS],accept_multiple_files=True)
+    st.caption('หรือวางไฟล์เพลงไว้ในโฟลเดอร์เดียวกับ app.py แล้วรีเฟรชแอป')
 
-st.set_page_config(
-    page_title="SYNAPSE NEON MUSIC STUDIO",
-    page_icon="🎧",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
-# Hide Streamlit chrome; keep the app as a one-screen music studio.
-st.markdown("""
-<style>
-html, body, [data-testid="stAppViewContainer"] { background:#02020b !important; }
-[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"],
-[data-testid="stStatusWidget"], footer, #MainMenu { display:none !important; }
-.block-container { padding:0 !important; margin:0 !important; max-width:100% !important; }
-iframe[title="st.components.v1.html"]{width:100% !important;border:0 !important;}
-</style>
-""", unsafe_allow_html=True)
-
-tracks = sorted(
-    [p for p in APP_DIR.iterdir() if p.is_file() and p.suffix.lower() in AUDIO_EXTS],
-    key=lambda p: p.name.lower()
-)
-
-def to_data_uri(path: Path):
-    mime = mimetypes.guess_type(path.name)[0] or "audio/mpeg"
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime};base64,{encoded}"
-
-track_payload = [{"name": p.stem, "src": to_data_uri(p)} for p in tracks]
-logo_uri = ""
+def data_uri_bytes(name, data):
+    mime=mimetypes.guess_type(name)[0] or 'audio/mpeg'
+    return f'data:{mime};base64,'+base64.b64encode(data).decode('ascii')
+tracks=[]
+for p in local_files:
+    try: tracks.append({'name':p.stem,'src':data_uri_bytes(p.name,p.read_bytes())})
+    except Exception: pass
+if uploaded:
+    for f in uploaded:
+        tracks.append({'name':Path(f.name).stem,'src':data_uri_bytes(f.name,f.getvalue())})
+logo=''
 if LOGO_FILE.exists():
-    mime = mimetypes.guess_type(LOGO_FILE.name)[0] or "image/jpeg"
-    logo_uri = "data:" + mime + ";base64," + base64.b64encode(LOGO_FILE.read_bytes()).decode("ascii")
+    logo=data_uri_bytes(LOGO_FILE.name,LOGO_FILE.read_bytes())
+tracks_json=json.dumps(tracks,ensure_ascii=False).replace('</','<\\/')
+logo_json=json.dumps(logo)
 
-# Pass data safely into the embedded player.
-import json
-tracks_json = json.dumps(track_payload, ensure_ascii=False).replace("</", "<\\/")
-logo_json = json.dumps(logo_uri)
-
-player_html = r"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02020b;color:#eaf7ff;font-family:Arial,Helvetica,sans-serif}
-body{background:
- radial-gradient(ellipse at 50% 45%,rgba(30,15,78,.45),transparent 55%),
- radial-gradient(ellipse at 5% 85%,rgba(0,135,255,.25),transparent 40%),
- radial-gradient(ellipse at 95% 12%,rgba(190,0,255,.23),transparent 38%),
- #02020b}
+html=r'''<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03030c;color:#e9f8ff;font-family:Arial,sans-serif}
+body{background:radial-gradient(ellipse at center,rgba(24,8,72,.7),transparent 60%),radial-gradient(ellipse at 8% 90%,rgba(0,110,255,.3),transparent 40%),#03030c}
 #stars{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-html,body{min-height:100%;height:100dvh}
-.frame{position:relative;height:100dvh;min-height:100dvh;width:100%;max-width:900px;margin:auto;padding:12px 14px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden}
-:fullscreen{background:#02020b;width:100vw;height:100vh}
-:fullscreen .frame{height:100vh;min-height:100vh;width:100vw;max-width:none;padding:12px 3vw}
-.panel{border:1px solid rgba(54,196,255,.48);border-radius:17px;box-shadow:0 0 13px rgba(0,180,255,.12),inset 0 0 15px rgba(0,70,180,.08);background:linear-gradient(110deg,rgba(4,12,32,.82),rgba(15,5,35,.72));}
-.header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;min-height:70px;gap:12px}
-.brand{font-size:clamp(24px,6vw,48px);font-weight:900;letter-spacing:.1em;font-style:italic;color:#a6eaff;text-shadow:0 0 8px #08baff,0 0 22px #2869ff}
-.sub{font-size:clamp(8px,2vw,13px);letter-spacing:.35em;color:#a8c4e6;margin-top:2px}
-.status{font-size:clamp(9px,2.3vw,12px);letter-spacing:.12em;line-height:1.8;text-align:right;color:#d7e8a7;white-space:nowrap}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#48ff9b;box-shadow:0 0 10px #48ff9b;margin-right:6px}
-#topviz{height:76px;width:100%;display:block;flex-shrink:0}
-.centerstage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-.ringwrap{position:relative;width:min(70vw,48vh,460px);height:min(70vw,48vh,460px);max-width:100%;max-height:100%;display:grid;place-items:center}
-#ringcanvas{position:absolute;width:100%;height:100%;inset:0}
-.logoBox{position:relative;width:44%;height:44%;border-radius:50%;overflow:hidden;border:2px solid #4deeff;box-shadow:0 0 12px #00bfff,0 0 26px #7d2bff,inset 0 0 15px #00aaff;background:#030712;display:grid;place-items:center}
-.logoBox img{width:100%;height:100%;object-fit:contain}
-.logoFallback{font-weight:900;font-size:clamp(10px,3vw,20px);letter-spacing:.1em;color:#8ef7ff;text-shadow:0 0 10px #00bfff;text-align:center}
-.metrics{position:absolute;top:50%;transform:translateY(-50%);width:24%;padding:10px 7px;text-align:center;border:1px solid rgba(0,210,255,.55);background:rgba(3,8,24,.72);border-radius:12px;box-shadow:0 0 14px rgba(0,180,255,.15)}
-.metrics.left{left:1%}.metrics.right{right:1%;border-color:rgba(255,60,210,.55)}
-.mlabel{font-size:clamp(8px,2.1vw,12px);letter-spacing:.12em;color:#65eaff}
-.right .mlabel{color:#ff83e6}
-.mvalue{font-size:clamp(22px,6vw,44px);font-weight:900;font-style:italic;color:#00eaff;text-shadow:0 0 15px #00cfff;margin:4px 0}
-.right .mvalue{color:#ff50df;text-shadow:0 0 15px #ff40df}
-.bars{height:18px;display:flex;gap:2px;justify-content:center;align-items:end}
-.bars i{display:block;width:4px;height:var(--h);background:#08eaff;box-shadow:0 0 5px #08eaff}
-.right .bars i{background:#ff42db;box-shadow:0 0 5px #ff42db}
-.trackinfo{flex-shrink:0;text-align:center;padding:7px 4px 2px}
-.trackname{font-size:clamp(16px,4vw,26px);font-weight:bold;font-style:italic;color:#eff7ff;text-shadow:0 0 12px #25bfff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tracksub{font-size:10px;letter-spacing:.22em;color:#7fdfff;margin-top:2px}
-.controls{display:flex;justify-content:center;align-items:center;gap:clamp(7px,3vw,24px);padding:7px 0;flex-shrink:0}
-.btn{width:clamp(42px,11vw,68px);height:clamp(42px,11vw,68px);border-radius:50%;border:1.5px solid #21cfff;background:rgba(4,14,34,.82);color:#e8fbff;font-size:clamp(16px,4vw,25px);box-shadow:0 0 12px rgba(0,185,255,.45),inset 0 0 10px rgba(0,130,255,.15);cursor:pointer}
-.btn.main{width:clamp(60px,15vw,90px);height:clamp(60px,15vw,90px);border:3px solid transparent;background:linear-gradient(#050914,#050914) padding-box,conic-gradient(#08eaff,#d900ff,#ff3bda,#ffe500,#08eaff) border-box;font-size:clamp(22px,5vw,32px);box-shadow:0 0 23px rgba(170,0,255,.55)}
-.btn.active{color:#ffed59;border-color:#ffed59;box-shadow:0 0 13px #ffed59}
-.seekarea{flex-shrink:0;padding:0 5px}
-input[type=range]{width:100%;accent-color:#22dfff;height:20px}
-.times{display:flex;justify-content:space-between;font-size:12px;color:#d7e8ff}
-.footerline{display:flex;justify-content:space-between;gap:10px;flex-shrink:0;padding:5px 0 2px}
-.smallbtn{border:1px solid #27dfff;border-radius:25px;background:rgba(4,12,32,.7);padding:8px 14px;color:#8eeaff;letter-spacing:.08em;font-size:11px;box-shadow:0 0 10px rgba(0,190,255,.3);cursor:pointer}
-.songpanel{position:absolute;z-index:10;top:12%;left:5%;right:5%;max-height:70%;overflow:auto;display:none;padding:10px;border:1px solid #28dcff;border-radius:15px;background:rgba(2,4,17,.97);box-shadow:0 0 25px #146bff}
-.songpanel.show{display:block}
-.songrow{padding:10px;border-bottom:1px solid rgba(0,190,255,.22);font-size:13px;cursor:pointer;color:#dffaff}
-.songrow:hover{color:#fff;background:rgba(0,160,255,.15)}
-.songrow.playing{color:#ff65e8;text-shadow:0 0 9px #ff40d0}
-.tagline{text-align:center;font-size:clamp(8px,2vw,12px);letter-spacing:.14em;color:#9cc9ef;padding:4px 2px;flex-shrink:0}
-@media(max-height:650px){.frame{gap:3px;padding:6px}.header{min-height:54px;padding:5px 10px}#topviz{height:50px}.controls{padding:2px}.trackinfo{padding:2px}.footerline{padding:2px}.tagline{display:none}}
-</style>
-</head>
-<body>
-<canvas id="stars"></canvas>
-<div class="frame">
-  <div class="header panel">
-    <div><div class="brand">SYNAPSE</div><div class="sub">NEON MUSIC STUDIO</div></div>
-    <div class="status"><span class="dot"></span>AUDIO READY<br><span id="librarycount">LIBRARY: 0 TRACKS</span><br>● SOUND THERAPY</div>
-  </div>
-  <canvas id="topviz"></canvas>
-  <div class="centerstage">
-    <div class="metrics left"><div class="mlabel">BASS ENERGY</div><div class="mvalue" id="bass">000</div><div class="bars" id="bassbars"></div></div>
-    <div class="ringwrap"><canvas id="ringcanvas"></canvas><div class="logoBox" id="logoBox"></div></div>
-    <div class="metrics right"><div class="mlabel">TREBLE ENERGY</div><div class="mvalue" id="treble">000</div><div class="bars" id="treblebars"></div></div>
-    <div class="songpanel" id="songpanel"><div style="display:flex;justify-content:space-between;align-items:center;color:#72eaff;padding:4px 8px 10px"><b>♫ SONG LIBRARY</b><button class="smallbtn" id="closeSongs">CLOSE ✕</button></div><div id="songlist"></div></div>
-  </div>
-  <div class="trackinfo panel"><div class="trackname" id="trackname">ยังไม่ตั้งเพลง</div><div class="tracksub">SYNAPSE MUSIC STUDIO</div></div>
-  <div class="controls">
-    <button class="btn" id="prev" title="Previous">|◀</button>
-    <button class="btn" id="back" title="Back 10 seconds">◀</button>
-    <button class="btn main" id="play" title="Play/Pause">▶</button>
-    <button class="btn" id="next" title="Next">▶|</button>
-    <button class="btn" id="shuffle" title="Shuffle">🔀</button>
-    <button class="btn" id="repeat" title="Repeat">🔁</button>
-  </div>
-  <div class="seekarea"><input type="range" id="seek" min="0" max="1000" value="0"><div class="times"><span id="current">00:00</span><span id="duration">00:00</span></div></div>
-  <div class="tagline">▮▮▮　FEEL THE MUSIC • HEAL YOUR MIND • LIVE IN HARMONY　▮▮▮</div>
-  <div class="footerline"><button class="smallbtn" id="songsbtn">♫ SONG LIST</button><button class="smallbtn" id="fullscreen">⛶ FULL SCREEN</button></div>
-</div>
-<audio id="audio" crossorigin="anonymous"></audio>
+.shell{height:100dvh;width:100%;max-width:980px;margin:auto;padding:8px 10px;display:flex;flex-direction:column;gap:5px;overflow:hidden;position:relative}
+:fullscreen{background:#03030c;width:100vw;height:100vh}.panel{border:1px solid #258bdb88;border-radius:14px;background:linear-gradient(100deg,#041024e8,#120626df);box-shadow:0 0 12px #008dff22,inset 0 0 12px #3a00ff12}
+.header{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;flex-shrink:0}.brand{font-size:clamp(25px,7vw,48px);font-weight:900;letter-spacing:.12em;font-style:italic;color:#9deeff;text-shadow:0 0 8px #00cfff,0 0 24px #285bff}.sub{letter-spacing:.3em;font-size:clamp(8px,2vw,12px);color:#aac9ef}.status{text-align:right;font-size:clamp(9px,2vw,12px);letter-spacing:.12em;line-height:1.6;color:#d8eea0}.led{color:#56ff99;text-shadow:0 0 8px #56ff99}
+#top{width:100%;height:clamp(42px,9vh,78px);flex-shrink:0}
+.stage{position:relative;flex:1;min-height:0;display:grid;place-items:center}.ring{height:min(58vh,78vw);width:min(58vh,78vw);position:relative;max-height:100%;max-width:100%}#radial{width:100%;height:100%;position:absolute;inset:0}.logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:42%;width:42%;border-radius:50%;border:2px solid #7cf8ff;overflow:hidden;display:grid;place-items:center;background:#030816;box-shadow:0 0 12px #00bfff,0 0 28px #ae20ff}.logo img{width:100%;height:100%;object-fit:contain}.fallback{font-size:14px;text-align:center;color:#b3f7ff;text-shadow:0 0 10px #00cfff;font-weight:bold}
+.metric{position:absolute;top:50%;transform:translateY(-50%);width:22%;padding:7px 3px;text-align:center;border:1px solid #12d6ff88;border-radius:10px;background:#030a20dd}.metric.l{left:0}.metric.r{right:0;border-color:#ff3cce88}.label{font-size:clamp(7px,2vw,11px);letter-spacing:.1em;color:#5feaff}.r .label{color:#ff80e7}.val{font-size:clamp(20px,6vw,42px);font-weight:bold;color:#00eaff;text-shadow:0 0 12px #00cfff}.r .val{color:#ff4cdb;text-shadow:0 0 12px #ff38da}.meter{display:flex;height:14px;gap:2px;align-items:end;justify-content:center}.meter b{width:3px;height:var(--h);background:#00dfff;box-shadow:0 0 4px #00dfff}.r .meter b{background:#ff35d4;box-shadow:0 0 4px #ff35d4}
+.song{flex-shrink:0;text-align:center;padding:5px}.songname{font-size:clamp(14px,4vw,23px);font-weight:bold;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 10px #00bfff}.songcaption{font-size:9px;letter-spacing:.2em;color:#83dfff}
+.controls{display:flex;align-items:center;justify-content:center;gap:clamp(5px,2.2vw,17px);flex-shrink:0;padding:3px}.btn{height:clamp(40px,10vw,64px);width:clamp(40px,10vw,64px);border-radius:50%;background:#051025;border:1px solid #00cfff;color:#e8fbff;font-size:clamp(14px,4vw,24px);box-shadow:0 0 10px #00aaff55;cursor:pointer}.btn.main{height:clamp(55px,14vw,82px);width:clamp(55px,14vw,82px);border:3px solid #c74aff;background:#080a20;font-size:27px;box-shadow:0 0 19px #ad20ff77}.btn.on{border-color:#ffe84b;color:#ffe84b;box-shadow:0 0 12px #ffe84b}
+.seek{flex-shrink:0;padding:0 5px}input[type=range]{width:100%;height:18px;accent-color:#28e4ff}.times{display:flex;justify-content:space-between;font-size:11px;color:#cfe8ff}
+.tag{text-align:center;font-size:clamp(8px,1.8vw,11px);letter-spacing:.12em;color:#9fcdf2;flex-shrink:0;padding:2px}.foot{display:flex;justify-content:space-between;flex-shrink:0}.mini{border:1px solid #23dfff;border-radius:24px;padding:7px 12px;background:#04102a;color:#8ceeff;font-size:11px;cursor:pointer;box-shadow:0 0 9px #00baff33}
+.list{display:none;position:absolute;z-index:5;left:4%;right:4%;top:10%;max-height:75%;overflow:auto;background:#030716f5;border:1px solid #18dfff;border-radius:13px;padding:9px;box-shadow:0 0 20px #006aff88}.list.open{display:block}.entry{padding:10px;border-bottom:1px solid #1c8aff44;cursor:pointer;font-size:12px}.entry.sel{color:#ff72e7}
+@media(max-height:600px){.shell{padding:4px;gap:3px}.header{padding:4px 8px}.stage{min-height:0}.tag{display:none}.song{padding:2px}.controls{padding:0}}
+</style></head><body><canvas id="stars"></canvas><main class="shell" id="shell">
+<header class="header panel"><div><div class="brand">SYNAPSE</div><div class="sub">NEON MUSIC STUDIO</div></div><div class="status"><span class="led">● AUDIO READY</span><br><span id="count">LIBRARY: 0 TRACKS</span><br>● SOUND THERAPY</div></header>
+<canvas id="top"></canvas><section class="stage"><div class="metric l"><div class="label">BASS ENERGY</div><div class="val" id="bass">000</div><div class="meter" id="bm"></div></div><div class="ring"><canvas id="radial"></canvas><div class="logo" id="logo"></div></div><div class="metric r"><div class="label">TREBLE ENERGY</div><div class="val" id="treble">000</div><div class="meter" id="tm"></div></div><div class="list" id="list"><div style="display:flex;justify-content:space-between;padding:4px 5px;color:#8beeff"><b>♫ SONG LIST</b><button class="mini" id="close">CLOSE ×</button></div><div id="entries"></div></div></section>
+<div class="song panel"><div class="songname" id="songname">Choose a song</div><div class="songcaption">SYNAPSE MUSIC STUDIO</div></div>
+<div class="controls"><button class="btn" id="prev">|◀</button><button class="btn" id="rew">◀</button><button class="btn main" id="play">▶</button><button class="btn" id="next">▶|</button><button class="btn" id="shuffle">🔀</button><button class="btn" id="repeat">🔁</button></div>
+<div class="seek"><input id="seek" type="range" min="0" max="1000" value="0"><div class="times"><span id="elapsed">00:00</span><span id="total">00:00</span></div></div><div class="tag">FEEL THE MUSIC • HEAL YOUR MIND • LIVE IN HARMONY</div><div class="foot"><button class="mini" id="songtoggle">♫ SONG LIST</button><button class="mini" id="fs">⛶ FULL SCREEN</button></div></main><audio id="audio"></audio>
 <script>
-const tracks = TRACKS_PLACEHOLDER;
-const logoData = LOGO_PLACEHOLDER;
-const audio = document.getElementById('audio');
-const playBtn = document.getElementById('play');
-const nameEl = document.getElementById('trackname');
-const songPanel = document.getElementById('songpanel');
-const listEl = document.getElementById('songlist');
-const seek = document.getElementById('seek');
-let idx=0, shuffleOn=false, repeatOn=false, audioCtx=null, analyser=null, source=null, freq=null, timeData=null;
-document.getElementById('librarycount').textContent=`LIBRARY: ${tracks.length} TRACKS`;
-const logoBox=document.getElementById('logoBox');
-if(logoData){logoBox.innerHTML=`<img src="${logoData}" alt="SYNAPSE logo">`;}
-else{logoBox.innerHTML='<div class="logoFallback">SYNAPSE<br><small>MUSIC • HEALING • ENERGY</small></div>';}
-function fmt(s){if(!isFinite(s)||s<0)s=0;return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`}
-function makeBars(target,n,color){target.innerHTML='';for(let i=0;i<n;i++){let b=document.createElement('i');b.style.setProperty('--h',(5+Math.random()*13)+'px');target.appendChild(b)}}
-makeBars(document.getElementById('bassbars'),18);
-makeBars(document.getElementById('treblebars'),18);
-function renderList(){
- listEl.innerHTML='';
- if(!tracks.length){
-   const empty=document.createElement('div');
-   empty.className='songrow';
-   empty.textContent='ไม่พบเพลง — กรุณาเพิ่มไฟล์ MP3 / WAV / OGG / M4A ไว้ข้าง app.py';
-   listEl.appendChild(empty);
-   return;
- }
- tracks.forEach((t,i)=>{let row=document.createElement('div');row.className='songrow'+(i===idx?' playing':'');row.textContent=`${String(i+1).padStart(2,'0')}  ♫  ${t.name}`;row.onclick=()=>{load(i);play();songPanel.classList.remove('show')};listEl.appendChild(row)});
-}
-function load(i,auto=false){
- if(!tracks.length){nameEl.textContent='ไม่พบไฟล์เพลง กรุณาเพิ่มเพลงในโฟลเดอร์แอป';renderList();return}
- idx=(i+tracks.length)%tracks.length;
- audio.src=tracks[idx].src;
- nameEl.textContent=tracks[idx].name;
- renderList();
- if(auto)play();
-}
-async function initAudio(){
- if(audioCtx)return;
- try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.82;source=audioCtx.createMediaElementSource(audio);source.connect(analyser);analyser.connect(audioCtx.destination);freq=new Uint8Array(analyser.frequencyBinCount);timeData=new Uint8Array(analyser.fftSize);if(audioCtx.state==='suspended')await audioCtx.resume();}catch(e){console.warn('Audio analyzer unavailable',e)}
-}
-async function play(){if(!tracks.length){nameEl.textContent='ไม่พบไฟล์เพลงในโฟลเดอร์';return}await initAudio();if(audioCtx&&audioCtx.state==='suspended')await audioCtx.resume();if(!audio.src)load(idx);try{await audio.play();playBtn.textContent='Ⅱ'}catch(e){playBtn.textContent='▶';nameEl.textContent='แตะปุ่มเล่นเพื่อเริ่มเพลง'}}
-playBtn.onclick=async()=>{if(audio.paused)await play();else{audio.pause();playBtn.textContent='▶'}};
-document.getElementById('prev').onclick=()=>load(idx-1,true);
-document.getElementById('next').onclick=()=>{if(shuffleOn&&tracks.length>1){let n=idx;while(n===idx)n=Math.floor(Math.random()*tracks.length);load(n,true)}else load(idx+1,true)};
-document.getElementById('back').onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-10);
-document.getElementById('shuffle').onclick=e=>{shuffleOn=!shuffleOn;e.currentTarget.classList.toggle('active',shuffleOn)};
-document.getElementById('repeat').onclick=e=>{repeatOn=!repeatOn;e.currentTarget.classList.toggle('active',repeatOn);audio.loop=repeatOn};
-audio.onended=()=>{if(repeatOn)return;if(shuffleOn&&tracks.length>1){let n=idx;while(n===idx)n=Math.floor(Math.random()*tracks.length);load(n,true)}else if(tracks.length>1)load(idx+1,true);else{audio.currentTime=0;playBtn.textContent='▶'}}; 
-audio.onerror=()=>{if(audio.src)nameEl.textContent='เปิดไฟล์เพลงไม่ได้ — ตรวจสอบไฟล์เพลง';};
-audio.onloadedmetadata=()=>document.getElementById('duration').textContent=fmt(audio.duration);
-audio.ontimeupdate=()=>{if(audio.duration){seek.value=Math.floor(audio.currentTime/audio.duration*1000);document.getElementById('current').textContent=fmt(audio.currentTime)}};
-seek.oninput=()=>{if(audio.duration)audio.currentTime=Number(seek.value)/1000*audio.duration};
-document.getElementById('songsbtn').onclick=()=>songPanel.classList.toggle('show');
-document.getElementById('closeSongs').onclick=()=>songPanel.classList.remove('show');
-const fsBtn=document.getElementById('fullscreen');
-async function toggleFullscreen(){
- try{
-   if(document.fullscreenElement){await document.exitFullscreen();return}
-   const target=window.frameElement||document.documentElement;
-   if(target.requestFullscreen) await target.requestFullscreen();
-   else if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-   else nameEl.textContent='Full Screen ไม่รองรับในเบราว์เซอร์นี้';
- }catch(err){nameEl.textContent='แตะ Full Screen อีกครั้ง หรือใช้เมนูเบราว์เซอร์';console.warn('Fullscreen failed',err)}
-}
-fsBtn.onclick=toggleFullscreen;
-document.addEventListener('fullscreenchange',()=>{fsBtn.textContent=document.fullscreenElement?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN'});
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();playBtn.click()}});
-renderList();if(tracks.length)load(0,false);
-
-// Background stars animation
-const stars=document.getElementById('stars'),sctx=stars.getContext('2d');let starDots=[];
-function resizeStars(){stars.width=innerWidth;stars.height=innerHeight;starDots=Array.from({length:95},()=>({x:Math.random()*stars.width,y:Math.random()*stars.height,r:Math.random()*1.6+.3,a:Math.random(),v:Math.random()*.018+.004}))}
-resizeStars();addEventListener('resize',resizeStars);
-function drawStars(){sctx.clearRect(0,0,stars.width,stars.height);starDots.forEach(p=>{p.a+=p.v;if(p.a>1||p.a<.1)p.v*=-1;sctx.fillStyle=`rgba(${Math.random()>.97?'255,70,240':'60,190,255'},${p.a})`;sctx.beginPath();sctx.arc(p.x,p.y,p.r,0,Math.PI*2);sctx.fill()});requestAnimationFrame(drawStars)}drawStars();
-
-// Upper spectrum bars
-const top=document.getElementById('topviz'),tctx=top.getContext('2d');
-function resizeTop(){top.width=top.clientWidth*devicePixelRatio;top.height=top.clientHeight*devicePixelRatio}
-resizeTop();addEventListener('resize',resizeTop);
-function drawTop(){
- let w=top.width,h=top.height;tctx.clearRect(0,0,w,h);let n=100;
- for(let i=0;i<n;i++){let v=freq&&analyser?freq[Math.floor(i/n*freq.length)]/255:Math.abs(Math.sin(Date.now()/500+i*.17))*.22;let bh=8+v*(h*.88);let x=i*w/n;let grad=tctx.createLinearGradient(0,h-bh,0,h);grad.addColorStop(0,`hsl(${180+i*2.4},100%,65%)`);grad.addColorStop(1,`hsl(${180+i*2.4},100%,42%)`);tctx.fillStyle=grad;tctx.fillRect(x,h-bh,w/n*.65,bh)}
- requestAnimationFrame(drawTop)
-}drawTop();
-
-// Central radial visualizer
-const ring=document.getElementById('ringcanvas'),rctx=ring.getContext('2d');
-function resizeRing(){let rect=ring.getBoundingClientRect();ring.width=rect.width*devicePixelRatio;ring.height=rect.height*devicePixelRatio}
-resizeRing();addEventListener('resize',resizeRing);
-function drawRing(){
- let w=ring.width,h=ring.height,cx=w/2,cy=h/2,base=Math.min(w,h)*.29;rctx.clearRect(0,0,w,h);
- let energy=0;if(freq&&analyser){analyser.getByteFrequencyData(freq);analyser.getByteTimeDomainData(timeData);for(let i=0;i<freq.length;i++)energy+=freq[i];energy/=freq.length}
- const now=Date.now()/1000;
- for(let layer=0;layer<6;layer++){let rad=base+layer*base*.14;let hue=(now*45+layer*48)%360;rctx.beginPath();rctx.arc(cx,cy,rad+Math.sin(now*1.5+layer)*4,0,Math.PI*2);rctx.strokeStyle=`hsla(${hue},100%,65%,${.4+energy/500})`;rctx.lineWidth=2+layer%2;rctx.shadowBlur=14;rctx.shadowColor=`hsl(${hue},100%,60%)`;rctx.stroke();rctx.shadowBlur=0}
- let bars=160;for(let i=0;i<bars;i++){let val=freq&&analyser?freq[Math.floor(i/bars*freq.length)]/255:Math.abs(Math.sin(now*2+i*.11))*.16;let angle=i/bars*Math.PI*2;let len=7+val*base*.65;let inner=base*.86;let outer=inner+len;rctx.beginPath();rctx.moveTo(cx+Math.cos(angle)*inner,cy+Math.sin(angle)*inner);rctx.lineTo(cx+Math.cos(angle)*outer,cy+Math.sin(angle)*outer);rctx.strokeStyle=`hsl(${(i/bars*360+now*25)%360},100%,65%)`;rctx.lineWidth=2.2;rctx.shadowBlur=9;rctx.shadowColor=rctx.strokeStyle;rctx.stroke();rctx.shadowBlur=0}
- if(timeData&&analyser){let bass=0,treble=0;for(let i=0;i<24;i++)bass+=freq[i]||0;for(let i=Math.floor(freq.length*.65);i<freq.length;i++)treble+=freq[i]||0;document.getElementById('bass').textContent=String(Math.min(999,Math.round(bass/24*3.9))).padStart(3,'0');document.getElementById('treble').textContent=String(Math.min(999,Math.round(treble/(freq.length*.35)*3.9))).padStart(3,'0')}
- requestAnimationFrame(drawRing)
-}drawRing();
-</script>
-</body>
-</html>
-"""
-
-player_html = player_html.replace("TRACKS_PLACEHOLDER", tracks_json).replace("LOGO_PLACEHOLDER", logo_json)
-
-if not tracks:
-    st.warning("ยังไม่พบเพลง กรุณาวางไฟล์ MP3/WAV/OGG/M4A ไว้ในโฟลเดอร์เดียวกับ app.py")
-# Use components.html: it supports inline HTML/JS and is compatible with Streamlit embeds.
-components.html(player_html, height=980, scrolling=False)
+const tracks=TRACKS_PLACEHOLDER,logoData=LOGO_PLACEHOLDER;const audio=document.getElementById('audio'),playBtn=document.getElementById('play'),nameEl=document.getElementById('songname'),seek=document.getElementById('seek');let idx=0,shuffle=false,repeat=false,ctx=null,an=null,srcNode=null,fd=null,td=null;
+document.getElementById('count').textContent='LIBRARY: '+tracks.length+' TRACKS';const logo=document.getElementById('logo');logo.innerHTML=logoData?'<img src="'+logoData+'">':'<div class="fallback">SYNAPSE<br>MUSIC • HEALING • ENERGY</div>';
+const fmt=n=>{n=Math.max(0,Number(n)||0);return String(Math.floor(n/60)).padStart(2,'0')+':'+String(Math.floor(n%60)).padStart(2,'0')};
+function bars(id){let e=document.getElementById(id);e.innerHTML='';for(let j=0;j<18;j++){let b=document.createElement('b');b.style.setProperty('--h',(4+Math.random()*10)+'px');e.appendChild(b)}}bars('bm');bars('tm');
+function listRender(){let e=document.getElementById('entries');e.innerHTML='';if(!tracks.length){e.innerHTML='<div class="entry">No music files loaded. Add songs in the sidebar or app folder.</div>';return;}tracks.forEach((t,i)=>{let row=document.createElement('div');row.className='entry'+(i===idx?' sel':'');row.textContent=(i+1)+'. ♫ '+t.name;row.onclick=()=>{load(i);startPlay();document.getElementById('list').classList.remove('open')};e.appendChild(row)})}
+function load(i){if(!tracks.length){nameEl.textContent='No tracks loaded';listRender();return;}idx=(i+tracks.length)%tracks.length;audio.src=tracks[idx].src;nameEl.textContent=tracks[idx].name;seek.value=0;listRender()}
+async function analyzerInit(){if(ctx)return;try{ctx=new (window.AudioContext||window.webkitAudioContext)();an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=.8;srcNode=ctx.createMediaElementSource(audio);srcNode.connect(an);an.connect(ctx.destination);fd=new Uint8Array(an.frequencyBinCount);td=new Uint8Array(an.fftSize);if(ctx.state==='suspended')await ctx.resume()}catch(err){console.warn('Analyzer initialization:',err)}}
+async function startPlay(){if(!tracks.length){nameEl.textContent='Upload songs using the sidebar or add audio files beside app.py';return;}await analyzerInit();if(ctx&&ctx.state==='suspended')await ctx.resume();if(!audio.src)load(idx);try{await audio.play();playBtn.textContent='Ⅱ'}catch(e){playBtn.textContent='▶';nameEl.textContent='Tap Play to start audio'}}
+playBtn.onclick=()=>audio.paused?startPlay():(audio.pause(),playBtn.textContent='▶');document.getElementById('prev').onclick=()=>load(idx-1),document.getElementById('next').onclick=()=>shuffle&&tracks.length>1?load(Math.floor(Math.random()*tracks.length)):load(idx+1);document.getElementById('rew').onclick=()=>{audio.currentTime=Math.max(0,(audio.currentTime||0)-10)};
+document.getElementById('shuffle').onclick=e=>{shuffle=!shuffle;e.currentTarget.classList.toggle('on',shuffle)};document.getElementById('repeat').onclick=e=>{repeat=!repeat;e.currentTarget.classList.toggle('on',repeat);audio.loop=repeat};audio.onended=()=>{if(repeat)return;if(tracks.length>1)load(shuffle?Math.floor(Math.random()*tracks.length):idx+1);else playBtn.textContent='▶'};audio.onerror=()=>{if(audio.src)nameEl.textContent='Audio file error';};audio.onloadedmetadata=()=>document.getElementById('total').textContent=fmt(audio.duration);audio.ontimeupdate=()=>{if(audio.duration){seek.value=audio.currentTime/audio.duration*1000;document.getElementById('elapsed').textContent=fmt(audio.currentTime)}};seek.oninput=()=>{if(audio.duration)audio.currentTime=seek.value/1000*audio.duration};
+const list=document.getElementById('list');document.getElementById('songtoggle').onclick=()=>list.classList.toggle('open');document.getElementById('close').onclick=()=>list.classList.remove('open');document.getElementById('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await (document.getElementById('shell').requestFullscreen?document.getElementById('shell').requestFullscreen():document.documentElement.requestFullscreen())}catch(err){nameEl.textContent='Fullscreen blocked by browser; use browser full-screen option'}};document.addEventListener('fullscreenchange',()=>document.getElementById('fs').textContent=document.fullscreenElement?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN');
+listRender();if(tracks.length)load(0);
+// star field
+const sc=document.getElementById('stars'),s=sc.getContext('2d');let pts=[];function rs(){sc.width=innerWidth;sc.height=innerHeight;pts=Array.from({length:80},()=>({x:Math.random()*sc.width,y:Math.random()*sc.height,r:Math.random()*1.5+.3,a:Math.random(),v:.01+Math.random()*.015}))}rs();addEventListener('resize',rs);function starLoop(){s.clearRect(0,0,sc.width,sc.height);pts.forEach(p=>{p.a+=p.v;if(p.a>1||p.a<.15)p.v=-p.v;s.fillStyle='rgba(65,190,255,'+p.a+')';s.beginPath();s.arc(p.x,p.y,p.r,0,6.283);s.fill()});requestAnimationFrame(starLoop)}starLoop();
+const top=document.getElementById('top'),tc=top.getContext('2d');function rt(){top.width=top.clientWidth*devicePixelRatio;top.height=top.clientHeight*devicePixelRatio}rt();addEventListener('resize',rt);function topLoop(){let w=top.width,h=top.height;tc.clearRect(0,0,w,h);for(let i=0;i<90;i++){let v=fd?fd[Math.floor(i/90*fd.length)]/255:Math.abs(Math.sin(Date.now()/420+i*.13))*.28;let bh=5+v*h*.85,x=i*w/90;tc.fillStyle='hsl('+(180+i*2.2)+',100%,60%)';tc.fillRect(x,h-bh,w/90*.7,bh)}requestAnimationFrame(topLoop)}topLoop();
+const rad=document.getElementById('radial'),rc=rad.getContext('2d');function rr(){let b=rad.getBoundingClientRect();rad.width=b.width*devicePixelRatio;rad.height=b.height*devicePixelRatio}rr();addEventListener('resize',rr);function ringLoop(){let w=rad.width,h=rad.height,cx=w/2,cy=h/2,R=Math.min(w,h)*.28;rc.clearRect(0,0,w,h);let bass=0,high=0;if(an&&fd){an.getByteFrequencyData(fd);for(let i=0;i<Math.min(28,fd.length);i++)bass+=fd[i];for(let i=Math.floor(fd.length*.68);i<fd.length;i++)high+=fd[i];document.getElementById('bass').textContent=String(Math.min(999,Math.round(bass/28*3.9))).padStart(3,'0');document.getElementById('treble').textContent=String(Math.min(999,Math.round(high/(fd.length*.32)*3.9))).padStart(3,'0')}
+let t=Date.now()/1000;for(let l=0;l<6;l++){let rr0=R+l*R*.14;rc.beginPath();rc.arc(cx,cy,rr0+Math.sin(t*1.4+l)*3,0,Math.PI*2);rc.strokeStyle='hsla('+((t*40+l*50)%360)+',100%,65%,.7)';rc.lineWidth=2;rc.shadowBlur=12;rc.shadowColor=rc.strokeStyle;rc.stroke();rc.shadowBlur=0}for(let k=0;k<150;k++){let a=k/150*Math.PI*2,v=fd&&an?fd[Math.floor(k/150*fd.length)]/255:Math.abs(Math.sin(t*2+k*.1))*.2,len=5+v*R*.65;rc.beginPath();rc.moveTo(cx+Math.cos(a)*R*.82,cy+Math.sin(a)*R*.82);rc.lineTo(cx+Math.cos(a)*(R*.82+len),cy+Math.sin(a)*(R*.82+len));rc.strokeStyle='hsl('+((k*2.4+t*22)%360)+',100%,65%)';rc.lineWidth=2;rc.shadowBlur=7;rc.shadowColor=rc.strokeStyle;rc.stroke();rc.shadowBlur=0}requestAnimationFrame(ringLoop)}ringLoop();
+</script></body></html>'''
+html=html.replace('TRACKS_PLACEHOLDER',tracks_json).replace('LOGO_PLACEHOLDER',logo_json)
+if not tracks: st.info('เพิ่มเพลงผ่านแถบเมนูด้านซ้าย (SONG LIBRARY) หรือวางไฟล์เพลงไว้ในโฟลเดอร์เดียวกับ app.py')
+components.html(html,height=900,scrolling=False)
