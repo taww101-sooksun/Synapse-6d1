@@ -11,15 +11,15 @@ st.markdown('''<style>
 html,body,[data-testid="stAppViewContainer"]{background:#02020b!important;color:#eaf7ff!important}
 [data-testid="stHeader"],footer,#MainMenu{visibility:hidden;height:0}
 .block-container{padding:0.15rem 0.4rem!important;max-width:100%!important}
-[data-testid="stSidebar"]{background:#06091a!important}
+[data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"]{display:none!important}
+[data-testid="stMain"],[data-testid="stMainBlockContainer"]{padding:0!important;margin:0!important;max-width:100%!important}
+[data-testid="stAppViewContainer"]{overflow:hidden!important}
 </style>''',unsafe_allow_html=True)
 
 # Tracks are loaded from the app folder, plus optional files uploaded through the sidebar.
 local_files=sorted([p for p in APP_DIR.iterdir() if p.is_file() and p.suffix.lower() in AUDIO_EXTS],key=lambda p:p.name.lower())
-with st.sidebar:
-    st.markdown('### 🎵 SONG LIBRARY')
-    uploaded=st.file_uploader('เพิ่มเพลงจากโทรศัพท์/อุปกรณ์',type=[x[1:] for x in AUDIO_EXTS],accept_multiple_files=True)
-    st.caption('หรือวางไฟล์เพลงไว้ในโฟลเดอร์เดียวกับ app.py แล้วรีเฟรชแอป')
+# Keep the studio clean and full-screen. Add audio files beside app.py.
+uploaded = None
 
 def data_uri_bytes(name, data):
     mime=mimetypes.guess_type(name)[0] or 'audio/mpeg'
