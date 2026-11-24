@@ -29,6 +29,7 @@ html, body, [data-testid="stAppViewContainer"] { background:#02020b !important; 
 [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"],
 [data-testid="stStatusWidget"], footer, #MainMenu { display:none !important; }
 .block-container { padding:0 !important; margin:0 !important; max-width:100% !important; }
+iframe[title="st.components.v1.html"]{width:100% !important;border:0 !important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -67,7 +68,10 @@ body{background:
  radial-gradient(ellipse at 95% 12%,rgba(190,0,255,.23),transparent 38%),
  #02020b}
 #stars{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-.frame{position:relative;height:100dvh;width:100%;max-width:900px;margin:auto;padding:12px 14px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+html,body{min-height:100%;height:100dvh}
+.frame{position:relative;height:100dvh;min-height:100dvh;width:100%;max-width:900px;margin:auto;padding:12px 14px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+:fullscreen{background:#02020b;width:100vw;height:100vh}
+:fullscreen .frame{height:100vh;min-height:100vh;width:100vw;max-width:none;padding:12px 3vw}
 .panel{border:1px solid rgba(54,196,255,.48);border-radius:17px;box-shadow:0 0 13px rgba(0,180,255,.12),inset 0 0 15px rgba(0,70,180,.08);background:linear-gradient(110deg,rgba(4,12,32,.82),rgba(15,5,35,.72));}
 .header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;min-height:70px;gap:12px}
 .brand{font-size:clamp(24px,6vw,48px);font-weight:900;letter-spacing:.1em;font-style:italic;color:#a6eaff;text-shadow:0 0 8px #08baff,0 0 22px #2869ff}
@@ -123,7 +127,7 @@ input[type=range]{width:100%;accent-color:#22dfff;height:20px}
     <div class="metrics left"><div class="mlabel">BASS ENERGY</div><div class="mvalue" id="bass">000</div><div class="bars" id="bassbars"></div></div>
     <div class="ringwrap"><canvas id="ringcanvas"></canvas><div class="logoBox" id="logoBox"></div></div>
     <div class="metrics right"><div class="mlabel">TREBLE ENERGY</div><div class="mvalue" id="treble">000</div><div class="bars" id="treblebars"></div></div>
-    <div class="songpanel" id="songpanel"><div id="songlist"></div></div>
+    <div class="songpanel" id="songpanel"><div style="display:flex;justify-content:space-between;align-items:center;color:#72eaff;padding:4px 8px 10px"><b>♫ SONG LIBRARY</b><button class="smallbtn" id="closeSongs">CLOSE ✕</button></div><div id="songlist"></div></div>
   </div>
   <div class="trackinfo panel"><div class="trackname" id="trackname">ยังไม่ตั้งเพลง</div><div class="tracksub">SYNAPSE MUSIC STUDIO</div></div>
   <div class="controls">
@@ -159,9 +163,23 @@ makeBars(document.getElementById('bassbars'),18);
 makeBars(document.getElementById('treblebars'),18);
 function renderList(){
  listEl.innerHTML='';
- tracks.forEach((t,i)=>{let row=document.createElement('div');row.className='songrow'+(i===idx?' playing':'');row.textContent=`${String(i+1).padStart(2,'0')}  ♫  ${t.name}`;row.onclick=()=>{load(i);play()};listEl.appendChild(row)});
+ if(!tracks.length){
+   const empty=document.createElement('div');
+   empty.className='songrow';
+   empty.textContent='ไม่พบเพลง — กรุณาเพิ่มไฟล์ MP3 / WAV / OGG / M4A ไว้ข้าง app.py';
+   listEl.appendChild(empty);
+   return;
+ }
+ tracks.forEach((t,i)=>{let row=document.createElement('div');row.className='songrow'+(i===idx?' playing':'');row.textContent=`${String(i+1).padStart(2,'0')}  ♫  ${t.name}`;row.onclick=()=>{load(i);play();songPanel.classList.remove('show')};listEl.appendChild(row)});
 }
-function load(i,auto=false){if(!tracks.length)return;idx=(i+tracks.length)%tracks.length;audio.src=tracks[idx].src;nameEl.textContent=tracks[idx].name;renderList();if(auto)play();}
+function load(i,auto=false){
+ if(!tracks.length){nameEl.textContent='ไม่พบไฟล์เพลง กรุณาเพิ่มเพลงในโฟลเดอร์แอป';renderList();return}
+ idx=(i+tracks.length)%tracks.length;
+ audio.src=tracks[idx].src;
+ nameEl.textContent=tracks[idx].name;
+ renderList();
+ if(auto)play();
+}
 async function initAudio(){
  if(audioCtx)return;
  try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.82;source=audioCtx.createMediaElementSource(audio);source.connect(analyser);analyser.connect(audioCtx.destination);freq=new Uint8Array(analyser.frequencyBinCount);timeData=new Uint8Array(analyser.fftSize);if(audioCtx.state==='suspended')await audioCtx.resume();}catch(e){console.warn('Audio analyzer unavailable',e)}
@@ -173,12 +191,25 @@ document.getElementById('next').onclick=()=>{if(shuffleOn&&tracks.length>1){let 
 document.getElementById('back').onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-10);
 document.getElementById('shuffle').onclick=e=>{shuffleOn=!shuffleOn;e.currentTarget.classList.toggle('active',shuffleOn)};
 document.getElementById('repeat').onclick=e=>{repeatOn=!repeatOn;e.currentTarget.classList.toggle('active',repeatOn);audio.loop=repeatOn};
-audio.onended=()=>{if(repeatOn)return;if(shuffleOn&&tracks.length>1){let n=idx;while(n===idx)n=Math.floor(Math.random()*tracks.length);load(n,true)}else load(idx+1,true)};
+audio.onended=()=>{if(repeatOn)return;if(shuffleOn&&tracks.length>1){let n=idx;while(n===idx)n=Math.floor(Math.random()*tracks.length);load(n,true)}else if(tracks.length>1)load(idx+1,true);else{audio.currentTime=0;playBtn.textContent='▶'}}; 
+audio.onerror=()=>{if(audio.src)nameEl.textContent='เปิดไฟล์เพลงไม่ได้ — ตรวจสอบไฟล์เพลง';};
 audio.onloadedmetadata=()=>document.getElementById('duration').textContent=fmt(audio.duration);
 audio.ontimeupdate=()=>{if(audio.duration){seek.value=Math.floor(audio.currentTime/audio.duration*1000);document.getElementById('current').textContent=fmt(audio.currentTime)}};
 seek.oninput=()=>{if(audio.duration)audio.currentTime=Number(seek.value)/1000*audio.duration};
 document.getElementById('songsbtn').onclick=()=>songPanel.classList.toggle('show');
-document.getElementById('fullscreen').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};
+document.getElementById('closeSongs').onclick=()=>songPanel.classList.remove('show');
+const fsBtn=document.getElementById('fullscreen');
+async function toggleFullscreen(){
+ try{
+   if(document.fullscreenElement){await document.exitFullscreen();return}
+   const target=window.frameElement||document.documentElement;
+   if(target.requestFullscreen) await target.requestFullscreen();
+   else if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+   else nameEl.textContent='Full Screen ไม่รองรับในเบราว์เซอร์นี้';
+ }catch(err){nameEl.textContent='แตะ Full Screen อีกครั้ง หรือใช้เมนูเบราว์เซอร์';console.warn('Fullscreen failed',err)}
+}
+fsBtn.onclick=toggleFullscreen;
+document.addEventListener('fullscreenchange',()=>{fsBtn.textContent=document.fullscreenElement?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN'});
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();playBtn.click()}});
 renderList();if(tracks.length)load(0,false);
 
@@ -221,4 +252,4 @@ player_html = player_html.replace("TRACKS_PLACEHOLDER", tracks_json).replace("LO
 if not tracks:
     st.warning("ยังไม่พบเพลง กรุณาวางไฟล์ MP3/WAV/OGG/M4A ไว้ในโฟลเดอร์เดียวกับ app.py")
 # Use components.html: it supports inline HTML/JS and is compatible with Streamlit embeds.
-components.html(player_html, height=900, scrolling=False)
+components.html(player_html, height=980, scrolling=False)
