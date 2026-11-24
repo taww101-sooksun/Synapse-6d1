@@ -85,14 +85,14 @@ html = r"""
 html,body{margin:0;width:100%;min-height:100%;background:#03040b;color:#eaffff;font-family:Arial,Helvetica,sans-serif}
 body{overflow-x:hidden}
 :root{--cyan:#00f5ff;--blue:#168bff;--purple:#9b42ff;--pink:#ff2bc2;--gold:#ffd66b}
-.shell{width:100%;max-width:1050px;margin:0 auto;padding:8px 9px 14px;position:relative}
-.topline{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 2px 8px}
+.shell{width:100%;max-width:1050px;margin:0 auto;padding:3px 5px 4px;position:relative}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 4px}
 .brand{font-size:clamp(15px,3vw,23px);font-weight:900;letter-spacing:3px;color:#eaffff;text-shadow:0 0 7px #00eaff,0 0 18px #007cff}
 .brand span{color:#ff4bd2}
 .live{font-size:10px;letter-spacing:2px;color:#8dfcff;border:1px solid #00d9ff66;padding:5px 8px;border-radius:20px;box-shadow:0 0 12px #00d9ff33}
 .stage-wrap{position:relative;width:100%;margin:auto;border:1px solid #1ddfff66;border-radius:16px;overflow:hidden;background:#030611;box-shadow:0 0 12px #00d9ff55,0 0 35px #6b20ff33,inset 0 0 35px #071b3a}
-.stage{position:relative;width:100%;aspect-ratio:9/16;max-height:74vh;min-height:390px;overflow:hidden;background:#030611}
-.stage.landscape{aspect-ratio:16/9;min-height:220px;max-height:68vh}
+.stage{position:relative;width:100%;height:clamp(220px,36vh,320px);min-height:220px;overflow:hidden;background:#030611}
+.stage.landscape{height:clamp(190px,30vh,280px);min-height:190px}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5.5% 5% 6%}
 .visual-title{text-align:center;width:100%;margin-top:1%;font-size:clamp(17px,4.5vw,30px);font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#fff;text-shadow:0 0 5px #fff,0 0 12px #00eaff,0 0 25px #087dff;animation:titlePulse 2.2s ease-in-out infinite}
@@ -109,7 +109,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .track-bottom .tag{font-size:9px;letter-spacing:4px;color:#ffc7f2;margin-top:7px;text-shadow:0 0 9px #ff2bc2}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes titlePulse{0%,100%{filter:brightness(1);text-shadow:0 0 7px #00eaff,0 0 18px #8c31ff}50%{filter:brightness(1.55);text-shadow:0 0 10px #fff,0 0 25px #00eaff,0 0 42px #ff2bc2}}
-.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:7px;margin:9px 1px 7px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px;margin:4px 1px 3px}
 .group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 button,select{font:700 11px Arial;letter-spacing:.5px;color:#eaffff;background:linear-gradient(145deg,#101c36,#090d1d);border:1px solid #00dfff88;border-radius:9px;padding:9px 11px;box-shadow:0 0 9px #00dfff22;cursor:pointer}
 button:active{transform:scale(.96);box-shadow:0 0 16px #00eaff}
@@ -117,21 +117,21 @@ button.primary{background:linear-gradient(100deg,#006c9b,#6b1e9b);border-color:#
 button.record{border-color:#ff3d83;color:#ffb8d0}
 button.recording{background:#8e123c;color:white;box-shadow:0 0 17px #ff2677}
 select{max-width:100%;padding:8px}
-.seek-row{display:grid;grid-template-columns:42px 1fr 42px;gap:8px;align-items:center;margin:5px 3px 8px;color:#9cefff;font-size:10px}
+.seek-row{display:grid;grid-template-columns:36px 1fr 36px;gap:5px;align-items:center;margin:2px 3px;color:#9cefff;font-size:9px}
 input[type=range]{width:100%;accent-color:#00eaff}
-.panel{border:1px solid #1b8eaa88;border-radius:12px;background:linear-gradient(135deg,#081426ee,#10091fee);padding:9px;margin-top:8px;box-shadow:inset 0 0 18px #00aaff13,0 0 12px #00bfff18}
-.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.panel{border:1px solid #1b8eaa88;border-radius:10px;background:linear-gradient(135deg,#081426ee,#10091fee);padding:5px 7px;margin-top:3px;box-shadow:inset 0 0 18px #00aaff13,0 0 12px #00bfff18}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
 .panel-title{font-size:11px;font-weight:900;letter-spacing:3px;color:#8ffaff;text-shadow:0 0 9px #00eaff}
-.song-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;max-height:150px;overflow:auto}
-.song{display:flex;align-items:center;gap:7px;text-align:left;min-width:0;padding:8px;border:1px solid #263c62;background:#080f20;border-radius:8px;color:#c9eaff;font-size:10px}
+.song-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:76px;overflow:auto}
+.song{display:flex;align-items:center;gap:5px;text-align:left;min-width:0;padding:4px 6px;border:1px solid #263c62;background:#080f20;border-radius:8px;color:#c9eaff;font-size:10px}
 .song.active{border-color:#ff3bc7;background:linear-gradient(90deg,#17264a,#35103b);box-shadow:0 0 12px #ff2bc255;color:#fff}
 .song .num{color:#00f5ff;font-weight:900}
 .song .songtext{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .options{display:flex;gap:6px;flex-wrap:wrap}
-.note{font-size:9px;color:#83a8c8;line-height:1.5;margin:7px 2px 0}
+.note{display:none;font-size:9px;color:#83a8c8;line-height:1.3;margin:3px 2px 0}
 .status{font-size:10px;color:#9cfaff;min-height:14px}
-@media(min-width:700px){.stage{aspect-ratio:16/9;max-height:62vh;min-height:380px}.logo-zone{width:min(34%,300px)}.overlay{padding:3% 5%}.song-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:420px){.shell{padding:5px}.toolbar{gap:5px}.group{gap:4px}button{padding:8px 9px;font-size:10px}.song-list{grid-template-columns:1fr 1fr}.stage{min-height:430px}}
+@media(min-width:700px){.stage{height:clamp(260px,42vh,380px);min-height:260px}.logo-zone{width:min(34%,250px)}.overlay{padding:2% 5%}.song-list{grid-template-columns:repeat(5,minmax(0,1fr));max-height:64px}}
+@media(max-width:420px){.shell{padding:2px 4px}.toolbar{gap:3px;margin:3px 1px}.group{gap:3px}button{padding:6px 7px;font-size:9px;border-radius:7px}.song-list{grid-template-columns:1fr 1fr;max-height:132px}.stage{height:clamp(210px,34vh,285px);min-height:210px}.logo-zone{width:min(55%,220px)}.visual-title{font-size:15px}.subtitle{font-size:8px}.track-bottom .track-name{font-size:14px}}
 </style>
 </head>
 <body>
@@ -333,30 +333,24 @@ function frame(){
     ctx.closePath();ctx.strokeStyle=["#00f5ff","#a34dff","#ff39c8","#ffd66b"][ring];
     ctx.lineWidth=1.4+ bass*2;ctx.shadowBlur=14+bass*18;ctx.shadowColor=ctx.strokeStyle;ctx.stroke();
   }
-  // Circular frequency spikes.
-  const count=112;
+  // Large central radial spectrum burst: every audio spike stays around the logo.
+  const count=200;
   for(let i=0;i<count;i++){
     const a=i/count*Math.PI*2;
-    const v=bins[Math.floor(i/count*bins.length)]/255;
-    const inner=base*.72,outer=inner+7+v*base*.65;
-    ctx.strokeStyle=i%3===0?"#ff54d6":"#37f5ff";
-    ctx.lineWidth=i%4===0?2:1;ctx.shadowBlur=10;ctx.shadowColor=ctx.strokeStyle;
+    const v=(bins[Math.floor(i/count*bins.length)]||0)/255;
+    const inner=base*.70;
+    const outer=inner+12+v*base*1.65;
+    const hue=i%3===0?"#ff45d4":(i%3===1?"#27f6ff":"#a76aff");
+    ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?3:1.8;
+    ctx.shadowBlur=14+v*25;ctx.shadowColor=hue;
     ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
     ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.stroke();
   }
-  ctx.restore();
-  // Wide spectrum bars at top and bottom edges.
-  const n=Math.min(64,bins.length),barGap=2,barW=(W-30)/n;
-  ctx.save();ctx.globalCompositeOperation="lighter";
-  for(let i=0;i<n;i++){
-    const v=bins[i]/255, h=5+v*H*.12;
-    const x=15+i*barW;
-    const gr=ctx.createLinearGradient(0,H*.08-h,0,H*.08);
-    gr.addColorStop(0,"#ff35cb");gr.addColorStop(.5,"#9a55ff");gr.addColorStop(1,"#00f5ff");
-    ctx.fillStyle=gr;ctx.shadowBlur=10;ctx.shadowColor="#00dfff";
-    ctx.fillRect(x,H*.08-h,Math.max(1,barW-barGap),h);
-    ctx.fillRect(x,H*.92,Math.max(1,barW-barGap),h);
-  }
+  // Bass shockwave expands from the centre on each beat.
+  const pulse=base*(.98+bass*.42);
+  ctx.beginPath();ctx.arc(0,0,pulse,0,Math.PI*2);
+  ctx.strokeStyle=`rgba(0,245,255,${.18+bass*.5})`;
+  ctx.lineWidth=2+bass*5;ctx.shadowBlur=22+bass*30;ctx.shadowColor="#00efff";ctx.stroke();
   ctx.restore();
   // Subtle moving grid.
   ctx.save();ctx.strokeStyle="#2a8fb51b";ctx.lineWidth=1;
@@ -404,4 +398,4 @@ $("record").addEventListener("click",async()=>{
 </html>
 """.replace("__PAYLOAD__", payload)
 
-components.html(html, height=1050, scrolling=True)
+components.html(html, height=690, scrolling=False)
