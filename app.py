@@ -1,337 +1,407 @@
-# -*- coding: utf-8 -*-
-"""
-SYNAPSE NEON MUSIC STUDIO
-Fresh standalone Streamlit music player.
-Place app.py, logo1.jpg, and your music files in the same folder.
-Supported: mp3, wav, ogg, m4a, aac, flac
-
-Run locally: streamlit run app.py
-"""
-
-from __future__ import annotations
-
+from pathlib import Path
 import base64
 import json
 import mimetypes
-import random
-from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ------------------------------------------------------------
-# APP SETTINGS
-# ------------------------------------------------------------
+# ============================================================
+# SYNAPSE NEON VISUALIZER STUDIO
+# Put app.py, logo1.jpg and music files in the same folder.
+# ============================================================
+
 APP_DIR = Path(__file__).resolve().parent
-LOGO_PATH = APP_DIR / "logo1.jpg"
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
 
 st.set_page_config(
-    page_title="SYNAPSE NEON MUSIC STUDIO",
+    page_title="SYNAPSE NEON VISUALIZER STUDIO",
     page_icon="🎧",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Hide Streamlit's own header/footer/sidebar so only the studio remains.
 st.markdown(
     """
     <style>
-      html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"],
-      [data-testid="stMain"], [data-testid="stMainBlockContainer"] {
-        background:#02040b !important;
-      }
-      [data-testid="stHeader"], [data-testid="stToolbar"],
-      [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-      [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
-      footer, #MainMenu { display:none !important; }
-      [data-testid="stMainBlockContainer"] {
-        padding:0 !important; margin:0 auto !important; max-width:100% !important;
-      }
-      .block-container { padding:0 !important; max-width:100% !important; }
-      iframe { border:0 !important; }
+    html, body, [data-testid="stAppViewContainer"] {
+        background: #03040b !important;
+        color: #eafcff !important;
+    }
+    [data-testid="stHeader"], [data-testid="stToolbar"],
+    [data-testid="stDecoration"], footer, #MainMenu {
+        display: none !important;
+    }
+    .block-container {
+        max-width: 100% !important;
+        padding: 0.25rem 0.35rem 0.25rem !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ------------------------------------------------------------
-# LOAD LOCAL MUSIC AND LOGO
-# ------------------------------------------------------------
+def data_uri(path: Path) -> str:
+    mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
+
 music_files = sorted(
-    [p for p in APP_DIR.iterdir()
-     if p.is_file() and p.suffix.lower() in AUDIO_EXTENSIONS],
-    key=lambda p: p.name.casefold(),
+    [p for p in APP_DIR.iterdir() if p.is_file() and p.suffix.lower() in AUDIO_EXTENSIONS],
+    key=lambda p: p.name.lower(),
 )
 
-def encode_file(path: Path) -> str:
-    mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-    payload = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime};base64,{payload}"
+if not music_files:
+    st.error("ยังไม่พบไฟล์เพลง กรุณาวางไฟล์ MP3/WAV ไว้ในโฟลเดอร์เดียวกับ app.py")
+    st.code("app.py\nlogo1.jpg\n01-song.mp3\n02-song.mp3\n...")
+    st.stop()
 
+# Embed the tracks so the browser player can read the files directly.
+# For faster loading, keep each MP3 reasonably compressed.
 tracks = []
-for path in music_files:
-    try:
-        tracks.append({"name": path.stem, "src": encode_file(path)})
-    except OSError:
-        pass
+for p in music_files:
+    tracks.append({
+        "name": p.stem,
+        "src": data_uri(p),
+        "type": mimetypes.guess_type(p.name)[0] or "audio/mpeg",
+    })
 
-logo_data = ""
-if LOGO_PATH.exists():
-    try:
-        logo_data = encode_file(LOGO_PATH)
-    except OSError:
-        logo_data = ""
+logo_path = APP_DIR / "logo1.jpg"
+logo_uri = data_uri(logo_path) if logo_path.exists() else ""
 
-tracks_json = json.dumps(tracks, ensure_ascii=False).replace("</", "<\\/")
-logo_json = json.dumps(logo_data)
+payload = json.dumps(
+    {"tracks": tracks, "logo": logo_uri},
+    ensure_ascii=False,
+).replace("</", "<\\/")
 
-# ------------------------------------------------------------
-# PLAYER PAGE (HTML/CSS/JS runs inside its own interactive iframe)
-# ------------------------------------------------------------
-HTML = r"""
+html = r"""
 <!doctype html>
-<html lang="th">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
-:root{--cyan:#00eaff;--blue:#168bff;--pink:#ff24d6;--purple:#a52cff;--gold:#ffe34d;--green:#28ff91}
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;min-height:100%;background:#02040b;color:#eafaff;font-family:Arial,"Noto Sans Thai",sans-serif;overflow-x:hidden}
-body{
- background:
-  radial-gradient(ellipse at 50% 52%,rgba(0,94,150,.20),transparent 38%),
-  radial-gradient(ellipse at 50% 100%,rgba(77,0,120,.13),transparent 50%),
-  repeating-linear-gradient(0deg,rgba(45,175,220,.055) 0px,rgba(45,175,220,.055) 1px,transparent 1px,transparent 28px),
-  repeating-linear-gradient(90deg,rgba(45,175,220,.045) 0px,rgba(45,175,220,.045) 1px,transparent 1px,transparent 68px),
-  #02040b;
-}
-#stars{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-.shell{position:relative;z-index:1;width:100%;max-width:850px;min-height:850px;margin:auto;padding:15px 18px 18px;display:flex;flex-direction:column;gap:10px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:100px}
-.brand{font-size:clamp(30px,7vw,54px);font-weight:900;letter-spacing:.20em;color:#a6f5ff;text-shadow:0 0 8px #00dfff,0 0 23px #007bff,0 0 42px #00bfff;line-height:1.1}
-.subtitle{font-size:clamp(9px,2vw,14px);letter-spacing:.42em;color:#aabbd8;margin-top:8px}
-.righttop{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-.songsTop{border:2px solid var(--cyan);border-radius:15px;padding:12px 20px;background:rgba(3,18,36,.75);color:var(--cyan);font-size:18px;box-shadow:0 0 16px #008bff55;cursor:pointer}
-.state{font-size:12px;letter-spacing:.2em;color:#f7e88a}
-.state span{color:#43ffb1}
-#spectrum{width:100%;height:70px;display:block;flex-shrink:0}
-.palette{display:flex;justify-content:center;gap:12px;border:2px solid #33495e;border-radius:40px;padding:9px 15px;width:max-content;max-width:100%;margin:0 auto}
-.palette button{width:40px;height:40px;border-radius:50%;border:2px solid #657386;background:#101b31;box-shadow:inset 0 0 8px #fff3,0 0 10px #00bfff22;cursor:pointer;font-size:22px}
-.palette button:nth-child(1){color:#ff5aee}.palette button:nth-child(2){color:#168cff}.palette button:nth-child(3){color:#d64cff}.palette button:nth-child(4){color:#ffd52e}.palette button:nth-child(5){color:#8de34b}
-.visual{position:relative;width:100%;height:min(100vw,620px);min-height:390px;max-height:620px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-#rings{position:absolute;width:100%;height:100%;inset:0}
-.logo{position:relative;width:min(34vw,230px);height:min(34vw,230px);min-width:145px;min-height:145px;max-width:230px;max-height:230px;border-radius:50%;overflow:hidden;border:4px solid #b7faff;background:#030a18;box-shadow:0 0 12px #00eaff,0 0 28px #008cff,0 0 55px #a52cff,inset 0 0 22px #00aaff;display:flex;align-items:center;justify-content:center}
-.logo img{width:100%;height:100%;object-fit:contain}
-.fallback{font-size:23px;font-weight:900;color:#9af8ff;text-align:center;text-shadow:0 0 12px #00eaff}
-.metric{position:absolute;top:50%;transform:translateY(-50%);width:23%;max-width:160px;text-align:left;color:#a9c9e8}
-.metric.left{left:0}.metric.right{right:0;text-align:right}
-.metricTitle{font-size:clamp(9px,2vw,14px);letter-spacing:.16em}
-.metricValue{font-size:clamp(28px,6vw,42px);font-weight:800;color:#fff;text-shadow:0 0 12px #00dfff;margin:5px 0}
-.metric.right .metricValue{color:#fff;text-shadow:0 0 12px #ff22d6}
-.metricSub{font-size:10px;letter-spacing:.16em;color:#9fb5d1}
-.meter{height:5px;background:#14243a;border-radius:5px;overflow:hidden;margin-top:8px}
-.meter i{display:block;width:0%;height:100%;background:linear-gradient(90deg,#00eaff,#a52cff,#ff24d6);box-shadow:0 0 10px #00eaff}
-.trackline{text-align:center;min-height:50px;padding:5px 0}
-.trackname{font-size:clamp(17px,4vw,25px);font-weight:700;color:#fff;text-shadow:0 0 12px #00bfff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trackcaption{font-size:11px;letter-spacing:.30em;color:#a7bad6;margin-top:5px}
-.controls{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.5vw,22px);padding:6px 0}
-.control{width:clamp(48px,10vw,70px);height:clamp(48px,10vw,70px);border-radius:50%;border:2px solid #00dfff;background:rgba(3,14,32,.88);color:#eaffff;font-size:clamp(17px,4vw,25px);box-shadow:0 0 14px #008bff77,inset 0 0 12px #008bff22;cursor:pointer;touch-action:manipulation}
-.control.main{width:clamp(66px,14vw,92px);height:clamp(66px,14vw,92px);font-size:31px;border:3px solid #fff;background:linear-gradient(135deg,#00aaff,#8b00ff,#ff00a8);box-shadow:0 0 22px #a000ff,0 0 35px #00cfff66}
-.control.on{border-color:#ffe34d;color:#ffe34d;box-shadow:0 0 15px #ffe34d}
-.seekbox{padding:0 8px}
-#seek{width:100%;accent-color:#00eaff;height:20px;cursor:pointer;touch-action:pan-x}
-.times{display:flex;justify-content:space-between;color:#a9bdd8;font-size:13px}
-.bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:3px}
-.bottom button{border:1.5px solid #00dfff;border-radius:24px;background:rgba(4,13,32,.8);color:#a5f4ff;padding:11px 17px;font-size:12px;letter-spacing:.12em;box-shadow:0 0 13px #007bff66;cursor:pointer;touch-action:manipulation}
-.tag{text-align:center;color:#839bbd;font-size:10px;letter-spacing:.22em;padding:5px}
-#playlist{display:none;position:absolute;z-index:10;top:10px;left:5%;right:5%;max-height:80%;overflow:auto;border:1px solid #00eaff;border-radius:15px;background:rgba(2,6,20,.97);box-shadow:0 0 25px #007bff;padding:12px}
-#playlist.show{display:block}
-.listhead{display:flex;justify-content:space-between;align-items:center;color:#8ef8ff;font-weight:bold;margin-bottom:8px}
-.listhead button{background:#18223b;color:white;border:1px solid #00dfff;border-radius:8px;padding:6px 10px}
-.song{padding:12px 8px;border-bottom:1px solid #1c4360;color:#d9f5ff;cursor:pointer;touch-action:manipulation}
-.song.active{color:#ff7be7;text-shadow:0 0 9px #ff24d6}
-.song:active{background:#102949}
-.empty{color:#ffdb83;text-align:center;padding:12px;font-size:12px}
-@media(max-width:520px){
- .shell{padding:12px 12px 16px;gap:7px;min-height:100vh}
- .top{min-height:78px}.subtitle{letter-spacing:.25em}
- .songsTop{padding:10px 12px;font-size:14px}
- .state{font-size:9px}
- #spectrum{height:55px}
- .palette{gap:8px;padding:7px 10px}.palette button{width:34px;height:34px}
- .visual{height:112vw;min-height:350px;max-height:490px}
- .metric{width:22%}.metricTitle{font-size:8px;letter-spacing:.08em}.metricValue{font-size:27px}.metricSub{font-size:8px}
- .logo{width:36vw;height:36vw;min-width:130px;min-height:130px}
- .bottom button{padding:10px 12px;font-size:10px}
-}
-@media(max-height:760px) and (min-width:521px){
- .shell{min-height:100vh;gap:5px;padding-top:7px}.top{min-height:65px}#spectrum{height:45px}.visual{height:45vh;min-height:300px}.trackline{min-height:40px}
-}
+html,body{margin:0;width:100%;min-height:100%;background:#03040b;color:#eaffff;font-family:Arial,Helvetica,sans-serif}
+body{overflow-x:hidden}
+:root{--cyan:#00f5ff;--blue:#168bff;--purple:#9b42ff;--pink:#ff2bc2;--gold:#ffd66b}
+.shell{width:100%;max-width:1050px;margin:0 auto;padding:8px 9px 14px;position:relative}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 2px 8px}
+.brand{font-size:clamp(15px,3vw,23px);font-weight:900;letter-spacing:3px;color:#eaffff;text-shadow:0 0 7px #00eaff,0 0 18px #007cff}
+.brand span{color:#ff4bd2}
+.live{font-size:10px;letter-spacing:2px;color:#8dfcff;border:1px solid #00d9ff66;padding:5px 8px;border-radius:20px;box-shadow:0 0 12px #00d9ff33}
+.stage-wrap{position:relative;width:100%;margin:auto;border:1px solid #1ddfff66;border-radius:16px;overflow:hidden;background:#030611;box-shadow:0 0 12px #00d9ff55,0 0 35px #6b20ff33,inset 0 0 35px #071b3a}
+.stage{position:relative;width:100%;aspect-ratio:9/16;max-height:74vh;min-height:390px;overflow:hidden;background:#030611}
+.stage.landscape{aspect-ratio:16/9;min-height:220px;max-height:68vh}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5.5% 5% 6%}
+.visual-title{text-align:center;width:100%;margin-top:1%;font-size:clamp(17px,4.5vw,30px);font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#fff;text-shadow:0 0 5px #fff,0 0 12px #00eaff,0 0 25px #087dff;animation:titlePulse 2.2s ease-in-out infinite}
+.subtitle{font-size:clamp(8px,2vw,12px);letter-spacing:4px;color:#9bfaff;margin-top:5px;text-shadow:0 0 10px #00eaff}
+.logo-zone{position:relative;width:min(65%,310px);aspect-ratio:1/1;display:grid;place-items:center;margin:auto}
+.orbit{position:absolute;inset:0;border:2px solid #00f5ff88;border-radius:50%;box-shadow:0 0 12px #00eaff, inset 0 0 15px #00eaff55;animation:spin 12s linear infinite}
+.orbit.o2{inset:7%;border-color:#bd45ff99;box-shadow:0 0 13px #b52bff;animation:spin 8s linear infinite reverse}
+.orbit.o3{inset:-7%;border:1px dashed #ff3fc9aa;animation:spin 18s linear infinite}
+.logo-core{width:64%;height:64%;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle,#17264a,#060a18 65%,#000);border:2px solid #7dfaff;box-shadow:0 0 14px #00f5ff,0 0 34px #146cff,0 0 65px #8c26ff77}
+.logo-core img{width:100%;height:100%;object-fit:contain}
+.logo-fallback{font-size:clamp(30px,9vw,68px);font-weight:900;color:#fff;text-shadow:0 0 12px #00eaff,0 0 30px #a32cff}
+.track-bottom{text-align:center;width:100%;margin-bottom:1%}
+.track-bottom .track-name{font-size:clamp(14px,3.5vw,24px);font-weight:800;letter-spacing:1.5px;color:#fff;text-shadow:0 0 7px #00eaff,0 0 17px #a52dff;animation:titlePulse 2.8s infinite}
+.track-bottom .tag{font-size:9px;letter-spacing:4px;color:#ffc7f2;margin-top:7px;text-shadow:0 0 9px #ff2bc2}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes titlePulse{0%,100%{filter:brightness(1);text-shadow:0 0 7px #00eaff,0 0 18px #8c31ff}50%{filter:brightness(1.55);text-shadow:0 0 10px #fff,0 0 25px #00eaff,0 0 42px #ff2bc2}}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:7px;margin:9px 1px 7px}
+.group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+button,select{font:700 11px Arial;letter-spacing:.5px;color:#eaffff;background:linear-gradient(145deg,#101c36,#090d1d);border:1px solid #00dfff88;border-radius:9px;padding:9px 11px;box-shadow:0 0 9px #00dfff22;cursor:pointer}
+button:active{transform:scale(.96);box-shadow:0 0 16px #00eaff}
+button.primary{background:linear-gradient(100deg,#006c9b,#6b1e9b);border-color:#70faff;box-shadow:0 0 15px #00dfff66}
+button.record{border-color:#ff3d83;color:#ffb8d0}
+button.recording{background:#8e123c;color:white;box-shadow:0 0 17px #ff2677}
+select{max-width:100%;padding:8px}
+.seek-row{display:grid;grid-template-columns:42px 1fr 42px;gap:8px;align-items:center;margin:5px 3px 8px;color:#9cefff;font-size:10px}
+input[type=range]{width:100%;accent-color:#00eaff}
+.panel{border:1px solid #1b8eaa88;border-radius:12px;background:linear-gradient(135deg,#081426ee,#10091fee);padding:9px;margin-top:8px;box-shadow:inset 0 0 18px #00aaff13,0 0 12px #00bfff18}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.panel-title{font-size:11px;font-weight:900;letter-spacing:3px;color:#8ffaff;text-shadow:0 0 9px #00eaff}
+.song-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;max-height:150px;overflow:auto}
+.song{display:flex;align-items:center;gap:7px;text-align:left;min-width:0;padding:8px;border:1px solid #263c62;background:#080f20;border-radius:8px;color:#c9eaff;font-size:10px}
+.song.active{border-color:#ff3bc7;background:linear-gradient(90deg,#17264a,#35103b);box-shadow:0 0 12px #ff2bc255;color:#fff}
+.song .num{color:#00f5ff;font-weight:900}
+.song .songtext{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.options{display:flex;gap:6px;flex-wrap:wrap}
+.note{font-size:9px;color:#83a8c8;line-height:1.5;margin:7px 2px 0}
+.status{font-size:10px;color:#9cfaff;min-height:14px}
+@media(min-width:700px){.stage{aspect-ratio:16/9;max-height:62vh;min-height:380px}.logo-zone{width:min(34%,300px)}.overlay{padding:3% 5%}.song-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:420px){.shell{padding:5px}.toolbar{gap:5px}.group{gap:4px}button{padding:8px 9px;font-size:10px}.song-list{grid-template-columns:1fr 1fr}.stage{min-height:430px}}
 </style>
 </head>
 <body>
-<canvas id="stars"></canvas>
 <div class="shell">
- <header class="top">
-  <div><div class="brand">SYNAPSE</div><div class="subtitle">NEON MUSIC STUDIO / SOUND SYSTEM</div></div>
-  <div class="righttop"><button class="songsTop" id="songsTop">♫ SONGS</button><div class="state"><span>●</span> SYSTEM READY<br><span id="trackcount">●</span> LIBRARY: 0 TRACKS</div></div>
- </header>
- <canvas id="spectrum"></canvas>
- <div class="palette">
-  <button title="Rainbow">🌈</button><button title="Blue">●</button><button title="Purple">●</button><button title="Gold">●</button><button title="Green">●</button>
- </div>
- <section class="visual">
-  <canvas id="rings"></canvas>
-  <div class="metric left"><div class="metricTitle">BASS ENERGY</div><div class="metricValue" id="bass">000</div><div class="metricSub">AUDIO INPUT</div><div class="meter"><i id="bassbar"></i></div></div>
-  <div class="logo" id="logo"></div>
-  <div class="metric right"><div class="metricTitle">TREBLE ENERGY</div><div class="metricValue" id="treble">000</div><div class="metricSub">STEREO CHANNEL</div><div class="meter"><i id="treblebar"></i></div></div>
-  <div id="playlist"><div class="listhead"><span>♫ SONG LIBRARY</span><button id="closeList">CLOSE ✕</button></div><div id="songrows"></div></div>
- </section>
- <section class="trackline"><div class="trackname" id="trackname">ยังไม่มีเพลงในรายการ</div><div class="trackcaption">SOUND FREQUENCY / VISUAL EXPERIENCE</div></section>
- <nav class="controls">
-  <button class="control" id="previous" aria-label="Previous">|◀</button>
-  <button class="control" id="rewind" aria-label="Back 10 seconds">◀</button>
-  <button class="control main" id="play" aria-label="Play">▶</button>
-  <button class="control" id="next" aria-label="Next">▶|</button>
-  <button class="control" id="shuffle" aria-label="Shuffle">🔀</button>
-  <button class="control" id="repeat" aria-label="Repeat">🔁</button>
- </nav>
- <div class="seekbox"><input id="seek" type="range" min="0" max="1000" value="0"><div class="times"><span id="elapsed">00:00</span><span id="total">00:00</span></div></div>
- <div class="tag">✦ FEEL THE MUSIC • HEAL YOUR MIND • LIVE IN HARMONY ✦</div>
- <footer class="bottom"><button id="songlistBtn">♫ SONG LIST</button><button id="full">⛶ FULL SCREEN</button></footer>
+  <div class="topline">
+    <div class="brand">SYNAPSE <span>VISUALIZER</span></div>
+    <div class="live">● LIVE AUDIO REACTIVE</div>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <canvas id="visual"></canvas>
+      <div class="overlay">
+        <div style="width:100%;text-align:center">
+          <div class="visual-title">SOUND • LIGHT • ENERGY</div>
+          <div class="subtitle">NEON MUSIC EXPERIENCE</div>
+        </div>
+        <div class="logo-zone">
+          <div class="orbit o3"></div><div class="orbit"></div><div class="orbit o2"></div>
+          <div class="logo-core" id="logoCore"></div>
+        </div>
+        <div class="track-bottom">
+          <div class="track-name" id="stageTrack">SYNAPSE MUSIC STUDIO</div>
+          <div class="tag">FEEL THE FREQUENCY</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="group">
+      <button id="prev">|◀</button><button class="primary" id="play">▶ PLAY</button><button id="next">▶|</button>
+      <button id="shuffle">🔀</button><button id="repeat">↻</button>
+    </div>
+    <div class="group">
+      <select id="ratio"><option value="portrait">VIDEO 9:16</option><option value="landscape">VIDEO 16:9</option></select>
+      <button id="fullscreen">⛶ FULL</button>
+      <button class="record" id="record">● RECORD</button>
+    </div>
+  </div>
+
+  <div class="seek-row">
+    <span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="1000" value="0"><span id="duration">0:00</span>
+  </div>
+  <div class="toolbar" style="margin-top:0">
+    <div class="group"><span style="font-size:10px;color:#9cefff">VOLUME</span><input id="volume" type="range" min="0" max="1" step=".01" value=".85" style="width:100px"></div>
+    <div class="status" id="status">Ready — เลือกเพลงแล้วกด PLAY</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">✦ SONG LIBRARY</div><div id="count" class="status"></div></div>
+    <div class="song-list" id="songList"></div>
+  </div>
+  <div class="note">การบันทึกจะจับภาพ Visualizer และเสียงเพลงรวมเป็นไฟล์วิดีโอจากเบราว์เซอร์ หากอุปกรณ์ไม่รองรับการบันทึก WebM ปุ่มบันทึกจะแจ้งสถานะให้ทราบ</div>
 </div>
-<audio id="audio" preload="metadata" playsinline></audio>
+
 <script>
-"use strict";
-const TRACKS = TRACKS_JSON;
-const LOGO = LOGO_JSON;
+const DATA = __PAYLOAD__;
+const tracks = DATA.tracks || [];
+const audio = new Audio();
+audio.preload = "auto";
+audio.volume = 0.85;
+let current = 0, playing = false, shuffled = false, repeating = false;
+let audioCtx = null, analyser = null, sourceNode = null, recordDestination = null;
+let recorder = null, chunks = [], recording = false;
+const canvas = document.getElementById("visual");
+const ctx = canvas.getContext("2d");
+const stage = document.getElementById("stage");
 const $ = id => document.getElementById(id);
-const audio = $("audio");
-let current = 0, shuffleMode = false, repeatMode = false;
-let audioContext = null, analyser = null, sourceNode = null, freqData = null;
-let lastTap = 0;
+const status = msg => $("status").textContent = msg;
+const fmt = n => { if(!isFinite(n)) return "0:00"; let m=Math.floor(n/60),s=Math.floor(n%60);return m+":"+String(s).padStart(2,"0"); };
 
-if (LOGO) {
-  const img = document.createElement("img");
-  img.src = LOGO; img.alt = "SYNAPSE logo"; $("logo").appendChild(img);
-} else {
-  $("logo").innerHTML = '<div class="fallback">SYNAPSE<br><small>SOUND & VISUAL THERAPY</small></div>';
+if(DATA.logo){
+  const img=document.createElement("img"); img.src=DATA.logo; img.alt="SYNAPSE"; $("logoCore").appendChild(img);
+}else{
+  $("logoCore").innerHTML='<div class="logo-fallback">S</div>';
 }
-$("trackcount").textContent = `● LIBRARY: ${TRACKS.length} TRACKS`;
 
-function timeText(value) {
-  if (!Number.isFinite(value) || value < 0) value = 0;
-  return `${String(Math.floor(value/60)).padStart(2,"0")}:${String(Math.floor(value%60)).padStart(2,"0")}`;
-}
-function showTrack() {
-  $("trackname").textContent = TRACKS[current]?.name || "ยังไม่มีเพลงในรายการ";
-  document.querySelectorAll(".song").forEach((el,i)=>el.classList.toggle("active",i===current));
-}
-function buildPlaylist() {
-  const box = $("songrows"); box.innerHTML = "";
-  if (!TRACKS.length) { box.innerHTML='<div class="empty">ไม่พบไฟล์เพลง กรุณาวางไฟล์เพลงไว้ในโฟลเดอร์เดียวกับ app.py</div>'; return; }
-  TRACKS.forEach((track,i)=>{
-    const row=document.createElement("div"); row.className="song"; row.textContent=`${String(i+1).padStart(2,"0")}  ♫  ${track.name}`;
-    row.addEventListener("click",()=>{loadTrack(i);startPlayback();$("playlist").classList.remove("show");});
-    box.appendChild(row);
-  });
-  showTrack();
-}
-function loadTrack(index) {
-  if (!TRACKS.length) return;
-  current=(index+TRACKS.length)%TRACKS.length;
-  audio.src=TRACKS[current].src; audio.load(); showTrack();
-  $("elapsed").textContent="00:00"; $("total").textContent="00:00"; $("seek").value=0;
-}
-async function prepareAnalyzer() {
-  if (audioContext) { if(audioContext.state==="suspended") await audioContext.resume(); return; }
-  try {
-    const AudioCtx=window.AudioContext||window.webkitAudioContext;
-    if(!AudioCtx) return;
-    audioContext=new AudioCtx();
-    analyser=audioContext.createAnalyser(); analyser.fftSize=1024; analyser.smoothingTimeConstant=.82;
-    sourceNode=audioContext.createMediaElementSource(audio);
-    sourceNode.connect(analyser); analyser.connect(audioContext.destination);
-    freqData=new Uint8Array(analyser.frequencyBinCount);
-    if(audioContext.state==="suspended") await audioContext.resume();
-  } catch(err) { console.warn("Analyzer unavailable:",err); }
-}
-async function startPlayback() {
-  if(!TRACKS.length){$("trackname").textContent="ยังไม่พบไฟล์เพลง";return;}
-  if(!audio.src) loadTrack(current);
-  await prepareAnalyzer();
-  try { await audio.play(); $("play").textContent="Ⅱ"; }
-  catch(err) { $("play").textContent="▶"; $("trackname").textContent="แตะปุ่มเล่นอีกครั้งเพื่อเริ่มเพลง"; console.warn(err); }
-}
-$("play").addEventListener("click",async()=>{
-  if(audio.paused) await startPlayback();
-  else {audio.pause();$("play").textContent="▶";}
+$("count").textContent = tracks.length + " TRACKS";
+tracks.forEach((t,i)=>{
+  const b=document.createElement("button"); b.className="song"; b.innerHTML='<span class="num">'+String(i+1).padStart(2,"0")+'</span><span class="songtext"></span>';
+  b.querySelector(".songtext").textContent=t.name;
+  b.addEventListener("click",()=>loadTrack(i,true)); $("songList").appendChild(b);
 });
-$("previous").addEventListener("click",()=>{loadTrack(current-1);startPlayback();});
-$("next").addEventListener("click",()=>{nextTrack();});
-$("rewind").addEventListener("click",()=>{audio.currentTime=Math.max(0,(audio.currentTime||0)-10);});
-$("shuffle").addEventListener("click",()=>{shuffleMode=!shuffleMode;$("shuffle").classList.toggle("on",shuffleMode);});
-$("repeat").addEventListener("click",()=>{repeatMode=!repeatMode;audio.loop=repeatMode;$("repeat").classList.toggle("on",repeatMode);});
-function nextTrack(){
-  if(!TRACKS.length)return;
-  if(shuffleMode&&TRACKS.length>1){let n=current;while(n===current)n=Math.floor(Math.random()*TRACKS.length);loadTrack(n);}
-  else loadTrack(current+1);
-  startPlayback();
+
+function drawList(){
+  [...$("songList").children].forEach((el,i)=>el.classList.toggle("active",i===current));
+  $("stageTrack").textContent=tracks[current]?.name || "SYNAPSE MUSIC STUDIO";
 }
-audio.addEventListener("ended",()=>{if(!repeatMode)nextTrack();});
-audio.addEventListener("loadedmetadata",()=>{$("total").textContent=timeText(audio.duration);});
-audio.addEventListener("timeupdate",()=>{
-  if(Number.isFinite(audio.duration)&&audio.duration>0){
-    $("seek").value=Math.round(audio.currentTime/audio.duration*1000);
-    $("elapsed").textContent=timeText(audio.currentTime);
+function loadTrack(i,autoplay=false){
+  if(!tracks.length)return;
+  current=(i+tracks.length)%tracks.length;
+  audio.src=tracks[current].src; audio.load(); drawList();
+  if(autoplay) playAudio();
+  else status("เลือกเพลง: "+tracks[current].name);
+}
+async function initAudio(){
+  if(audioCtx)return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)throw new Error("อุปกรณ์นี้ไม่รองรับ Web Audio");
+  audioCtx=new AC();
+  analyser=audioCtx.createAnalyser(); analyser.fftSize=512; analyser.smoothingTimeConstant=.78;
+  sourceNode=audioCtx.createMediaElementSource(audio);
+  recordDestination=audioCtx.createMediaStreamDestination();
+  sourceNode.connect(analyser); analyser.connect(audioCtx.destination); analyser.connect(recordDestination);
+}
+async function playAudio(){
+  try{
+    await initAudio();
+    if(audioCtx.state==="suspended")await audioCtx.resume();
+    if(!audio.src)loadTrack(current,false);
+    await audio.play(); playing=true; $("play").textContent="Ⅱ PAUSE"; status("กำลังเล่น: "+tracks[current].name);
+  }catch(e){status("เล่นเพลงไม่สำเร็จ: "+e.message);}
+}
+function pauseAudio(){audio.pause();playing=false;$("play").textContent="▶ PLAY";status("หยุดชั่วคราว");}
+$("play").addEventListener("click",()=>playing?pauseAudio():playAudio());
+$("prev").addEventListener("click",()=>loadTrack(current-1,true));
+$("next").addEventListener("click",()=>loadTrack(current+1,true));
+$("shuffle").addEventListener("click",()=>{shuffled=!shuffled;$("shuffle").style.color=shuffled?"#ff7bdd":"#eaffff";status(shuffled?"เปิดสุ่มเพลง":"ปิดสุ่มเพลง");});
+$("repeat").addEventListener("click",()=>{repeating=!repeating;$("repeat").style.color=repeating?"#ff7bdd":"#eaffff";status(repeating?"เปิดเล่นซ้ำ":"ปิดเล่นซ้ำ");});
+audio.addEventListener("ended",()=>{if(repeating){audio.currentTime=0;playAudio();}else if(shuffled){let n=current;if(tracks.length>1)while(n===current)n=Math.floor(Math.random()*tracks.length);loadTrack(n,true);}else if(current<tracks.length-1)loadTrack(current+1,true);else pauseAudio();});
+audio.addEventListener("timeupdate",()=>{if(audio.duration){$("seek").value=audio.currentTime/audio.duration*1000;$("elapsed").textContent=fmt(audio.currentTime);$("duration").textContent=fmt(audio.duration);}});
+$("seek").addEventListener("input",()=>{if(audio.duration)audio.currentTime=Number($("seek").value)/1000*audio.duration;});
+$("volume").addEventListener("input",e=>audio.volume=Number(e.target.value));
+$("ratio").addEventListener("change",e=>{stage.classList.toggle("landscape",e.target.value==="landscape");resize();});
+$("fullscreen").addEventListener("click",async()=>{
+  try{if(!document.fullscreenElement)await stage.requestFullscreen();else await document.exitFullscreen();}
+  catch(e){status("เบราว์เซอร์นี้ไม่อนุญาต Full Screen");}
+});
+loadTrack(0,false);
+
+// Canvas animation: spectrum, bass pulse, laser beams, particles and rotating energy rings.
+let W=0,H=0,dpr=1,particles=[];
+function resize(){
+  const r=stage.getBoundingClientRect(); dpr=Math.min(window.devicePixelRatio||1,2);
+  W=Math.max(1,r.width);H=Math.max(1,r.height);
+  canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  particles=Array.from({length:Math.max(45,Math.floor(W*H/8500))},()=>({
+    x:Math.random()*W,y:Math.random()*H,z:.4+Math.random()*1.8,
+    vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,
+    r:.5+Math.random()*1.8,phase:Math.random()*6.28
+  }));
+}
+window.addEventListener("resize",resize);setTimeout(resize,100);
+let tick=0;
+function frame(){
+  requestAnimationFrame(frame);tick+=.016;
+  if(!W||!H)return;
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W*.5,H*.48,5,W*.5,H*.5,Math.max(W,H)*.72);
+  bg.addColorStop(0,"#101632");bg.addColorStop(.55,"#070b1b");bg.addColorStop(1,"#02030a");
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  let bins=new Uint8Array(analyser?analyser.frequencyBinCount:128);
+  if(analyser)analyser.getByteFrequencyData(bins);
+  let bass=0,treble=0;
+  for(let i=0;i<Math.min(12,bins.length);i++)bass+=bins[i];
+  for(let i=35;i<Math.min(100,bins.length);i++)treble+=bins[i];
+  bass/=12*255;treble/=65*255;
+  const cx=W/2,cy=H*.5,base=Math.min(W,H)*.19;
+  // Moving luminous laser sheets.
+  ctx.save();ctx.globalCompositeOperation="screen";
+  for(let i=0;i<7;i++){
+    const y=(tick*38+i*H/7)%(H+100)-50;
+    const grad=ctx.createLinearGradient(0,y, W,y+30);
+    grad.addColorStop(0,"transparent");grad.addColorStop(.5,i%2?"#b52cff33":"#00eaff3b");grad.addColorStop(1,"transparent");
+    ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y+18+Math.sin(tick+i)*12);ctx.lineTo(W,y+27);ctx.lineTo(0,y+9);ctx.fill();
   }
-});
-$("seek").addEventListener("input",()=>{
-  if(Number.isFinite(audio.duration)&&audio.duration>0) audio.currentTime=(Number($("seek").value)/1000)*audio.duration;
-});
-function togglePlaylist(){$("playlist").classList.toggle("show");}
-$("songsTop").addEventListener("click",togglePlaylist);
-$("songlistBtn").addEventListener("click",togglePlaylist);
-$("closeList").addEventListener("click",()=>$("playlist").classList.remove("show"));
-$("full").addEventListener("click",async()=>{
-  try {
-    if(!document.fullscreenElement){await document.documentElement.requestFullscreen();}
-    else await document.exitFullscreen();
-  } catch(e) { $("full").textContent="FULL SCREEN NOT AVAILABLE"; }
-});
-document.addEventListener("fullscreenchange",()=>{$("full").textContent=document.fullscreenElement?"✕ EXIT FULL SCREEN":"⛶ FULL SCREEN";});
-buildPlaylist();
-if(TRACKS.length)loadTrack(0);
+  for(let i=0;i<5;i++){
+    const x=(Math.sin(tick*.35+i*1.7)*.5+.5)*W;
+    const g=ctx.createLinearGradient(x,0,x+Math.sin(tick+i)*W*.22,H);
+    g.addColorStop(0,"transparent");g.addColorStop(.48,i%2?"#ff2bc244":"#00eaff3d");g.addColorStop(1,"transparent");
+    ctx.strokeStyle=g;ctx.lineWidth=2+Math.sin(tick+i)*1.5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+Math.sin(tick+i)*W*.22,H);ctx.stroke();
+  }
+  ctx.restore();
+  // Particle field.
+  ctx.save();ctx.globalCompositeOperation="lighter";
+  for(const p of particles){
+    p.x+=p.vx*p.z;p.y+=p.vy*p.z;
+    if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+    const a=.28+.5*(.5+.5*Math.sin(tick*2+p.phase));
+    ctx.fillStyle=`rgba(115,225,255,${a})`;ctx.shadowBlur=8;ctx.shadowColor="#00cfff";
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.z,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  // Center reactive energy rings.
+  ctx.save();ctx.translate(cx,cy);ctx.globalCompositeOperation="lighter";
+  for(let ring=0;ring<4;ring++){
+    const rad=base*(.82+ring*.16)+bass*base*(ring%2? .13:.24);
+    ctx.beginPath();
+    for(let a=0;a<=Math.PI*2+.02;a+=.025){
+      const idx=Math.floor((a/(Math.PI*2))*bins.length)%bins.length;
+      const v=bins[idx]/255;
+      const rr=rad+v*base*.18*Math.sin(a*9+tick*2+ring);
+      const x=Math.cos(a+tick*(ring%2?.12:-.09))*rr;
+      const y=Math.sin(a+tick*(ring%2?.12:-.09))*rr;
+      if(a===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.strokeStyle=["#00f5ff","#a34dff","#ff39c8","#ffd66b"][ring];
+    ctx.lineWidth=1.4+ bass*2;ctx.shadowBlur=14+bass*18;ctx.shadowColor=ctx.strokeStyle;ctx.stroke();
+  }
+  // Circular frequency spikes.
+  const count=112;
+  for(let i=0;i<count;i++){
+    const a=i/count*Math.PI*2;
+    const v=bins[Math.floor(i/count*bins.length)]/255;
+    const inner=base*.72,outer=inner+7+v*base*.65;
+    ctx.strokeStyle=i%3===0?"#ff54d6":"#37f5ff";
+    ctx.lineWidth=i%4===0?2:1;ctx.shadowBlur=10;ctx.shadowColor=ctx.strokeStyle;
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
+    ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.stroke();
+  }
+  ctx.restore();
+  // Wide spectrum bars at top and bottom edges.
+  const n=Math.min(64,bins.length),barGap=2,barW=(W-30)/n;
+  ctx.save();ctx.globalCompositeOperation="lighter";
+  for(let i=0;i<n;i++){
+    const v=bins[i]/255, h=5+v*H*.12;
+    const x=15+i*barW;
+    const gr=ctx.createLinearGradient(0,H*.08-h,0,H*.08);
+    gr.addColorStop(0,"#ff35cb");gr.addColorStop(.5,"#9a55ff");gr.addColorStop(1,"#00f5ff");
+    ctx.fillStyle=gr;ctx.shadowBlur=10;ctx.shadowColor="#00dfff";
+    ctx.fillRect(x,H*.08-h,Math.max(1,barW-barGap),h);
+    ctx.fillRect(x,H*.92,Math.max(1,barW-barGap),h);
+  }
+  ctx.restore();
+  // Subtle moving grid.
+  ctx.save();ctx.strokeStyle="#2a8fb51b";ctx.lineWidth=1;
+  const step=34,offset=(tick*10)%step;
+  for(let x=-step+offset;x<W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=-step+offset;y<H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+}
+frame();
 
-// Twinkling particles
-const stars=$("stars"),sc=stars.getContext("2d");let particles=[];
-function resizeStars(){
-  stars.width=window.innerWidth*(window.devicePixelRatio||1);
-  stars.height=window.innerHeight*(window.devicePixelRatio||1);
-  particles=Array.from({length:85},()=>({x:Math.random()*stars.width,y:Math.random()*stars.height,r:Math.random()*2+0.4,a:Math.random(),v:Math.random()*.018+.004,h:Math.random()*360}));
-}
-window.addEventListener("resize",resizeStars);resizeStars();
-function drawStars(){
-  sc.clearRect(0,0,stars.width,stars.height);
-  particles.forEach(p=>{p.a+=p.v;if(p.a>1||p.a<.12)p.v*=-1;sc.beginPath();sc.arc(p.x,p.y,p.r,0,Math.PI*2);sc.fillStyle=`hsla(${p.h},100%,70%,${p.a})`;sc.shadowBlur=12;sc.shadowColor=sc.fillStyle;sc.fill();sc.shadowBlur=0;});
-  requestAnimationFrame(drawStars);
-}
-drawStars();
+$("record").addEventListener("click",async()=>{
+  if(recording){
+    recorder.stop();return;
+  }
+  try{
+    if(!audio.src)loadTrack(current,false);
+    if(!window.MediaRecorder||!canvas.captureStream){status("เบราว์เซอร์นี้ไม่รองรับการบันทึกวิดีโอ");return;}
+    await initAudio();
+    if(audioCtx.state==="suspended")await audioCtx.resume();
+    if(audio.paused)await audio.play();
+    const videoStream=canvas.captureStream(30);
+    const combined=new MediaStream([...videoStream.getVideoTracks(),...recordDestination.stream.getAudioTracks()]);
+    const mimeTypes=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+    const mime=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t));
+    if(!mime){status("ไม่พบรูปแบบวิดีโอที่อุปกรณ์รองรับ");return;}
+    chunks=[];recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:6500000,audioBitsPerSecond:192000});
+    recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+    recorder.onstop=()=>{
+      const blob=new Blob(chunks,{type:mime});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download="SYNAPSE-Visualizer-"+Date.now()+".webm";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      recording=false;$("record").classList.remove("recording");$("record").textContent="● RECORD";
+      status("บันทึกเสร็จแล้ว — ดาวน์โหลดไฟล์วิดีโอเรียบร้อย");
+      videoStream.getTracks().forEach(t=>t.stop());combined.getTracks().forEach(t=>t.stop());
+    };
+    recorder.start(1000);recording=true;
+    $("record").classList.add("recording");$("record").textContent="■ STOP";
+    status("กำลังบันทึกวิดีโอและเสียงเพลง...");
+  }catch(e){status("เริ่มบันทึกไม่ได้: "+e.message);}
+});
 </script>
 </body>
 </html>
-"""
+""".replace("__PAYLOAD__", payload)
 
-page = HTML.replace("TRACKS_JSON", tracks_json).replace("LOGO_JSON", logo_json)
-
-if not music_files:
-    st.warning(
-        "ยังไม่พบไฟล์เพลง กรุณาวางไฟล์เพลง MP3/WAV/OGG/M4A ไว้ในโฟลเดอร์เดียวกับ app.py "
-        "แล้วรีเฟรชแอป"
-    )
-
-# components.html creates an isolated interactive frame. All controls and audio
-# playback live together inside that frame; tap Play once to satisfy mobile autoplay rules.
-components.html(page, height=1120, scrolling=False)
+components.html(html, height=1050, scrolling=True)
